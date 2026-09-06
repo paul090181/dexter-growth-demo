@@ -1,0 +1,27 @@
+{
+  "source": "Square Sandbox",
+  "square_api_version": "2026-08-19",
+  "generated_at": "2026-09-06T21:10:39.137Z",
+  "location": {
+    "id": "LD21B30TRM7RR",
+    "name": "Dexter's Hats TEST"
+  },
+  "product_count": 1,
+  "products": [
+    {
+      "item_id": "MG2XNPRA4DRQ3W5W26JCOYBM",
+      "item_name": "Stacy Adams  Dublin Porkpie",
+      "description": "Test Product for GrowthWise AI Sandbox",
+      "variation_id": "W552UCUY7XDCELUDNXJ7H4CH",
+      "variation_name": "Default",
+      "sku": null,
+      "price_cents": 8995,
+      "price": "89.95",
+      "currency": "USD",
+      "track_inventory": true,
+      "inventory_quantity": "8",
+      "inventory_state": "IN_STOCK",
+      "inventory_calculated_at": "2026-09-06T20:37:17.208Z"
+    }
+  ]
+}
