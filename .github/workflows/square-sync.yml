@@ -1,0 +1,183 @@
+name: Sync Square Sandbox
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync-square:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Fetch Square catalog and inventory
+        env:
+          SQUARE_SANDBOX_TOKEN: ${{ secrets.SQUARE_SANDBOX_TOKEN }}
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+
+          const token = process.env.SQUARE_SANDBOX_TOKEN;
+          if (!token) {
+            throw new Error("Missing SQUARE_SANDBOX_TOKEN repository secret.");
+          }
+
+          const BASE = "https://connect.squareupsandbox.com";
+          const VERSION = "2026-08-19";
+
+          async function square(path, options = {}) {
+            const res = await fetch(BASE + path, {
+              ...options,
+              headers: {
+                "Authorization": `Bearer ${token}`,
+                "Square-Version": VERSION,
+                "Content-Type": "application/json",
+                ...(options.headers || {})
+              }
+            });
+
+            const text = await res.text();
+            let data = {};
+            if (text) {
+              try { data = JSON.parse(text); }
+              catch { throw new Error(`Square returned non-JSON (${res.status}): ${text}`); }
+            }
+
+            if (!res.ok) {
+              throw new Error(`Square API ${res.status}: ${JSON.stringify(data)}`);
+            }
+            return data;
+          }
+
+          async function listAllCatalogItems() {
+            let cursor = null;
+            const items = [];
+
+            do {
+              const params = new URLSearchParams({ types: "ITEM" });
+              if (cursor) params.set("cursor", cursor);
+
+              const data = await square(`/v2/catalog/list?${params.toString()}`);
+              if (Array.isArray(data.objects)) items.push(...data.objects);
+              cursor = data.cursor || null;
+            } while (cursor);
+
+            return items;
+          }
+
+          (async () => {
+            const locationsData = await square("/v2/locations");
+            const activeLocations = (locationsData.locations || []).filter(
+              loc => !loc.status || loc.status === "ACTIVE"
+            );
+
+            if (!activeLocations.length) {
+              throw new Error("No active Square Sandbox location found.");
+            }
+
+            const location = activeLocations[0];
+            const items = await listAllCatalogItems();
+
+            const variationIds = [];
+            for (const item of items) {
+              for (const variation of item.item_data?.variations || []) {
+                if (variation?.id) variationIds.push(variation.id);
+              }
+            }
+
+            const inventoryByVariation = new Map();
+
+            // Square accepts up to 1000 catalog object IDs in this request.
+            for (let i = 0; i < variationIds.length; i += 1000) {
+              const batch = variationIds.slice(i, i + 1000);
+              const inv = await square("/v2/inventory/counts/batch-retrieve", {
+                method: "POST",
+                body: JSON.stringify({
+                  catalog_object_ids: batch,
+                  location_ids: [location.id]
+                })
+              });
+
+              for (const count of inv.counts || []) {
+                inventoryByVariation.set(count.catalog_object_id, {
+                  quantity: count.quantity ?? "0",
+                  state: count.state ?? null,
+                  calculated_at: count.calculated_at ?? null
+                });
+              }
+            }
+
+            const products = [];
+
+            for (const item of items) {
+              const itemData = item.item_data || {};
+              const variations = itemData.variations || [];
+
+              for (const variation of variations) {
+                const v = variation.item_variation_data || {};
+                const money = v.price_money || {};
+                const inv = inventoryByVariation.get(variation.id) || {
+                  quantity: "0",
+                  state: null,
+                  calculated_at: null
+                };
+
+                products.push({
+                  item_id: item.id,
+                  item_name: itemData.name || "Unnamed item",
+                  description: itemData.description_plaintext || itemData.description_html || "",
+                  variation_id: variation.id,
+                  variation_name: v.name || "Default",
+                  sku: v.sku || null,
+                  price_cents: Number.isFinite(money.amount) ? money.amount : null,
+                  price: Number.isFinite(money.amount) ? (money.amount / 100).toFixed(2) : null,
+                  currency: money.currency || null,
+                  track_inventory: Boolean(v.track_inventory),
+                  inventory_quantity: inv.quantity,
+                  inventory_state: inv.state,
+                  inventory_calculated_at: inv.calculated_at
+                });
+              }
+            }
+
+            const snapshot = {
+              source: "Square Sandbox",
+              square_api_version: VERSION,
+              generated_at: new Date().toISOString(),
+              location: {
+                id: location.id,
+                name: location.name || "Square location"
+              },
+              product_count: products.length,
+              products
+            };
+
+            fs.writeFileSync(
+              "square_snapshot.json",
+              JSON.stringify(snapshot, null, 2) + "\n",
+              "utf8"
+            );
+
+            console.log(`Wrote square_snapshot.json with ${products.length} product variation(s).`);
+          })().catch(err => {
+            console.error(err);
+            process.exit(1);
+          });
+          NODE
+
+      - name: Commit refreshed snapshot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add square_snapshot.json
+          if git diff --cached --quiet; then
+            echo "No Square data changes to commit."
+          else
+            git commit -m "Update Square sandbox snapshot"
+            git push
+          fi
+          
