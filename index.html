@@ -1146,10 +1146,19 @@ function openModal(title,text){
   document.getElementById('modalText').textContent=text;
   modal.classList.remove('hidden');
 }
-document.getElementById('publishBtn').addEventListener('click',()=>openModal(
-  'Demo published ✓',
-  'In the live beta, approved content would create or update the website listing and be sent to authorized social and Google channels.'
-));
+
+// Wire the modal close controls immediately so a later optional UI error can never trap the user.
+document.getElementById('closeModal')?.addEventListener('click',()=>modal.classList.add('hidden'));
+modal?.addEventListener('click',e=>{if(e.target===modal)modal.classList.add('hidden')});
+
+// This legacy demo button is not present in every GrowthWise layout, so only attach when it exists.
+const publishBtn=document.getElementById('publishBtn');
+if(publishBtn){
+  publishBtn.addEventListener('click',()=>openModal(
+    'Demo published ✓',
+    'In the live beta, approved content would create or update the website listing and be sent to authorized social and Google channels.'
+  ));
+}
 document.getElementById('connectSquare').addEventListener('click',()=>openModal(
   'Latest sales & inventory',
   window.salesStatusText || window.squareStatusText || 'GrowthWise is syncing your latest Square activity.'
@@ -1490,8 +1499,6 @@ loadLiveSquareData().then(()=>{
   if(key) loadLiveSalesData(key);
 });
 
-document.getElementById('closeModal').addEventListener('click',()=>modal.classList.add('hidden'));
-modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.add('hidden')});
 
 
 </script>
