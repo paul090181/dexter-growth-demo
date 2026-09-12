@@ -102,6 +102,20 @@
 .ai-result-actions a,.ai-result-actions button{display:block;text-align:center;text-decoration:none;border:0;border-radius:12px;padding:11px 12px;font-weight:850}
 .ai-result-actions a{background:#0e1b2b;color:#fff}
 .ai-result-actions button{background:#eef1f3;color:#17222e}
+.fb-publish-tools{margin-top:12px;border-top:1px solid #e6e9ec;padding-top:12px}
+.fb-publish-tools label{display:block;font-size:12px;font-weight:850;color:#596673;margin-bottom:7px}
+.fb-caption-editor{width:100%;min-height:105px;border:1px solid #d8dde2;border-radius:13px;padding:12px;font:inherit;line-height:1.45;resize:vertical;background:#fff;color:#17222e}
+.fb-publish-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+.fb-publish-actions button{border:0;border-radius:12px;padding:11px 12px;font-weight:850}
+.fb-publish-actions .preview{background:#eef1f3;color:#17222e}
+.fb-publish-actions .publish{background:#1877f2;color:#fff}
+.fb-publish-actions button:disabled{opacity:.6}
+.fb-publish-note{font-size:12px;color:#65717d;line-height:1.45;margin:9px 0 0}
+.fb-publish-status{margin-top:9px;border-radius:12px;padding:10px 12px;font-size:12px;font-weight:800;line-height:1.4}
+.fb-publish-status.hidden{display:none}
+.fb-publish-status.loading{background:#eef3f8;color:#3d566f}
+.fb-publish-status.ok{background:#e8f5ea;color:#285e32}
+.fb-publish-status.error{background:#fff0ee;color:#8b3028}
 </style>
 
 
@@ -253,6 +267,16 @@
             <button type="button" class="copy-primary" id="copyFacebookPromo">Copy Facebook post</button>
             <button type="button" class="copy-secondary" id="copyOfferPromo">Copy offer only</button>
           </div>
+          <div class="fb-publish-tools">
+            <label for="facebookCaptionEditor">Final Facebook caption — review before publishing</label>
+            <textarea id="facebookCaptionEditor" class="fb-caption-editor" maxlength="5000"></textarea>
+            <div class="fb-publish-actions">
+              <button type="button" class="preview" id="previewFacebookPostBtn">Preview</button>
+              <button type="button" class="publish" id="publishFacebookPostBtn">Post to Facebook</button>
+            </div>
+            <p class="fb-publish-note">GrowthWise will never publish automatically from this screen. You must tap Post to Facebook and confirm. If you selected the cleaned product photo below, GrowthWise will attach it to the post.</p>
+            <div class="fb-publish-status hidden" id="facebookPublishStatus"></div>
+          </div>
         </div>
 
         <div class="promo-card">
@@ -269,7 +293,7 @@
           <div class="tag">PRODUCT PHOTO</div>
           <h3>Prepare Dexter's clean product image</h3>
           <div class="photo-drop">
-            <input id="promoPhotoInput" type="file" accept="image/*" />
+            <input id="promoPhotoInput" type="file" accept="image/*" capture="environment" />
             <label for="promoPhotoInput">Choose product photo</label>
             <p>Select the product photo Dexter wants to promote. GrowthWise will use his preferred clean white-background presentation.</p>
           </div>
@@ -566,6 +590,7 @@ function renderPromotion(day){
   document.getElementById('promoGuardrail').textContent = p.guardrail;
   document.getElementById('promoAdvice').textContent = p.advice;
   document.getElementById('facebookPromoText').textContent = p.facebook;
+  document.getElementById('facebookCaptionEditor').value = p.facebook;
   document.getElementById('instagramPromoText').textContent = p.instagram;
   document.getElementById('promoMeasurement').textContent = p.measurement;
 }
@@ -583,7 +608,7 @@ document.getElementById('promoTuesdayBtn').addEventListener('click',()=>renderPr
 document.getElementById('promoWednesdayBtn').addEventListener('click',()=>renderPromotion('wednesday'));
 
 document.getElementById('copyFacebookPromo').addEventListener('click',()=>{
-  copyPromotionText(promotionTemplates[activePromotionDay].facebook, 'Facebook post copied to your clipboard.');
+  copyPromotionText(document.getElementById('facebookCaptionEditor').value, 'Facebook post copied to your clipboard.');
 });
 document.getElementById('copyInstagramPromo').addEventListener('click',()=>{
   copyPromotionText(promotionTemplates[activePromotionDay].instagram, 'Instagram caption copied to your clipboard.');
@@ -600,6 +625,8 @@ document.getElementById('previewPromoBtn').addEventListener('click',()=>{
 });
 
 
+let selectedPromotionImageDataUrl = '';
+
 const promoPhotoInput = document.getElementById('promoPhotoInput');
 const promoPhotoPreviewWrap = document.getElementById('promoPhotoPreviewWrap');
 const promoPhotoPreview = document.getElementById('promoPhotoPreview');
@@ -608,6 +635,7 @@ const promoPhotoStatus = document.getElementById('photoStatus');
 promoPhotoInput.addEventListener('change', ()=>{
   const file = promoPhotoInput.files && promoPhotoInput.files[0];
   if(!file) return;
+  selectedPromotionImageDataUrl = '';
   const url = URL.createObjectURL(file);
   promoPhotoPreview.src = url;
   promoPhotoPreviewWrap.classList.add('show');
@@ -620,6 +648,7 @@ document.getElementById('removePromoPhotoBtn').addEventListener('click', ()=>{
   promoPhotoPreviewWrap.classList.remove('show');
   document.getElementById('aiPhotoResult').classList.remove('show');
   document.getElementById('aiPhotoOutput').removeAttribute('src');
+  selectedPromotionImageDataUrl = '';
 });
 
 async function optimizePhotoForUpload(file){
@@ -710,10 +739,92 @@ document.getElementById('prepareWhiteBgBtn').addEventListener('click', async ()=
 document.getElementById('useCleanPhotoBtn').addEventListener('click', ()=>{
   const output = document.getElementById('aiPhotoOutput');
   if(!output.src) return;
+  selectedPromotionImageDataUrl = output.src;
   openModal(
     'Promotion image selected ✓',
-    'This cleaned product photo is now the selected image for the current promotion preview. The next publishing step can attach it to the Facebook/Instagram post after Dexter approves it.'
+    'This cleaned product photo is selected for the Facebook post. Review the caption above, then tap Post to Facebook when you are ready.'
   );
+});
+
+const facebookCaptionEditor = document.getElementById('facebookCaptionEditor');
+const publishFacebookPostBtn = document.getElementById('publishFacebookPostBtn');
+const previewFacebookPostBtn = document.getElementById('previewFacebookPostBtn');
+const facebookPublishStatus = document.getElementById('facebookPublishStatus');
+
+function setFacebookPublishStatus(kind, message){
+  facebookPublishStatus.className = `fb-publish-status ${kind}`;
+  facebookPublishStatus.textContent = message;
+}
+
+previewFacebookPostBtn.addEventListener('click', ()=>{
+  const caption = facebookCaptionEditor.value.trim();
+  if(!caption){
+    openModal('Add a caption first', 'Enter or generate the Facebook caption before previewing the post.');
+    return;
+  }
+  openModal(
+    selectedPromotionImageDataUrl ? 'Facebook post preview — photo + caption' : 'Facebook post preview — caption only',
+    caption
+  );
+});
+
+publishFacebookPostBtn.addEventListener('click', async ()=>{
+  const adminKey = sessionStorage.getItem('growthwise_admin_key') || '';
+  const message = facebookCaptionEditor.value.trim();
+
+  if(!adminKey){
+    openModal('GrowthWise access key needed', 'Return Home and unlock the beta with your admin key first.');
+    return;
+  }
+  if(!message){
+    openModal('Caption required', 'Review or enter the Facebook caption before publishing.');
+    return;
+  }
+
+  const hasPhoto = Boolean(selectedPromotionImageDataUrl);
+  const confirmed = window.confirm(
+    `Publish this ${hasPhoto ? 'photo + caption' : 'caption-only'} post to the connected Facebook Page now?`
+  );
+  if(!confirmed) return;
+
+  publishFacebookPostBtn.disabled = true;
+  publishFacebookPostBtn.textContent = 'Publishing…';
+  setFacebookPublishStatus('loading', 'Sending the approved post to Facebook…');
+
+  try{
+    const response = await fetch('/.netlify/functions/facebook-post', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-GrowthWise-Key': adminKey
+      },
+      body: JSON.stringify({
+        message,
+        image_data_url: selectedPromotionImageDataUrl || null
+      })
+    });
+
+    const data = await response.json().catch(()=>({}));
+    if(!response.ok){
+      throw new Error(data.error || `Facebook publish failed (HTTP ${response.status}).`);
+    }
+
+    setFacebookPublishStatus(
+      'ok',
+      `Published to ${data.page_name || 'the connected Facebook Page'} ✓${data.post_id ? ` · Post ID ${data.post_id}` : ''}`
+    );
+    openModal(
+      'Facebook post published ✓',
+      `GrowthWise successfully published the approved ${hasPhoto ? 'photo and caption' : 'caption'} to ${data.page_name || 'the connected Facebook Page'}.`
+    );
+  }catch(err){
+    console.error('Facebook publishing failed:', err);
+    setFacebookPublishStatus('error', err.message || 'Could not publish to Facebook.');
+    openModal('Could not publish to Facebook', err.message || 'Please try again.');
+  }finally{
+    publishFacebookPostBtn.disabled = false;
+    publishFacebookPostBtn.textContent = 'Post to Facebook';
+  }
 });
 
 renderPromotion('tuesday');
