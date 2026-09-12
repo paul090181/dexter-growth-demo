@@ -157,10 +157,79 @@
           <label for="liveAdminKeyInput">Unlock live Square data</label>
           <div class="live-unlock-row">
             <input id="liveAdminKeyInput" type="password" placeholder="GrowthWise beta admin key" autocomplete="current-password" />
-            <button id="unlockLiveBtn" type="button">Unlock</button>
+            <button id="unlockLiveBtn" type="button" onclick="growthwiseUnlockSquare(event)">Unlock</button>
           </div>
           <small>Enter the beta admin key once per browser session. It is kept only in this tab's session storage and is not written into the public webpage.</small>
         </div>
+
+        <script>
+        // Critical-path Square unlock: intentionally self-contained so the button still works
+        // even if another optional GrowthWise UI feature throws a JavaScript error later.
+        window.growthwiseUnlockSquare = async function(event){
+          if(event) event.preventDefault();
+          const input = document.getElementById('liveAdminKeyInput');
+          const btn = document.getElementById('unlockLiveBtn');
+          const detail = document.getElementById('squareLiveDetail');
+          const status = document.getElementById('squareLiveStatus');
+          const unlockBox = document.getElementById('liveUnlock');
+          const key = (input?.value || '').trim();
+
+          if(!key){
+            if(detail) detail.textContent = 'Enter your GrowthWise access key first.';
+            input?.focus();
+            return false;
+          }
+
+          if(btn){ btn.disabled = true; btn.textContent = 'Checking…'; }
+          if(detail) detail.textContent = 'Checking your GrowthWise access key…';
+          status?.classList.remove('error');
+
+          try{
+            const response = await fetch('/.netlify/functions/square-data', {
+              method: 'GET',
+              headers: { 'X-GrowthWise-Key': key },
+              cache: 'no-store'
+            });
+            const data = await response.json().catch(()=>({}));
+
+            if(response.status === 401){
+              sessionStorage.removeItem('growthwise_admin_key');
+              status?.classList.add('error');
+              if(detail) detail.textContent = 'Admin key was not accepted. Please check it and try again.';
+              return false;
+            }
+            if(!response.ok){
+              throw new Error(data.error || `Square data request failed (HTTP ${response.status}).`);
+            }
+
+            sessionStorage.setItem('growthwise_admin_key', key);
+            if(input) input.value = '';
+            unlockBox?.classList.add('hidden');
+
+            const products = Array.isArray(data.products) ? data.products : [];
+            const variations = data.summary?.variation_count ?? products.length;
+            const units = data.summary?.total_units_in_stock ?? 0;
+            if(detail) detail.textContent = `${variations} products · ${units} units in stock · updated just now`;
+
+            // Use the richer app renderers when the rest of the script loaded successfully.
+            if(typeof window.renderInventory === 'function'){
+              window.renderInventory(products, data.summary || {}, data.generated_at || null);
+            }
+            if(typeof window.loadLiveSalesData === 'function'){
+              window.loadLiveSalesData(key).catch(()=>{});
+            }
+            return true;
+          }catch(err){
+            console.error('Square unlock failed:', err);
+            status?.classList.add('error');
+            if(detail) detail.textContent = err?.message || 'GrowthWise could not connect to Square.';
+            unlockBox?.classList.remove('hidden');
+            return false;
+          }finally{
+            if(btn){ btn.disabled = false; btn.textContent = 'Unlock'; }
+          }
+        };
+        </script>
 
         <div class="stack">
           <article class="opportunity">
@@ -1146,10 +1215,19 @@ function openModal(title,text){
   document.getElementById('modalText').textContent=text;
   modal.classList.remove('hidden');
 }
-document.getElementById('publishBtn').addEventListener('click',()=>openModal(
-  'Demo published ✓',
-  'In the live beta, approved content would create or update the website listing and be sent to authorized social and Google channels.'
-));
+
+// Wire the modal close controls immediately so a later optional UI error can never trap the user.
+document.getElementById('closeModal')?.addEventListener('click',()=>modal.classList.add('hidden'));
+modal?.addEventListener('click',e=>{if(e.target===modal)modal.classList.add('hidden')});
+
+// This legacy demo button is not present in every GrowthWise layout, so only attach when it exists.
+const publishBtn=document.getElementById('publishBtn');
+if(publishBtn){
+  publishBtn.addEventListener('click',()=>openModal(
+    'Demo published ✓',
+    'In the live beta, approved content would create or update the website listing and be sent to authorized social and Google channels.'
+  ));
+}
 document.getElementById('connectSquare').addEventListener('click',()=>openModal(
   'Latest sales & inventory',
   window.salesStatusText || window.squareStatusText || 'GrowthWise is syncing your latest Square activity.'
@@ -1466,23 +1544,9 @@ async function loadLiveSalesData(key = sessionStorage.getItem('growthwise_admin_
   }
 }
 
-unlockLiveBtn.addEventListener('click', async ()=>{
-  const key = liveAdminKeyInput.value;
-  if(!key){
-    liveAdminKeyInput.focus();
-    return;
-  }
-
-  unlockLiveBtn.disabled = true;
-  unlockLiveBtn.textContent = 'Checking…';
-  await loadLiveSquareData(key);
-  await loadLiveSalesData(key);
-  unlockLiveBtn.disabled = false;
-  unlockLiveBtn.textContent = 'Unlock';
-});
-
+// Enter key uses the same critical-path unlock function as the button.
 liveAdminKeyInput.addEventListener('keydown', e=>{
-  if(e.key === 'Enter') unlockLiveBtn.click();
+  if(e.key === 'Enter') growthwiseUnlockSquare(e);
 });
 
 loadLiveSquareData().then(()=>{
@@ -1490,8 +1554,6 @@ loadLiveSquareData().then(()=>{
   if(key) loadLiveSalesData(key);
 });
 
-document.getElementById('closeModal').addEventListener('click',()=>modal.classList.add('hidden'));
-modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.add('hidden')});
 
 
 </script>
