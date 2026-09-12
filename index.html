@@ -455,6 +455,7 @@
                 <a id="newProductSaveCleanBtn" href="#" download="dexter-new-product-clean.png">Save image</a>
                 <button type="button" id="newProductUseCleanBtn">Use cleaned photo</button>
               </div>
+              <div class="photo-status" id="newProductSelectedPhotoStatus">Original photo is currently selected for promotion.</div>
             </div>
           </div>
           <div class="photo-rules">
@@ -484,8 +485,13 @@
             </label>
           </div>
 
-          <label>Description
-            <textarea id="descriptionInput" placeholder="A short description GrowthWise can use in the promotion"></textarea>
+          <div class="tag" style="margin-top:14px">AI PRODUCT WRITER</div>
+          <p class="form-helper">Let GrowthWise analyze the product photo and draft a product description plus Facebook caption. Review everything before publishing.</p>
+          <button type="button" class="ghost" id="aiDescribeProductBtn" style="width:100%">AI analyze photo &amp; write listing</button>
+          <div class="create-status hidden" id="aiDescribeStatus"></div>
+
+          <label style="margin-top:12px">Description
+            <textarea id="descriptionInput" placeholder="GrowthWise can draft this from the product photo, or you can type/edit it yourself."></textarea>
           </label>
 
           <label>GrowthWise beta admin key
@@ -939,6 +945,8 @@ renderPromotion('tuesday');
 
 let newProductImageDataUrl = '';
 let newProductCleanImageDataUrl = '';
+let newProductPromotionImageDataUrl = '';
+let newProductPromotionImageKind = 'original';
 
 const newProductGalleryInput = document.getElementById('newProductGalleryInput');
 const newProductCameraInput = document.getElementById('newProductCameraInput');
@@ -957,10 +965,20 @@ function handleNewProductPhoto(file){
   reader.onload = ()=>{
     newProductImageDataUrl = String(reader.result || '');
     newProductCleanImageDataUrl = '';
+    newProductPromotionImageDataUrl = newProductImageDataUrl;
+    newProductPromotionImageKind = 'original';
     newProductPhotoPreview.src = newProductImageDataUrl;
     newProductPhotoWrap.classList.add('show');
     newProductAiResult.classList.remove('show');
-    newProductPhotoStatus.textContent = 'Photo selected. You can use it as-is or prepare a white-background version.';
+    newProductPhotoStatus.textContent = 'Photo selected. Original photo is selected for promotion. You can optionally prepare a white-background version.';
+    const selectedStatus = document.getElementById('newProductSelectedPhotoStatus');
+    if(selectedStatus) selectedStatus.textContent = 'Original photo is currently selected for promotion.';
+
+    // If the beta is already unlocked, start the AI draft automatically from the new photo.
+    const cachedKey = sessionStorage.getItem('growthwise_admin_key') || '';
+    if(cachedKey){
+      setTimeout(()=>analyzeNewProductWithAI(), 50);
+    }
   };
   reader.readAsDataURL(file);
 }
@@ -975,6 +993,8 @@ newProductCameraInput.addEventListener('change', ()=>{
 document.getElementById('newProductRemovePhotoBtn').addEventListener('click', ()=>{
   newProductImageDataUrl = '';
   newProductCleanImageDataUrl = '';
+  newProductPromotionImageDataUrl = '';
+  newProductPromotionImageKind = 'original';
   newProductPhotoPreview.removeAttribute('src');
   document.getElementById('newProductAiOutput').removeAttribute('src');
   newProductPhotoWrap.classList.remove('show');
@@ -1026,9 +1046,87 @@ document.getElementById('newProductCleanBtn').addEventListener('click', async ()
 });
 
 document.getElementById('newProductUseCleanBtn').addEventListener('click', ()=>{
-  if(!newProductCleanImageDataUrl) return;
-  newProductPhotoStatus.textContent = '✓ Cleaned photo selected for the Facebook promotion.';
+  if(!newProductCleanImageDataUrl){
+    newProductPhotoStatus.textContent = 'Cleaned photo is not ready yet.';
+    return;
+  }
+  newProductPromotionImageDataUrl = newProductCleanImageDataUrl;
+  newProductPromotionImageKind = 'cleaned';
+  const btn = document.getElementById('newProductUseCleanBtn');
+  btn.textContent = '✓ Using cleaned photo';
+  btn.setAttribute('aria-pressed','true');
+  newProductPhotoStatus.textContent = '✓ Cleaned photo selected for Square/Facebook promotion.';
+  const selectedStatus = document.getElementById('newProductSelectedPhotoStatus');
+  if(selectedStatus) selectedStatus.textContent = '✓ Cleaned white-background photo is selected for promotion.';
 });
+
+async function analyzeNewProductWithAI(){
+  if(!newProductImageDataUrl){
+    openModal('Choose a product photo first', 'Take a photo or choose one from the gallery before asking GrowthWise to write the listing.');
+    return;
+  }
+  const adminKeyInput = document.getElementById('adminKeyInput');
+  const adminKey = adminKeyInput.value || sessionStorage.getItem('growthwise_admin_key') || '';
+  if(!adminKey){
+    openModal('GrowthWise access key needed', 'Enter the beta admin key before asking AI to analyze the product.');
+    return;
+  }
+
+  const btn = document.getElementById('aiDescribeProductBtn');
+  const status = document.getElementById('aiDescribeStatus');
+  btn.disabled = true;
+  btn.textContent = 'Analyzing product…';
+  status.className = 'create-status loading';
+  status.textContent = 'GrowthWise AI is studying the product photo and drafting the listing…';
+
+  try{
+    const response = await fetch('/.netlify/functions/describe-product', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-GrowthWise-Key': adminKey
+      },
+      body: JSON.stringify({
+        image_data_url: newProductImageDataUrl,
+        brand_hint: document.getElementById('brandInput').value.trim(),
+        product_name_hint: document.getElementById('productNameInput').value.trim(),
+        price: document.getElementById('priceInput').value.trim()
+      })
+    });
+    const data = await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error || `AI product analysis failed (HTTP ${response.status}).`);
+
+    if(!document.getElementById('brandInput').value.trim() && data.brand) {
+      document.getElementById('brandInput').value = data.brand;
+    }
+    if(!document.getElementById('productNameInput').value.trim() && data.product_name) {
+      document.getElementById('productNameInput').value = data.product_name;
+    }
+    if(data.description) document.getElementById('descriptionInput').value = data.description;
+    if(data.facebook_caption) document.getElementById('newProductCaption').value = data.facebook_caption;
+
+    const fullName = [
+      document.getElementById('brandInput').value.trim(),
+      document.getElementById('productNameInput').value.trim()
+    ].filter(Boolean).join(' ') || 'New Product';
+    document.getElementById('websiteTitle').textContent = fullName;
+    document.getElementById('generated').classList.remove('hidden');
+    sessionStorage.setItem('growthwise_admin_key', adminKey);
+    if(adminKeyInput) adminKeyInput.value = '';
+
+    status.className = 'create-status ok';
+    status.textContent = '✓ AI draft ready. Review the product name, description, price and Facebook caption before publishing.';
+  }catch(err){
+    console.error('AI product analysis failed:', err);
+    status.className = 'create-status error';
+    status.textContent = err.message || 'GrowthWise could not analyze this product photo.';
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'AI analyze photo & write listing';
+  }
+}
+
+document.getElementById('aiDescribeProductBtn').addEventListener('click', analyzeNewProductWithAI);
 
 function buildNewProductCaption(){
   const brand = document.getElementById('brandInput').value.trim();
@@ -1101,7 +1199,7 @@ async function createProductInSquare(form){
 }
 
 async function publishNewProductToFacebook(form, message){
-  const imageDataUrl = newProductCleanImageDataUrl || newProductImageDataUrl;
+  const imageDataUrl = newProductPromotionImageDataUrl || newProductImageDataUrl;
   const response = await fetch('/.netlify/functions/facebook-post', {
     method: 'POST',
     headers: {
@@ -1155,7 +1253,7 @@ addAndPromoteBtn.addEventListener('click', async ()=>{
   if(!message) message = buildNewProductCaption();
   if(!message){ setCreateStatus('error', 'Review or prepare the Facebook caption first.'); return; }
 
-  const photoLabel = newProductCleanImageDataUrl ? 'cleaned product photo' : 'selected product photo';
+  const photoLabel = newProductPromotionImageKind === 'cleaned' ? 'cleaned product photo' : 'selected original product photo';
   const confirmed = window.confirm(
     `Add ${[form.brand, form.productName].filter(Boolean).join(' ') || form.productName} to Square and publish the ${photoLabel} + caption to Facebook now?`
   );
