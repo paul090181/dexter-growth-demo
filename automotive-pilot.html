@@ -17,6 +17,10 @@
 
 .source-hub{margin:12px 0 15px;border:1px solid #d9e2ea;border-radius:16px;padding:13px;background:#f9fbfd}.source-hub-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.source-hub-head strong{display:block;font-size:15px}.source-hub-head small{display:block;color:#68747f;line-height:1.4;margin-top:3px}.source-hub-count{font-size:9px;font-weight:950;border-radius:999px;padding:5px 8px;background:#e8f5ea;color:#285e32;white-space:nowrap}.source-hub-list{display:grid;gap:8px;margin-top:11px}.source-hub-row{display:flex;align-items:center;gap:10px;border:1px solid #e1e6ea;border-radius:13px;padding:10px;background:#fff}.source-hub-icon{width:34px;height:34px;border-radius:10px;background:#eef3f7;display:grid;place-items:center;font-size:17px;flex:0 0 auto}.source-hub-copy{min-width:0;flex:1}.source-hub-copy strong{display:block;font-size:12px}.source-hub-copy small{display:block;color:#71808d;font-size:10px;line-height:1.35;margin-top:2px}.source-hub-status{font-size:8px;font-weight:950;letter-spacing:.04em;border-radius:999px;padding:5px 7px;background:#eef1f3;color:#68747f;white-space:nowrap}.source-hub-status.live{background:#e8f5ea;color:#285e32}.source-hub-status.connect{background:#fff8e7;color:#745b24}.source-hub-status.ready{background:#eef4fb;color:#335b84}.source-hub-note{margin-top:10px;border-radius:12px;padding:10px;background:#fff8e7;color:#745b24;font-size:10px;line-height:1.45}
 
+
+.deal-watchlist{margin-top:13px}.watch-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.watch-head h3{margin:5px 0 4px}.watch-count{font-size:9px;font-weight:950;border-radius:999px;padding:5px 8px;background:#eef4fb;color:#335b84;white-space:nowrap}.watch-note{background:#eef4fb;border:1px solid #d9e6f2;border-radius:13px;padding:11px;color:#335b84;font-size:11px;line-height:1.45;margin-top:10px}.watch-list{display:grid;gap:9px;margin-top:11px}.watch-empty{border:1px dashed #ccd5dd;border-radius:14px;padding:14px;color:#68747f;text-align:center;font-size:12px;line-height:1.45}.watch-card{border:1px solid #e1e6ea;border-radius:14px;padding:12px;background:#fff}.watch-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.watch-card h4{margin:0;font-size:15px}.watch-card small{display:block;color:#71808d;line-height:1.35;margin-top:3px}.watch-zone{font-size:9px;font-weight:950;border-radius:999px;padding:5px 7px;background:#fff8e7;color:#745b24;white-space:nowrap}.watch-zone.ready{background:#e8f5ea;color:#285e32}.watch-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}.watch-metric{background:#f6f8f9;border-radius:11px;padding:9px}.watch-metric strong{display:block;font-size:13px}.watch-metric span{display:block;font-size:8px;color:#71808d;text-transform:uppercase;letter-spacing:.04em;margin-top:2px}.watch-gap{margin-top:9px;font-size:11px;line-height:1.4;color:#52616f}.watch-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:10px}.watch-actions a,.watch-actions button,.scout-watch{border:0;border-radius:10px;padding:9px 10px;text-align:center;font-weight:850;font-size:11px;text-decoration:none}.watch-open{background:#eef1f3;color:#17222e}.watch-deep{background:#0e1b2b;color:#fff}.watch-remove{background:#fff0ee;color:#963b31}.scout-watch{background:#eef4fb;color:#335b84}.scout-watch.saved{background:#e8f5ea;color:#285e32}
+@media(max-width:390px){.watch-metrics{grid-template-columns:1fr 1fr 1fr}.watch-actions{grid-template-columns:1fr}.scout-actions{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -76,7 +80,7 @@
       <div class="today-card">
         <h3>Today</h3>
         <div class="today-line"><span class="today-dot"></span><div><strong id="todayVehicleStatus">No vehicle in progress yet.</strong><small>Take a photo below to start a live vehicle workflow.</small></div></div>
-        <div class="today-line"><span class="today-dot"></span><div><strong>Deal Finder</strong><small>Live AI opportunity scouting can search current public listings and rank potential buys.</small></div></div>
+        <div class="today-line"><span class="today-dot"></span><div><strong id="todayDealStatus">Deal Finder</strong><small>Live AI opportunity scouting can search current public listings and rank potential buys.</small></div></div>
         <div class="today-line"><span class="today-dot"></span><div><strong>Service Center</strong><small>AI customer follow-up, open-bay promotions and service-retention drafts are ready to demo.</small></div></div>
       </div>
 
@@ -219,6 +223,17 @@
         <div id="scoutSources" class="source-links"></div>
         <div class="scout-safety">Preliminary leads only. Auto City should verify listing availability, VIN, title, condition, seller, fees, transport and repair needs before bidding or buying.</div>
       </div>
+    </section>
+
+
+    <section class="card deal-watchlist" id="dealWatchlist">
+      <div class="tag">BUY · DEAL WATCHLIST</div>
+      <div class="watch-head">
+        <div><h3>Save almost-good deals and wait for the profit zone</h3><p class="helper" style="margin-bottom:0">When Vehicle Scout finds a real listing that is close—but not profitable enough yet—Auto City can save it here instead of losing track of it.</p></div>
+        <span class="watch-count" id="watchCount">0 WATCHED</span>
+      </div>
+      <div class="watch-note"><strong>Demo behavior:</strong> watched vehicles are saved on this device. Automatic price re-checks and alerts will turn on when GrowthWise connects scheduled source monitoring for Auto City.</div>
+      <div class="watch-list" id="watchList"></div>
     </section>
 
     <section class="card section-anchor" id="dealAnalysis">
@@ -818,6 +833,76 @@ $('serviceApproveBtn')?.addEventListener('click',()=>createServiceMessages(true)
 $('serviceNoOfferBtn')?.addEventListener('click',()=>createServiceMessages(false));
 
 
+
+const DEAL_WATCHLIST_KEY='growthwise_auto_deal_watchlist_v1';
+function getDealWatchlist(){
+  try{
+    const parsed=JSON.parse(localStorage.getItem(DEAL_WATCHLIST_KEY)||'[]');
+    return Array.isArray(parsed)?parsed:[];
+  }catch{return [];}
+}
+function saveDealWatchlist(items){
+  localStorage.setItem(DEAL_WATCHLIST_KEY,JSON.stringify(items.slice(0,30)));
+  renderDealWatchlist();
+}
+function candidateKey(o){
+  return String(o?.listing_url||[o?.year,o?.make,o?.model,o?.asking_price,o?.location].filter(Boolean).join('|'));
+}
+function isCandidateWatched(o){const k=candidateKey(o);return getDealWatchlist().some(x=>x.key===k);}
+function watchCandidate(o){
+  if(!o?.listing_url){setScoutStatus('warn','GrowthWise only watches verified listing links in the demo.');return;}
+  const items=getDealWatchlist(),key=candidateKey(o);
+  if(items.some(x=>x.key===key)){setScoutStatus('ok','That vehicle is already on the Deal Watchlist.');return;}
+  items.unshift({key,saved_at:new Date().toISOString(),...o});
+  saveDealWatchlist(items);
+  setScoutStatus('ok',`Watching ${[o.year,o.make,o.model].filter(Boolean).join(' ')} ✓ GrowthWise saved the lead and target buy price on this device.`);
+}
+async function loadCandidateIntoDeepDive(o){
+  await applyVehicleSelection({year:o.year,make:o.make,model:o.model,trim:o.trim});
+  $('mileage').value=o.mileage||'';$('currentAsk').value=o.asking_price||'';$('sourceLocation').value=o.location||'';$('sourceUrl').value=o.listing_url||'';$('sourceType').value=scoutSourceType(o.source_type);$('marketLocation').value=$('scoutMarket').value.trim()||$('defaultMarket').value.trim();$('targetGross').value=$('scoutTargetGross').value||'3500';
+  $('dealAnalysis').scrollIntoView({behavior:'smooth',block:'start'});calc();updateReadiness();
+}
+function addWatchMetric(parent,label,value){
+  const box=document.createElement('div');box.className='watch-metric';
+  const strong=document.createElement('strong');strong.textContent=value;
+  const span=document.createElement('span');span.textContent=label;
+  box.append(strong,span);parent.appendChild(box);
+}
+function renderDealWatchlist(){
+  const list=$('watchList'); if(!list) return;
+  const items=getDealWatchlist();
+  $('watchCount').textContent=`${items.length} WATCHED`;
+  if($('todayDealStatus')) $('todayDealStatus').textContent=items.length?`Deal Finder · ${items.length} watched`:'Deal Finder';
+  list.replaceChildren();
+  if(!items.length){
+    const empty=document.createElement('div');empty.className='watch-empty';
+    empty.textContent='No vehicles watched yet. Run Vehicle Scout and tap “Watch this lead” on a verified candidate.';
+    list.appendChild(empty);return;
+  }
+  for(const o of items){
+    const card=document.createElement('article');card.className='watch-card';
+    const top=document.createElement('div');top.className='watch-card-top';
+    const left=document.createElement('div');const h=document.createElement('h4');h.textContent=[o.year,o.make,o.model,o.trim].filter(Boolean).join(' ');
+    const sm=document.createElement('small');sm.textContent=[o.source_type,o.location,o.mileage?`${Number(o.mileage).toLocaleString()} miles`:null].filter(Boolean).join(' • ');
+    left.append(h,sm);
+    const ask=Number(o.asking_price||0), max=Number(o.recommended_max_buy||0), gap=Math.max(0,ask-max);
+    const zone=document.createElement('span');zone.className=`watch-zone ${ask>0&&max>0&&ask<=max?'ready':''}`;zone.textContent=ask>0&&max>0&&ask<=max?'PROFIT ZONE':'WATCH';
+    top.append(left,zone);card.appendChild(top);
+    const metrics=document.createElement('div');metrics.className='watch-metrics';
+    addWatchMetric(metrics,'current ask',money(o.asking_price));addWatchMetric(metrics,'target max buy',money(o.recommended_max_buy));addWatchMetric(metrics,'projected gross',money(o.projected_gross));card.appendChild(metrics);
+    const g=document.createElement('div');g.className='watch-gap';
+    if(ask>0&&max>0){
+      g.textContent=ask<=max?`At or below GrowthWise's estimated max buy for the current target gross. Re-verify the listing and condition before acting.`:`Needs about ${money(gap)} of price movement or improved economics to reach the current target-buy threshold.`;
+    }else g.textContent='GrowthWise saved this lead. Re-run deal analysis when the acquisition price or economics change.';
+    card.appendChild(g);
+    const actions=document.createElement('div');actions.className='watch-actions';
+    if(o.listing_url){const a=document.createElement('a');a.className='watch-open';a.href=o.listing_url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Open listing';actions.appendChild(a);}
+    const deep=document.createElement('button');deep.type='button';deep.className='watch-deep';deep.textContent='Deep-dive';deep.addEventListener('click',()=>loadCandidateIntoDeepDive(o));actions.appendChild(deep);
+    const rem=document.createElement('button');rem.type='button';rem.className='watch-remove';rem.textContent='Remove';rem.addEventListener('click',()=>saveDealWatchlist(getDealWatchlist().filter(x=>x.key!==o.key)));actions.appendChild(rem);
+    card.appendChild(actions);list.appendChild(card);
+  }
+}
+
 function setScoutStatus(kind,msg){setBoxStatus('scoutStatus',kind,msg);}
 function scoutRecClass(rec){const v=String(rec||'').toUpperCase();return v==='STRONG LEAD'?'strong':(v==='PASS'?'pass':'');}
 function scoutSourceType(value){const v=String(value||'').toLowerCase();if(v.includes('auction'))return 'Auction';if(v.includes('private'))return 'Private seller';if(v.includes('trade'))return 'Trade-in';return 'Dealer / wholesale';}
@@ -833,11 +918,9 @@ function renderScoutOpportunity(o,index){
   if(Array.isArray(o.caveats)&&o.caveats.length){const ul=document.createElement('ul');ul.className='scout-caveats';for(const c of o.caveats.slice(0,4)){const li=document.createElement('li');li.textContent=c;ul.appendChild(li);}card.appendChild(ul);}
   const actions=document.createElement('div');actions.className='scout-actions';
   if(o.listing_url){const a=document.createElement('a');a.className='scout-open';a.href=o.listing_url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Open public listing';actions.appendChild(a);}else{const no=document.createElement('div');no.className='scout-open';no.textContent='Listing link not verified';actions.appendChild(no);}
-  const analyze=document.createElement('button');analyze.className='scout-analyze';analyze.type='button';analyze.textContent='Deep-dive this candidate';analyze.addEventListener('click',async()=>{
-    await applyVehicleSelection({year:o.year,make:o.make,model:o.model,trim:o.trim});
-    $('mileage').value=o.mileage||'';$('currentAsk').value=o.asking_price||'';$('sourceLocation').value=o.location||'';$('sourceUrl').value=o.listing_url||'';$('sourceType').value=scoutSourceType(o.source_type);$('marketLocation').value=$('scoutMarket').value.trim()||$('defaultMarket').value.trim();$('targetGross').value=$('scoutTargetGross').value||'3500';
-    $('dealAnalysis').scrollIntoView({behavior:'smooth',block:'start'});calc();updateReadiness();
-  });actions.appendChild(analyze);card.appendChild(actions);return card;
+  const analyze=document.createElement('button');analyze.className='scout-analyze';analyze.type='button';analyze.textContent='Deep-dive this candidate';analyze.addEventListener('click',()=>loadCandidateIntoDeepDive(o));actions.appendChild(analyze);
+  const watch=document.createElement('button');watch.className=`scout-watch ${isCandidateWatched(o)?'saved':''}`;watch.type='button';watch.textContent=isCandidateWatched(o)?'✓ Watching':'Watch this lead';watch.disabled=!o.listing_url;watch.addEventListener('click',()=>{watchCandidate(o);watch.classList.add('saved');watch.textContent='✓ Watching';});actions.appendChild(watch);
+  card.appendChild(actions);return card;
 }
 $('scoutBtn')?.addEventListener('click',async()=>{
   const key=$('adminKey').value||sessionStorage.getItem('growthwise_admin_key')||'';
@@ -882,7 +965,7 @@ for(const [id,def] of Object.entries(profileDefaults)){
 }
 if(!$('marketLocation').value.trim()) $('marketLocation').value=$('defaultMarket').value.trim();
 if($('scoutMarket') && !$('scoutMarket').value.trim()) $('scoutMarket').value=$('defaultMarket').value.trim();
-populateYears();loadMakes();updateReadiness();refreshAccessUi();
+populateYears();loadMakes();updateReadiness();refreshAccessUi();renderDealWatchlist();
 </script>
 </body>
 </html>
