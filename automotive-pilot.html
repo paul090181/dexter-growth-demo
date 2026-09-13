@@ -7,7 +7,7 @@
 <style>
 *{box-sizing:border-box}html,body{margin:0;background:#edf0f3;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#14202c}body{min-height:100vh}.shell{max-width:520px;margin:0 auto;min-height:100vh;background:#fff;padding-bottom:38px;box-shadow:0 0 50px rgba(0,0,0,.08)}.top{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);border-bottom:1px solid #e7eaed;padding:15px 18px;display:flex;align-items:center;gap:12px}.back{width:40px;height:40px;border:1px solid #e0e4e8;border-radius:13px;background:#fff;font-size:24px}.eyebrow,.tag{font-size:11px;letter-spacing:.12em;font-weight:900;color:#99742d}.top h1{font-size:19px;margin:2px 0 0}.wrap{padding:18px}.hero{background:#0e1b2b;color:#fff;border-radius:22px;padding:22px;margin-bottom:14px}.hero h2{font-size:27px;line-height:1.08;margin:7px 0 10px}.hero p{margin:0;opacity:.8;line-height:1.5}.card{border:1px solid #e3e7ea;border-radius:18px;padding:16px;margin-top:13px;background:#fff}.card h3{margin:5px 0 8px}.helper{color:#65717d;font-size:13px;line-height:1.45;margin:5px 0 14px}.photo-choice{display:grid;grid-template-columns:1fr 1fr;gap:9px}.photo-choice input{display:none}.photo-choice label,.secondary,.primary{border:0;border-radius:13px;padding:12px 13px;font-weight:850;text-align:center;cursor:pointer}.photo-choice label{background:#0e1b2b;color:#fff}.photo-choice label:last-child{background:#eef1f3;color:#17222e}.preview{display:none;margin-top:13px}.preview.show{display:block}.preview-frame{background:#f8f9fa;border:1px solid #e3e7ea;border-radius:15px;padding:10px;display:flex;align-items:center;justify-content:center;min-height:220px}.preview img{max-width:100%;max-height:360px;border-radius:10px;object-fit:contain}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}label.field{display:block;font-size:12px;font-weight:850;color:#596673;margin-top:11px}input,textarea,select{width:100%;margin-top:6px;border:1px solid #d8dde2;border-radius:12px;padding:12px;font:inherit;color:#17222e;background:#fff}textarea{min-height:105px;resize:vertical}.primary{width:100%;background:#0e1b2b;color:#fff;font-size:15px}.secondary{width:100%;background:#eef1f3;color:#17222e}.status{margin-top:10px;border-radius:12px;padding:11px 12px;font-size:13px;font-weight:750}.status.loading{background:#eef4fb;color:#335b84}.status.ok{background:#e8f5ea;color:#285e32}.status.error{background:#fff0ee;color:#963b31}.status.warn{background:#fff8e7;color:#745b24}.hidden{display:none!important}.result{margin-top:12px;border-top:1px solid #e8ebee;padding-top:12px}.result label{display:block;font-size:12px;font-weight:850;color:#596673;margin-top:11px}.mini{padding:11px 12px;border-radius:12px;background:#f6f8f9;font-size:12px;line-height:1.45;color:#596673;margin-top:10px}.math{display:grid;grid-template-columns:1fr 1fr;gap:9px}.metric{background:#0e1b2b;color:#fff;border-radius:15px;padding:14px}.metric strong{display:block;font-size:23px}.metric span{font-size:11px;opacity:.75}.dest{display:grid;gap:9px;margin-top:10px}.dest label{border:1px solid #e1e5e8;border-radius:14px;padding:12px;display:flex;align-items:center;gap:10px;font-weight:800}.dest input{width:auto;margin:0;transform:scale(1.25)}.dest small{display:block;color:#7a858f;font-weight:600;margin-top:3px}.badge{margin-left:auto;font-size:10px;padding:5px 7px;border-radius:999px;background:#eef1f3;color:#68747f}.note{background:#fff8e7;border:1px solid #f0dfb4;border-radius:14px;padding:12px;color:#745b24;font-size:12px;line-height:1.45;margin-top:12px}.deal-summary{background:#f6f8f9;border-radius:14px;padding:13px;margin-top:12px;font-size:13px;line-height:1.5}.deal-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.decision{font-size:12px;font-weight:900;padding:7px 10px;border-radius:999px;background:#eef1f3}.decision.buy{background:#e8f5ea;color:#285e32}.decision.maybe{background:#fff8e7;color:#745b24}.decision.pass{background:#fff0ee;color:#963b31}.source-links{margin-top:10px;font-size:12px;line-height:1.55}.source-links a{color:#245b91;word-break:break-all}.smart-actions{display:grid;grid-template-columns:1fr;gap:9px;margin-top:12px}.identify-card{margin-top:12px;padding:13px;border:1px solid #dfe5ea;border-radius:14px;background:#f7f9fa}.identify-card strong{display:block;font-size:15px}.confidence{font-size:12px;color:#65717d;margin-top:4px}.alt-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.alt-chip{border:1px solid #d8dde2;background:#fff;border-radius:999px;padding:8px 10px;font-weight:750;font-size:12px}.inline-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px}.readiness{margin-top:12px;padding:12px;border-radius:14px;background:#f6f8f9}.readiness-top{display:flex;justify-content:space-between;gap:10px;font-size:12px;font-weight:850}.bar{height:8px;background:#e2e7eb;border-radius:999px;overflow:hidden;margin-top:8px}.bar span{display:block;height:100%;background:#0e1b2b;width:0}.readiness small{display:block;color:#65717d;margin-top:7px;line-height:1.4}.subhead{margin:17px 0 4px;font-size:14px}.divider{height:1px;background:#e8ebee;margin:16px 0}.field-note{font-size:11px;color:#7a858f;margin-top:5px;line-height:1.35}@media(max-width:390px){.grid2,.math{grid-template-columns:1fr}.photo-choice{grid-template-columns:1fr 1fr}.inline-actions{grid-template-columns:1fr}}
 
-.auto-dashboard{margin-bottom:16px}.dash-hero{background:linear-gradient(145deg,#0e1b2b,#182c42);color:#fff;border-radius:22px;padding:21px;box-shadow:0 14px 35px rgba(14,27,43,.18)}.dash-brand{display:flex;align-items:center;justify-content:space-between;gap:14px}.dash-logo{width:54px;height:54px;border-radius:17px;background:#fff;color:#0e1b2b;display:grid;place-items:center;font-size:27px;font-weight:950;box-shadow:inset 0 0 0 1px rgba(14,27,43,.08)}.dash-hero h2{font-size:27px;line-height:1.05;margin:14px 0 9px}.dash-hero p{margin:0;color:rgba(255,255,255,.78);line-height:1.45}.dash-pills{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}.dash-pill{font-size:10px;font-weight:900;letter-spacing:.04em;border-radius:999px;padding:6px 8px;background:rgba(255,255,255,.1);color:#fff}.dash-grid{display:grid;gap:10px;margin-top:11px}.dash-action{border:1px solid #e1e5e8;border-radius:17px;padding:15px;background:#fff;box-shadow:0 6px 18px rgba(16,31,47,.05)}.dash-action.primary-action{border-color:#cdd9e4;background:#f9fbfd}.dash-row{display:flex;align-items:flex-start;gap:12px}.dash-icon{width:45px;height:45px;border-radius:14px;background:#eef3f7;display:grid;place-items:center;font-size:22px;flex:0 0 auto}.dash-copy{min-width:0;flex:1}.dash-copy strong{display:block;font-size:16px}.dash-copy small{display:block;color:#68747f;line-height:1.4;margin-top:3px}.dash-cta{margin-top:12px;width:100%;border:0;border-radius:12px;padding:11px 12px;font-weight:900;background:#0e1b2b;color:#fff}.dash-cta.secondary-cta{background:#eef1f3;color:#17222e}.dash-tag{font-size:9px;font-weight:950;border-radius:999px;padding:5px 7px;background:#e8f5ea;color:#285e32;white-space:nowrap}.dash-tag.next{background:#fff8e7;color:#745b24}.today-card{margin-top:11px;border:1px solid #e3e7ea;border-radius:17px;padding:14px;background:#fff}.today-card h3{margin:0 0 9px;font-size:15px}.today-line{display:flex;align-items:center;gap:9px;padding:9px 0;border-top:1px solid #eef1f3}.today-line:first-of-type{border-top:0}.today-dot{width:10px;height:10px;border-radius:999px;background:#0e1b2b;flex:0 0 auto}.today-line small{color:#68747f;line-height:1.35}.service-preview-grid{display:grid;gap:9px}.service-preview-item{border:1px solid #e2e6ea;border-radius:14px;padding:13px;background:#f9fafb}.service-preview-item strong{display:block}.service-preview-item small{display:block;color:#68747f;line-height:1.4;margin-top:4px}.demo-ribbon{display:inline-flex;align-items:center;gap:6px;margin-top:9px;border-radius:999px;padding:6px 9px;background:#fff8e7;color:#745b24;font-size:10px;font-weight:900}.section-anchor{scroll-margin-top:82px}
+.auto-dashboard{margin-bottom:16px}.dash-hero{background:linear-gradient(145deg,#0e1b2b,#182c42);color:#fff;border-radius:22px;padding:21px;box-shadow:0 14px 35px rgba(14,27,43,.18)}.dash-brand{display:flex;align-items:center;justify-content:space-between;gap:14px}.dash-logo{width:54px;height:54px;border-radius:17px;background:#fff;color:#0e1b2b;display:grid;place-items:center;font-size:27px;font-weight:950;box-shadow:inset 0 0 0 1px rgba(14,27,43,.08)}.dash-hero h2{font-size:27px;line-height:1.05;margin:14px 0 9px}.dash-hero p{margin:0;color:rgba(255,255,255,.78);line-height:1.45}.dash-pills{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}.dash-pill{font-size:10px;font-weight:900;letter-spacing:.04em;border-radius:999px;padding:6px 8px;background:rgba(255,255,255,.1);color:#fff}.dash-grid{display:grid;gap:10px;margin-top:11px}.dash-action{border:1px solid #e1e5e8;border-radius:17px;padding:15px;background:#fff;box-shadow:0 6px 18px rgba(16,31,47,.05)}.dash-action.primary-action{border-color:#cdd9e4;background:#f9fbfd}.dash-row{display:flex;align-items:flex-start;gap:12px}.dash-icon{width:45px;height:45px;border-radius:14px;background:#eef3f7;display:grid;place-items:center;font-size:22px;flex:0 0 auto}.dash-copy{min-width:0;flex:1}.dash-copy strong{display:block;font-size:16px}.dash-copy small{display:block;color:#68747f;line-height:1.4;margin-top:3px}.dash-cta{margin-top:12px;width:100%;border:0;border-radius:12px;padding:11px 12px;font-weight:900;background:#0e1b2b;color:#fff}.dash-cta.secondary-cta{background:#eef1f3;color:#17222e}.dash-tag{font-size:9px;font-weight:950;border-radius:999px;padding:5px 7px;background:#e8f5ea;color:#285e32;white-space:nowrap}.dash-tag.next{background:#fff8e7;color:#745b24}.today-card{margin-top:11px;border:1px solid #e3e7ea;border-radius:17px;padding:14px;background:#fff}.today-card h3{margin:0 0 9px;font-size:15px}.today-line{display:flex;align-items:center;gap:9px;padding:9px 0;border-top:1px solid #eef1f3}.today-line:first-of-type{border-top:0}.today-dot{width:10px;height:10px;border-radius:999px;background:#0e1b2b;flex:0 0 auto}.today-line strong{display:block;margin-bottom:2px}.today-line small{display:block;color:#68747f;line-height:1.35}.service-preview-grid{display:grid;gap:9px}.service-preview-item{border:1px solid #e2e6ea;border-radius:14px;padding:13px;background:#f9fafb}.service-preview-item strong{display:block}.service-preview-item small{display:block;color:#68747f;line-height:1.4;margin-top:4px}.demo-ribbon{display:inline-flex;align-items:center;gap:6px;margin-top:9px;border-radius:999px;padding:6px 9px;background:#fff8e7;color:#745b24;font-size:10px;font-weight:900}.access-card{margin-top:11px;border:1px solid #d9e2ea;border-radius:17px;padding:14px;background:#f9fbfd}.access-top{display:flex;align-items:center;justify-content:space-between;gap:12px}.access-card h3{margin:0;font-size:15px}.access-card p{margin:5px 0 10px;color:#68747f;font-size:12px;line-height:1.4}.access-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}.access-row input{margin-top:0}.access-btn{border:0;border-radius:12px;padding:12px 14px;background:#0e1b2b;color:#fff;font-weight:900;white-space:nowrap}.access-ok{font-size:10px;font-weight:900;border-radius:999px;padding:5px 8px;background:#e8f5ea;color:#285e32}.section-anchor{scroll-margin-top:82px}@media(max-width:390px){.access-row{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -33,6 +33,19 @@
         </div>
       </div>
 
+      <div class="access-card" id="demoAccess">
+        <div class="access-top">
+          <h3>Demo access</h3>
+          <span class="access-ok hidden" id="accessBadge">AI READY</span>
+        </div>
+        <p>Enter the GrowthWise demo access code once. It unlocks Sell, Buy and Service AI tools for this browser tab.</p>
+        <div class="access-row">
+          <input id="adminKey" type="password" autocomplete="off" placeholder="Enter demo access code" aria-label="GrowthWise demo access code" />
+          <button class="access-btn" id="unlockAiBtn" type="button">Unlock AI</button>
+        </div>
+        <div id="accessStatus" class="status hidden"></div>
+      </div>
+
       <div class="today-card">
         <h3>Today</h3>
         <div class="today-line"><span class="today-dot"></span><div><strong id="todayVehicleStatus">No vehicle in progress yet.</strong><small>Take a photo below to start a live vehicle workflow.</small></div></div>
@@ -50,7 +63,7 @@
           <button class="dash-cta secondary-cta" type="button" id="goBuy">Open Deal Analysis</button>
         </div>
         <div class="dash-action">
-          <div class="dash-row"><div class="dash-icon">🔧</div><div class="dash-copy"><strong>Service Center</strong><small>Fill open appointments, follow up on declined work, promote specials and retain customers.</small></div><span class="dash-tag next">NEXT</span></div>
+          <div class="dash-row"><div class="dash-icon">🔧</div><div class="dash-copy"><strong>Service Center</strong><small>Fill open appointments, follow up on declined work, promote specials and retain customers.</small></div><span class="dash-tag">LIVE AI</span></div>
           <button class="dash-cta secondary-cta" type="button" id="goService">Open Service Center</button>
         </div>
       </div>
@@ -83,7 +96,6 @@
       <p class="helper">Use the photo, VIN, or smart Year → Make → Model selectors. GrowthWise suggestions are always confirmed by the dealer before market research or publishing.</p>
 
       <label class="field">Dealership / business name<input id="businessName" placeholder="e.g. Main Street Auto Sales" /></label>
-      <label class="field">GrowthWise beta admin key<input id="adminKey" type="password" autocomplete="current-password" placeholder="Required for AI photo identification" /></label>
       <button class="secondary" id="identifyBtn" type="button" style="margin-top:10px">AI identify vehicle from photo</button>
       <div id="identifyStatus" class="status hidden"></div>
       <div id="identifyCard" class="identify-card hidden">
@@ -406,7 +418,7 @@ $('model').addEventListener('change',()=>{showManualModel($('model').value==='__
 $('identifyBtn').addEventListener('click', async()=>{
   if(!imageDataUrl){setBoxStatus('identifyStatus','error','Take or choose a vehicle photo first.');return;}
   const key=$('adminKey').value || sessionStorage.getItem('growthwise_admin_key') || '';
-  if(!key){setBoxStatus('identifyStatus','error','Enter the GrowthWise beta admin key first.');return;}
+  if(!key){setBoxStatus('identifyStatus','error','Enter the demo access code at the top of GrowthWise Automotive first.');return;}
   const btn=$('identifyBtn');btn.disabled=true;btn.textContent='Identifying vehicle…';setBoxStatus('identifyStatus','loading','GrowthWise is comparing visible vehicle details. Treat the result as a suggestion to confirm.');
   try{
     const f=vehicleFacts();
@@ -461,7 +473,7 @@ function setStatus(kind,msg){setBoxStatus('aiStatus',kind,msg);}
 $('analyzeBtn').addEventListener('click', async ()=>{
   if(!imageDataUrl){setStatus('error','Take or choose a vehicle photo first.');return;}
   const key=$('adminKey').value || sessionStorage.getItem('growthwise_admin_key') || '';
-  if(!key){setStatus('error','Enter the GrowthWise beta admin key.');return;}
+  if(!key){setStatus('error','Enter the demo access code at the top of GrowthWise Automotive first.');return;}
   const f=vehicleFacts();
   if(!f.year||!f.make||!f.model){setStatus('error','Confirm year, make and model first.');return;}
   const btn=$('analyzeBtn'); btn.disabled=true; btn.textContent='Writing listing…'; setStatus('loading','GrowthWise is drafting the listing from confirmed dealer facts + the photo…');
@@ -491,7 +503,7 @@ $('targetGross').addEventListener('input',calc);
 function setDealStatus(kind,msg){setBoxStatus('dealStatus',kind,msg);}
 $('dealAnalyzeBtn').addEventListener('click', async ()=>{
   const key=$('adminKey').value || sessionStorage.getItem('growthwise_admin_key') || '';
-  if(!key){setDealStatus('error','Enter the GrowthWise beta admin key above first.');return;}
+  if(!key){setDealStatus('error','Enter the demo access code at the top of GrowthWise Automotive first.');return;}
   const f=vehicleFacts();
   if(!f.year || !f.make || !f.model){setDealStatus('error','Confirm at least year, make, and model before researching the deal.');return;}
   const btn=$('dealAnalyzeBtn'); btn.disabled=true; btn.textContent='Researching market…'; setDealStatus('loading','GrowthWise is searching current public listings and building a conservative deal estimate…');
@@ -518,6 +530,27 @@ $('dealAnalyzeBtn').addEventListener('click', async ()=>{
 });
 
 
+function setAccessStatus(kind,msg){setBoxStatus('accessStatus',kind,msg);}
+function refreshAccessUi(){
+  const saved=sessionStorage.getItem('growthwise_admin_key')||'';
+  const badge=$('accessBadge');
+  if(saved){
+    badge?.classList.remove('hidden');
+    setAccessStatus('ok','AI tools are unlocked for this browser tab. You only need to enter the code once.');
+  }else{
+    badge?.classList.add('hidden');
+  }
+}
+function saveDemoAccess(){
+  const value=$('adminKey').value.trim();
+  if(!value){setAccessStatus('error','Enter the demo access code first.');return;}
+  sessionStorage.setItem('growthwise_admin_key',value);
+  $('adminKey').value='';
+  refreshAccessUi();
+}
+$('unlockAiBtn')?.addEventListener('click',saveDemoAccess);
+$('adminKey')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveDemoAccess();}});
+
 function setServiceStatus(kind,msg){setBoxStatus('serviceStatus',kind,msg);}
 $('serviceDemoDeclined')?.addEventListener('click',()=>{
   $('serviceMode').value='declined_work';
@@ -539,7 +572,7 @@ $('serviceDemoBays')?.addEventListener('click',()=>{
 });
 $('serviceAiBtn')?.addEventListener('click', async()=>{
   const key=$('adminKey').value || sessionStorage.getItem('growthwise_admin_key') || '';
-  if(!key){setServiceStatus('error','Enter the GrowthWise beta admin key in the vehicle section first.');return;}
+  if(!key){setServiceStatus('error','Enter the demo access code at the top of GrowthWise Automotive first.');return;}
   const notes=$('serviceNotes').value.trim(), offer=$('serviceOffer').value.trim(), availability=$('serviceAvailability').value.trim();
   if(!notes && !offer && !availability){setServiceStatus('error','Add service notes, an offer, or appointment availability first.');return;}
   const btn=$('serviceAiBtn');btn.disabled=true;btn.textContent='Creating service package…';setServiceStatus('loading','GrowthWise is turning the shop facts into customer-ready follow-up and marketing…');
@@ -570,7 +603,7 @@ $('goService')?.addEventListener('click',()=>{$('servicePreview')?.scrollIntoVie
 
 $('businessName').value=localStorage.getItem('growthwise_auto_business_name')||'';
 $('businessName').addEventListener('input',()=>{localStorage.setItem('growthwise_auto_business_name',$('businessName').value.trim());markOutputsStale();});
-populateYears();loadMakes();updateReadiness();
+populateYears();loadMakes();updateReadiness();refreshAccessUi();
 </script>
 </body>
 </html>
