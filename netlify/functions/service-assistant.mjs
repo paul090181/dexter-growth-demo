@@ -24,18 +24,65 @@ function extractOutputText(data) {
   return "";
 }
 
-function approvedOfferText({ strategy, value, expiry, minimumSpend, maximumDiscount, details }) {
-  const parts = [];
-  if (strategy === "dollar" && value) parts.push(`Approved offer: $${String(value).replace(/^\$/, "")} off.`);
-  if (strategy === "percent" && value) parts.push(`Approved offer: ${String(value).replace(/%$/, "")}% off.`);
-  if (strategy === "free_addon" && value) parts.push(`Approved offer: free ${value}.`);
-  if (strategy === "custom" && value) parts.push(`Approved custom offer: ${value}.`);
-  if (strategy === "none") parts.push("The shop has approved no incentive for this communication.");
-  if (strategy === "ai_recommend") parts.push("The shop wants AI to recommend whether an incentive would help, but no monetary or percentage discount is approved yet.");
-  if (expiry) parts.push(`Offer expiration: ${expiry}.`);
-  if (minimumSpend) parts.push(`Minimum spend: $${String(minimumSpend).replace(/^\$/, "")}.`);
-  if (maximumDiscount) parts.push(`Maximum discount: $${String(maximumDiscount).replace(/^\$/, "")}.`);
-  if (details) parts.push(`Offer/service details: ${details}`);
+async function runStructured(openaiKey, model, instructions, userText, name, schema) {
+  const response = await fetch(OPENAI_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${openaiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      store: false,
+      reasoning: { effort: "none" },
+      instructions,
+      input: [{ role: "user", content: [{ type: "input_text", text: userText }] }],
+      text: {
+        verbosity: "low",
+        format: { type: "json_schema", name, strict: true, schema },
+      },
+    }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const apiMessage = data?.error?.message || data?.error || `OpenAI request failed (HTTP ${response.status}).`;
+    throw new Error(String(apiMessage));
+  }
+  const outputText = extractOutputText(data);
+  if (!outputText) throw new Error("AI returned no usable result.");
+  try { return JSON.parse(outputText); }
+  catch { throw new Error("AI returned an unreadable result."); }
+}
+
+function approvedOfferText(body) {
+  if (body.offer_approved !== true) return "NO INCENTIVE HAS BEEN APPROVED. Customer-facing drafts must not mention a discount, coupon, free item, or promotional incentive.";
+
+  const type = clean(body.offer_type, 40) || "dollar";
+  const value = clean(body.offer_value, 160);
+  const expiry = clean(body.offer_expiry, 40);
+  const minimumSpend = clean(body.minimum_spend, 40);
+  const maximumDiscount = clean(body.maximum_discount, 40);
+  const details = clean(body.offer, 1200);
+
+  let label = "";
+  if (type === "dollar" && value) label = `$${value.replace(/^\$/, "")} off`;
+  else if (type === "percent" && value) label = `${value.replace(/%$/, "")}% off`;
+  else if (type === "free_addon" && value) label = `free ${value}`;
+  else if (type === "custom" && value) label = value;
+
+  const parts = [
+    "THE SHOP HAS APPROVED THIS OFFER. Use these exact terms; do not change the economics:",
+    label && `Offer: ${label}.`,
+    expiry && `Expiration date: ${expiry}.`,
+    minimumSpend && `Minimum spend: $${minimumSpend.replace(/^\$/, "")}.`,
+    maximumDiscount && `Maximum discount: $${maximumDiscount.replace(/^\$/, "")}.`,
+    details && `Approved offer/service details: ${details}`,
+  ].filter(Boolean);
+
+  if (!label && !details) {
+    return "The shop marked an offer approved but no usable offer value/details were supplied. Do not invent an incentive; create the message without one.";
+  }
   return parts.join(" ");
 }
 
@@ -63,6 +110,7 @@ export default async (request) => {
   try { body = await request.json(); }
   catch { return json(400, { error: "Invalid JSON body." }); }
 
+  const action = clean(body.action, 40) || "compose_message";
   const businessName = clean(body.business_name, 120) || "the service center";
   const businessAddress = clean(body.business_address, 240);
   const businessPhone = clean(body.business_phone, 80);
@@ -71,28 +119,13 @@ export default async (request) => {
   const customerName = clean(body.customer_name, 100);
   const vehicle = clean(body.vehicle, 200);
   const notes = clean(body.notes, 2500);
-  const offer = clean(body.offer, 1200);
   const availability = clean(body.availability, 800);
-  const offerStrategy = clean(body.offer_strategy, 40) || "ai_recommend";
-  const offerValue = clean(body.offer_value, 160);
-  const offerExpiry = clean(body.offer_expiry, 40);
-  const minimumSpend = clean(body.minimum_spend, 40);
-  const maximumDiscount = clean(body.maximum_discount, 40);
 
-  if (!notes && !offer && !availability) {
-    return json(400, { error: "Add technician/service notes, an offer, or open appointment details first." });
+  if (!notes && !availability) {
+    return json(400, { error: "Add technician/service notes or open appointment details first." });
   }
 
-  const approvedOffer = approvedOfferText({
-    strategy: offerStrategy,
-    value: offerValue,
-    expiry: offerExpiry,
-    minimumSpend,
-    maximumDiscount,
-    details: offer,
-  });
-
-  const prompt = [
+  const facts = [
     `Business: ${businessName}`,
     businessAddress && `Address: ${businessAddress}`,
     businessPhone && `Phone: ${businessPhone}`,
@@ -101,88 +134,107 @@ export default async (request) => {
     customerName && `Customer: ${customerName}`,
     vehicle && `Vehicle: ${vehicle}`,
     notes && `Technician/service notes: ${notes}`,
-    approvedOffer && `Incentive rules: ${approvedOffer}`,
     availability && `Appointment availability: ${availability}`,
   ].filter(Boolean).join("\n");
 
-  const response = await fetch(OPENAI_URL, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${openaiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      store: false,
-      reasoning: { effort: "none" },
-      instructions:
-        `You are GrowthWise Automotive's service-retention and service-marketing assistant for ${businessName}. ` +
-        "Turn rough shop notes into professional, accurate customer communication and practical retention/marketing actions. " +
-        "Never invent a diagnosis, repair need, price, warranty, safety claim, completed work, appointment, discount, expiration date, minimum spend, maximum discount, or vehicle fact that was not supplied. " +
-        "If offer_strategy is ai_recommend, you may recommend whether an incentive would likely help, but you MUST NOT insert a dollar amount, percentage, free item, or other unapproved incentive into customer-facing SMS, email, or social copy. " +
-        "If an approved offer is supplied, include its exact material terms naturally in the SMS and email when appropriate, including expiration, minimum-spend, and max-discount terms when provided. Do not improve or alter the approved economics. " +
-        "If no incentive is approved, customer-facing drafts must not contain one. " +
-        "Use the business phone or website as the call to action when available. Do not use scare tactics. " +
-        "If a technician note could represent a safety concern, explain it neutrally and recommend contacting the shop rather than making an unsupported safety claim. " +
-        "SMS should be concise and conversational. Email should be polished. Social copy must never expose customer-specific information. " +
-        "For open-bay/service-special workflows, focus on filling capacity without sounding desperate or spammy. For declined-work or maintenance reminders, prioritize trust and respectful follow-up. " +
-        "The offer_recommendation field is internal staff guidance: say whether an incentive is useful and why, and clearly state when an offer still requires owner approval. Return only the requested structured data.",
-      input: [{
-        role: "user",
-        content: [{
-          type: "input_text",
-          text: `Create a service-center communication package from these facts:\n\n${prompt}`,
-        }],
-      }],
-      text: {
-        verbosity: "low",
-        format: {
-          type: "json_schema",
-          name: "growthwise_service_package",
-          strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              customer_sms: { type: "string" },
-              email_subject: { type: "string" },
-              email_body: { type: "string" },
-              social_caption: { type: "string" },
-              offer_recommendation: { type: "string" },
-              staff_action: { type: "string" },
-              suggested_followup: { type: "string" },
-              caution_note: { type: "string" }
-            },
-            required: ["customer_sms","email_subject","email_body","social_caption","offer_recommendation","staff_action","suggested_followup","caution_note"]
-          }
+  try {
+    if (action === "suggest_offer") {
+      const result = await runStructured(
+        openaiKey,
+        model,
+        `You are GrowthWise Automotive's internal service-retention strategist for ${businessName}. ` +
+        "Your job is to recommend an incentive to the SHOP OWNER/STAFF, never directly to the customer. " +
+        "You MAY propose a dollar discount, percentage discount, free add-on, custom offer, or no incentive. " +
+        "Be conservative with margin: do not give away more value than is reasonably needed to motivate action. " +
+        "Use the workflow, declined work, appointment capacity, and supplied facts. Do not invent repair facts, diagnoses, prices, customer history, or completed work. " +
+        "If job price/cost/margin is unknown, explicitly say the owner should verify margin before approval. " +
+        "For declined work, favor a modest re-engagement incentive when useful. For open bays, an urgency-based short-window offer may be appropriate. " +
+        "For maintenance reminders, avoid discounting if a simple reminder is likely sufficient. " +
+        "This is only a recommendation. The shop must approve or modify it before any customer-facing message is created. Return only structured data.",
+        `Recommend the best service incentive strategy from these facts:\n\n${facts}`,
+        "growthwise_service_offer_suggestion",
+        {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            recommend_offer: { type: "boolean" },
+            offer_type: { type: "string", enum: ["dollar", "percent", "free_addon", "custom", "none"] },
+            offer_value: { type: "string" },
+            expiration_days: { type: "integer", minimum: 0, maximum: 60 },
+            minimum_spend: { type: "string" },
+            maximum_discount: { type: "string" },
+            offer_details: { type: "string" },
+            rationale: { type: "string" },
+            margin_caution: { type: "string" },
+            confidence: { type: "string", enum: ["low", "medium", "high"] }
+          },
+          required: ["recommend_offer","offer_type","offer_value","expiration_days","minimum_spend","maximum_discount","offer_details","rationale","margin_caution","confidence"]
         }
+      );
+
+      return json(200, {
+        ok: true,
+        action,
+        model,
+        recommend_offer: Boolean(result.recommend_offer),
+        offer_type: clean(result.offer_type, 40) || "none",
+        offer_value: clean(result.offer_value, 160),
+        expiration_days: Math.max(0, Math.min(60, Number(result.expiration_days) || 0)),
+        minimum_spend: clean(result.minimum_spend, 40),
+        maximum_discount: clean(result.maximum_discount, 40),
+        offer_details: clean(result.offer_details, 1000),
+        rationale: clean(result.rationale, 1600),
+        margin_caution: clean(result.margin_caution, 1200),
+        confidence: clean(result.confidence, 20) || "low",
+      });
+    }
+
+    if (action !== "compose_message") return json(400, { error: "Unknown service AI action." });
+
+    const offerText = approvedOfferText(body);
+    const result = await runStructured(
+      openaiKey,
+      model,
+      `You are GrowthWise Automotive's service-retention and service-marketing assistant for ${businessName}. ` +
+      "Create customer-ready communication only after the shop has made the incentive decision. " +
+      "Never invent a diagnosis, repair need, price, warranty, safety claim, completed work, appointment, discount, expiration date, minimum spend, maximum discount, or vehicle fact that was not supplied. " +
+      "If an approved offer is supplied, the SMS and email MUST contain the exact approved economics and any supplied expiration date, minimum spend, and maximum discount. Never alter them. " +
+      "If no incentive is approved, do not mention a discount, coupon, free add-on, or promotional incentive. " +
+      "Use the business phone or website as the call to action when available. Do not use scare tactics. " +
+      "If a technician note could represent a safety concern, describe only the supplied fact and recommend contacting the shop rather than making an unsupported safety claim. " +
+      "SMS should be concise and conversational. Email should be polished. Social copy must never expose customer-specific information. " +
+      "For declined-work or maintenance reminders, prioritize trust and respectful follow-up. For open-bay/service-special workflows, focus on filling capacity without sounding desperate or spammy. Return only structured data.",
+      `Create the service-center communication package from these facts:\n\n${facts}\n\nApproved incentive decision:\n${offerText}`,
+      "growthwise_service_message_package",
+      {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          customer_sms: { type: "string" },
+          email_subject: { type: "string" },
+          email_body: { type: "string" },
+          social_caption: { type: "string" },
+          staff_action: { type: "string" },
+          suggested_followup: { type: "string" },
+          caution_note: { type: "string" }
+        },
+        required: ["customer_sms","email_subject","email_body","social_caption","staff_action","suggested_followup","caution_note"]
       }
-    })
-  });
+    );
 
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const apiMessage = data?.error?.message || data?.error || `OpenAI request failed (HTTP ${response.status}).`;
-    return json(response.status, { error: String(apiMessage) });
+    return json(200, {
+      ok: true,
+      action,
+      model,
+      customer_sms: clean(result.customer_sms, 1000),
+      email_subject: clean(result.email_subject, 300),
+      email_body: clean(result.email_body, 4000),
+      social_caption: clean(result.social_caption, 3000),
+      staff_action: clean(result.staff_action, 1500),
+      suggested_followup: clean(result.suggested_followup, 1000),
+      caution_note: clean(result.caution_note, 1500),
+    });
+  } catch (err) {
+    return json(502, { error: err?.message || "Service AI request failed." });
   }
-
-  const outputText = extractOutputText(data);
-  if (!outputText) return json(502, { error: "AI returned no service package." });
-
-  let result;
-  try { result = JSON.parse(outputText); }
-  catch { return json(502, { error: "AI returned an unreadable service package." }); }
-
-  return json(200, {
-    ok: true,
-    model,
-    customer_sms: clean(result.customer_sms, 1000),
-    email_subject: clean(result.email_subject, 300),
-    email_body: clean(result.email_body, 4000),
-    social_caption: clean(result.social_caption, 3000),
-    offer_recommendation: clean(result.offer_recommendation, 1500),
-    staff_action: clean(result.staff_action, 1500),
-    suggested_followup: clean(result.suggested_followup, 1000),
-    caution_note: clean(result.caution_note, 1500),
-  });
 };
