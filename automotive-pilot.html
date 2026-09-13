@@ -155,6 +155,12 @@ body{
 .copy-draft-btn.copied{background:#e8f5ea;border-color:#c9e4ce;color:#285e32}
 .copy-draft-btn.copy-error{background:#fff0ee;border-color:#f0d0cb;color:#963b31}
 .campaign-photo-panel{margin-top:12px;border:1px solid #dfe6eb;background:#f8fafb;border-radius:14px;padding:12px}
+.photo-guide-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.photo-guide-progress{font-size:10px;font-weight:950;border-radius:999px;padding:6px 9px;background:#e8f5ea;color:#285e32;white-space:nowrap}
+.photo-progress-track{height:7px;border-radius:999px;background:#e2e8ed;overflow:hidden;margin-top:10px}.photo-progress-fill{height:100%;width:0;background:linear-gradient(90deg,#9f2330,#d33a48);transition:width .2s ease}
+.photo-guide-note{margin-top:9px;padding:9px 10px;border-radius:11px;background:#eef4f7;color:#415463;font-size:11px;line-height:1.45}
+.photo-slot-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:11px}.photo-slot{border:1px solid #dce5eb;background:#fff;border-radius:13px;padding:9px;min-width:0}.photo-slot.done{border-color:#bad9c1;background:#fbfefb}.photo-slot-head{display:flex;justify-content:space-between;gap:7px;align-items:flex-start}.photo-slot-title{font-size:12px;font-weight:950;color:#1f2d39;line-height:1.25}.photo-slot-badge{font-size:8px;font-weight:950;border-radius:999px;padding:4px 6px;background:#eef2f5;color:#566672;white-space:nowrap}.photo-slot-badge.internal{background:#fff4de;color:#76591c}.photo-slot-help{font-size:10px;line-height:1.35;color:#687883;margin-top:4px;min-height:27px}.photo-slot-preview{margin-top:7px;aspect-ratio:1.35/1;border:1px dashed #ccd7df;background:#f3f6f8;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;color:#84919a;font-size:10px;font-weight:850;text-align:center;padding:6px}.photo-slot-preview img{width:100%;height:100%;object-fit:cover;display:block}.photo-slot-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}.photo-slot-actions button{border:0;border-radius:9px;padding:8px 7px;font-weight:900;font-size:10px;cursor:pointer;background:#eaf0f4;color:#23384b}.photo-slot-actions .take{background:#101b25;color:#fff}.photo-slot-actions input{display:none}.photo-slot-campaign{display:flex;align-items:center;gap:6px;margin-top:7px;font-size:9px;font-weight:850;color:#465965}.photo-slot-campaign input{width:auto;margin:0}.photo-slot-saved{margin-top:5px;font-size:9px;color:#2d6a38;font-weight:850}
+.photo-library-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}.photo-library-actions button{border:0;border-radius:11px;padding:10px 9px;font-weight:900;font-size:11px;cursor:pointer;background:#eaf0f4;color:#23384b}.photo-library-actions .save-device{background:#101b25;color:#fff}.photo-library-actions .danger-lite{background:#fff0ee;color:#963b31}
+
 .campaign-photo-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
 .campaign-photo-actions label,.campaign-photo-actions button{border:0;border-radius:11px;padding:10px 11px;font-weight:900;font-size:12px;text-align:center;cursor:pointer;background:#eaf0f4;color:#23384b}
 .campaign-photo-actions label{background:#101b25;color:#fff}.campaign-photo-actions input{display:none}
@@ -165,7 +171,7 @@ body{
 .fb-publish-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.fb-publish-head strong{display:block}.fb-page-badge{font-size:10px;font-weight:950;border-radius:999px;padding:6px 8px;background:#edf1f4;color:#53616d;white-space:nowrap}.fb-page-badge.ok{background:#e8f5ea;color:#285e32}.fb-page-badge.error{background:#fff0ee;color:#963b31}
 .fb-preview{margin-top:10px;border:1px solid #dce4e9;border-radius:13px;background:#fff;overflow:hidden}.fb-preview-images{display:grid;grid-template-columns:repeat(2,1fr);gap:2px;background:#dbe3e8}.fb-preview-images.one{grid-template-columns:1fr}.fb-preview-images img{width:100%;height:140px;object-fit:cover;display:block}.fb-preview-copy{padding:11px;font-size:12px;line-height:1.45;white-space:pre-wrap;color:#273746}
 .fb-publish-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.fb-publish-actions button{border:0;border-radius:11px;padding:11px 12px;font-weight:900;cursor:pointer}.fb-preview-btn{background:#e6edf2;color:#203749}.fb-live-btn{background:#1769aa;color:#fff}.fb-live-btn:disabled{opacity:.5;cursor:not-allowed}
-@media(max-width:390px){.marketing-grid,.marketing-kpis{grid-template-columns:1fr}.dash-logo{width:48px;height:48px}.copy-draft-btn{width:100%}.campaign-photo-actions,.fb-publish-actions{grid-template-columns:1fr}.campaign-photo-strip{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:390px){.marketing-grid,.marketing-kpis{grid-template-columns:1fr}.dash-logo{width:48px;height:48px}.copy-draft-btn{width:100%}.campaign-photo-actions,.fb-publish-actions,.photo-library-actions{grid-template-columns:1fr}.campaign-photo-strip{grid-template-columns:repeat(2,1fr)}.photo-slot-grid{grid-template-columns:1fr}}
 
 
 
@@ -548,15 +554,21 @@ body{
       <label class="field">Known pricing history<input id="marketingPriceHistory" placeholder="e.g. Listed at $14,495; reduced to $13,995 after 30 days" /></label>
       <label class="field">Known vehicle + marketing facts<textarea id="marketingFacts" placeholder="Only facts you know: trim/features, condition notes, photos already taken, channels already posted, inquiries, recent service, etc."></textarea></label>
       <div class="campaign-photo-panel">
-        <strong>Campaign photos</strong>
-        <div class="field-note">GrowthWise will package the approved campaign with real vehicle photos. Use the current Sell photo or add up to 4 photos for this pilot.</div>
-        <div class="campaign-photo-actions">
-          <button id="marketingUseSellPhoto" type="button">Use current Sell photo</button>
-          <label for="marketingPhotoInput">Choose campaign photos<input id="marketingPhotoInput" type="file" accept="image/*" multiple /></label>
-          <button id="marketingClearPhotos" type="button">Clear photos</button>
-          <button id="marketingPreviewPhotos" type="button">Preview campaign</button>
+        <div class="photo-guide-head">
+          <div><strong>Guided vehicle photo checklist</strong><div class="field-note">GrowthWise tells staff exactly which photos to capture, keeps them attached to this vehicle on this device, and uses the approved marketing shots in campaigns.</div></div>
+          <span class="photo-guide-progress" id="marketingPhotoProgress">0 / 10</span>
         </div>
-        <div id="marketingPhotoCount" class="field-note" style="margin-top:8px">0 photos selected</div>
+        <div class="photo-progress-track"><div class="photo-progress-fill" id="marketingPhotoProgressFill"></div></div>
+        <div class="photo-guide-note"><strong>How it works:</strong> Tap <b>Take photo</b> for the requested angle or <b>Choose existing</b> if the shot is already on the device. GrowthWise automatically saves the set in its local vehicle photo library. Public marketing shots can be selected for the Facebook campaign; odometer/VIN photos stay internal by default.</div>
+        <div id="marketingPhotoSlots" class="photo-slot-grid"></div>
+        <div class="photo-library-actions">
+          <button id="marketingUseSellPhoto" type="button">Use Sell photo as Front ¾</button>
+          <button id="marketingRestorePhotos" type="button">Restore saved photo set</button>
+          <button class="save-device" id="marketingSavePhotosDevice" type="button">Save / share all photos</button>
+          <button id="marketingPreviewPhotos" type="button">Preview Facebook campaign</button>
+          <button class="danger-lite" id="marketingClearPhotos" type="button">Clear + forget photo set</button>
+        </div>
+        <div id="marketingPhotoCount" class="field-note" style="margin-top:9px">0 campaign photos selected</div>
         <div id="marketingPhotoStrip" class="campaign-photo-strip"></div>
       </div>
       <button class="primary" id="marketingAnalyzeBtn" type="button" style="margin-top:14px">AI create Move This Vehicle plan</button>
@@ -630,6 +642,20 @@ body{
 let imageDataUrl = '';
 let objectUrl = '';
 let marketingCampaignImages = [];
+const MARKETING_PHOTO_SLOTS = [
+  {id:'front_three_quarter',label:'Front ¾ view',help:'Stand slightly toward the driver side so the front and one side are both visible.',kind:'public',defaultCampaign:true},
+  {id:'driver_side',label:"Driver’s side",help:'Capture the full side profile from bumper to bumper.',kind:'public',defaultCampaign:true},
+  {id:'rear_three_quarter',label:'Rear ¾ view',help:'Show the rear and one side clearly, including lights and bumper.',kind:'public',defaultCampaign:true},
+  {id:'passenger_side',label:'Passenger side',help:'Capture the complete side profile with the vehicle centered.',kind:'public',defaultCampaign:true},
+  {id:'front_interior',label:'Front interior / dash',help:'Photograph front seats, dashboard and center console in one clear view.',kind:'public',defaultCampaign:false},
+  {id:'rear_seats',label:'Rear seating',help:'Show seat condition and passenger space without hiding wear.',kind:'public',defaultCampaign:false},
+  {id:'cargo',label:'Cargo / trunk',help:'Open the cargo area or trunk and photograph the usable space.',kind:'public',defaultCampaign:false},
+  {id:'wheels_tires',label:'Wheels / tires',help:'Capture a clear wheel and tire view; add another detail shot later if needed.',kind:'public',defaultCampaign:false},
+  {id:'odometer',label:'Odometer / cluster',help:'Record the current mileage clearly for internal verification.',kind:'internal',defaultCampaign:false},
+  {id:'vin_label',label:'VIN label',help:'Capture the VIN label or plate clearly for internal vehicle records.',kind:'internal',defaultCampaign:false}
+];
+let marketingPhotoState = Object.fromEntries(MARKETING_PHOTO_SLOTS.map(s=>[s.id,{dataUrl:'',useInCampaign:!!s.defaultCampaign,capturedAt:''}]));
+let photoDbPromise = null;
 const GROWTHWISE_TEST_FACEBOOK_PAGE = 'GrowthWise Test Page';
 let marketingFacebookConnected = false;
 let marketingFacebookPageName = '';
@@ -1372,29 +1398,108 @@ async function copyMarketingDraft(sourceId,buttonId,successLabel){
 
 
 function setMarketingFbStatus(kind,msg){const el=$('marketingFbStatus');if(!el)return;el.className=`status ${kind}`;el.textContent=msg;}
+
+function safeVehiclePhotoKey(){
+  const raw=String($('marketingVehicle')?.value||currentVehicleLabel()||'unspecified vehicle').trim().toLowerCase();
+  return raw.replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,90)||'unspecified-vehicle';
+}
+function photoDb(){
+  if(photoDbPromise)return photoDbPromise;
+  photoDbPromise=new Promise((resolve,reject)=>{
+    const req=indexedDB.open('growthwise-automotive-photo-library',1);
+    req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains('photoSets'))db.createObjectStore('photoSets',{keyPath:'key'});};
+    req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error('Photo library unavailable'));
+  });
+  return photoDbPromise;
+}
+async function saveMarketingPhotoSet(){
+  try{
+    const db=await photoDb();
+    const record={key:safeVehiclePhotoKey(),vehicle:String($('marketingVehicle')?.value||currentVehicleLabel()||'').trim(),updatedAt:new Date().toISOString(),slots:marketingPhotoState};
+    await new Promise((resolve,reject)=>{const tx=db.transaction('photoSets','readwrite');tx.objectStore('photoSets').put(record);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
+    return true;
+  }catch{return false;}
+}
+async function loadMarketingPhotoSet(showStatus=true){
+  try{
+    const db=await photoDb(),key=safeVehiclePhotoKey();
+    const record=await new Promise((resolve,reject)=>{const tx=db.transaction('photoSets','readonly');const req=tx.objectStore('photoSets').get(key);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);});
+    if(!record){if(showStatus)setMarketingFbStatus('warn','No saved GrowthWise photo set was found on this device for this vehicle.');return false;}
+    for(const slot of MARKETING_PHOTO_SLOTS){const saved=record.slots?.[slot.id];marketingPhotoState[slot.id]=saved?{dataUrl:String(saved.dataUrl||''),useInCampaign:!!saved.useInCampaign,capturedAt:String(saved.capturedAt||'')}:{dataUrl:'',useInCampaign:!!slot.defaultCampaign,capturedAt:''};}
+    renderGuidedPhotoSlots();syncMarketingCampaignImages();
+    if(showStatus)setMarketingFbStatus('ok',`Saved photo set restored for ${record.vehicle||'this vehicle'} from this device.`);
+    return true;
+  }catch{if(showStatus)setMarketingFbStatus('error','GrowthWise could not open the local photo library on this device.');return false;}
+}
+async function deleteMarketingPhotoSet(){
+  try{const db=await photoDb(),key=safeVehiclePhotoKey();await new Promise((resolve,reject)=>{const tx=db.transaction('photoSets','readwrite');tx.objectStore('photoSets').delete(key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});return true;}catch{return false;}
+}
+function syncMarketingCampaignImages(){
+  marketingCampaignImages=MARKETING_PHOTO_SLOTS.filter(slot=>slot.kind==='public').map(slot=>marketingPhotoState[slot.id]).filter(v=>v?.dataUrl&&v.useInCampaign).slice(0,4).map(v=>v.dataUrl);
+  renderMarketingCampaignPhotos();
+}
+function completedPhotoCount(){return MARKETING_PHOTO_SLOTS.filter(s=>marketingPhotoState[s.id]?.dataUrl).length;}
+function selectedCampaignCount(){return MARKETING_PHOTO_SLOTS.filter(s=>s.kind==='public'&&marketingPhotoState[s.id]?.dataUrl&&marketingPhotoState[s.id]?.useInCampaign).length;}
+function renderGuidedPhotoSlots(){
+  const host=$('marketingPhotoSlots');if(!host)return;host.replaceChildren();
+  for(const slot of MARKETING_PHOTO_SLOTS){
+    const state=marketingPhotoState[slot.id]||{dataUrl:'',useInCampaign:!!slot.defaultCampaign,capturedAt:''};
+    const card=document.createElement('div');card.className=`photo-slot ${state.dataUrl?'done':''}`;
+    const head=document.createElement('div');head.className='photo-slot-head';
+    const title=document.createElement('div');title.className='photo-slot-title';title.textContent=slot.label;
+    const badge=document.createElement('span');badge.className=`photo-slot-badge ${slot.kind==='internal'?'internal':''}`;badge.textContent=slot.kind==='internal'?'INTERNAL':'MARKETING';head.append(title,badge);
+    const help=document.createElement('div');help.className='photo-slot-help';help.textContent=slot.help;
+    const preview=document.createElement('div');preview.className='photo-slot-preview';
+    if(state.dataUrl){const img=document.createElement('img');img.src=state.dataUrl;img.alt=slot.label;preview.appendChild(img);}else preview.textContent='Photo needed';
+    const actions=document.createElement('div');actions.className='photo-slot-actions';
+    const take=document.createElement('button');take.type='button';take.className='take';take.textContent=state.dataUrl?'Retake':'Take photo';
+    const choose=document.createElement('button');choose.type='button';choose.textContent='Choose existing';
+    const takeInput=document.createElement('input');takeInput.type='file';takeInput.accept='image/*';takeInput.setAttribute('capture','environment');
+    const chooseInput=document.createElement('input');chooseInput.type='file';chooseInput.accept='image/*';
+    take.addEventListener('click',()=>takeInput.click());choose.addEventListener('click',()=>chooseInput.click());
+    const handle=async input=>{const file=input.files?.[0];input.value='';if(!file)return;setMarketingFbStatus('loading',`Preparing ${slot.label}…`);try{const data=await optimizeCampaignImage(file);const currentSelected=selectedCampaignCount();const shouldCampaign=slot.kind==='public'&&(state.useInCampaign||(slot.defaultCampaign&&currentSelected<4));marketingPhotoState[slot.id]={dataUrl:data,useInCampaign:shouldCampaign,capturedAt:new Date().toISOString()};await saveMarketingPhotoSet();renderGuidedPhotoSlots();syncMarketingCampaignImages();setMarketingFbStatus('ok',`${slot.label} saved to this vehicle’s GrowthWise photo library on this device.`);}catch{setMarketingFbStatus('error',`${slot.label} could not be prepared.`);}};
+    takeInput.addEventListener('change',()=>handle(takeInput));chooseInput.addEventListener('change',()=>handle(chooseInput));actions.append(take,choose,takeInput,chooseInput);
+    card.append(head,help,preview,actions);
+    if(slot.kind==='public'){
+      const campaign=document.createElement('label');campaign.className='photo-slot-campaign';const cb=document.createElement('input');cb.type='checkbox';cb.checked=!!state.useInCampaign;cb.disabled=!state.dataUrl;const txt=document.createElement('span');txt.textContent='Use in Facebook campaign';campaign.append(cb,txt);
+      cb.addEventListener('change',async()=>{if(cb.checked&&selectedCampaignCount()>=4){cb.checked=false;setMarketingFbStatus('warn','Facebook pilot currently uses up to 4 campaign photos. Uncheck another photo first.');return;}marketingPhotoState[slot.id].useInCampaign=cb.checked;await saveMarketingPhotoSet();syncMarketingCampaignImages();renderGuidedPhotoSlots();});
+      card.appendChild(campaign);
+    }
+    if(state.dataUrl){const saved=document.createElement('div');saved.className='photo-slot-saved';saved.textContent='✓ Saved in GrowthWise on this device';card.appendChild(saved);}
+    host.appendChild(card);
+  }
+  const done=completedPhotoCount();const pct=Math.round(done/MARKETING_PHOTO_SLOTS.length*100);if($('marketingPhotoProgress'))$('marketingPhotoProgress').textContent=`${done} / ${MARKETING_PHOTO_SLOTS.length}`;if($('marketingPhotoProgressFill'))$('marketingPhotoProgressFill').style.width=`${pct}%`;
+}
 function renderMarketingCampaignPhotos(){
   const strip=$('marketingPhotoStrip'), count=$('marketingPhotoCount'); if(!strip||!count)return;
   strip.replaceChildren();
-  marketingCampaignImages.forEach((src,i)=>{const box=document.createElement('div');box.className='campaign-thumb';const img=document.createElement('img');img.src=src;img.alt=`Campaign vehicle photo ${i+1}`;const tag=document.createElement('span');tag.textContent=i===0?'HERO':`PHOTO ${i+1}`;box.append(img,tag);strip.appendChild(box);});
-  count.textContent=`${marketingCampaignImages.length} photo${marketingCampaignImages.length===1?'':'s'} selected${marketingCampaignImages.length?' · first photo will lead the campaign':''}`;
+  const selected=MARKETING_PHOTO_SLOTS.filter(slot=>slot.kind==='public'&&marketingPhotoState[slot.id]?.dataUrl&&marketingPhotoState[slot.id]?.useInCampaign).slice(0,4);
+  selected.forEach((slot,i)=>{const src=marketingPhotoState[slot.id].dataUrl;const box=document.createElement('div');box.className='campaign-thumb';const img=document.createElement('img');img.src=src;img.alt=slot.label;const tag=document.createElement('span');tag.textContent=i===0?'HERO':slot.label.toUpperCase();box.append(img,tag);strip.appendChild(box);});
+  count.textContent=`${selected.length} of 4 Facebook campaign photo slots selected · ${completedPhotoCount()} total photos saved for this vehicle`;
   renderMarketingFacebookPreview(false);
 }
 async function optimizeCampaignImage(file){
   const raw=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file);});
   const img=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src=raw;});
-  const max=1200,scale=Math.min(1,max/Math.max(img.width,img.height));
+  const max=1600,scale=Math.min(1,max/Math.max(img.width,img.height));
   const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-  return canvas.toDataURL('image/jpeg',.80);
+  return canvas.toDataURL('image/jpeg',.84);
 }
-async function addMarketingPhotoFiles(files){
-  const chosen=Array.from(files||[]).slice(0,Math.max(0,4-marketingCampaignImages.length));
-  if(!chosen.length)return;
-  setMarketingFbStatus('loading','Preparing campaign photos…');
-  try{for(const file of chosen){marketingCampaignImages.push(await optimizeCampaignImage(file));}renderMarketingCampaignPhotos();setMarketingFbStatus('ok',`${marketingCampaignImages.length} campaign photo${marketingCampaignImages.length===1?'':'s'} ready.`);}catch{setMarketingFbStatus('error','One of the selected photos could not be prepared.');}
+function dataUrlToFile(dataUrl,name){const [meta,b64]=dataUrl.split(',');const mime=(meta.match(/data:([^;]+)/)||[])[1]||'image/jpeg';const bin=atob(b64),bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);return new File([bytes],name,{type:mime});}
+function photoFileName(slot){const vehicle=(String($('marketingVehicle')?.value||'vehicle').trim()||'vehicle').replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'');return `${vehicle}-${slot.id}.jpg`;}
+async function saveAllMarketingPhotosToDevice(){
+  const completed=MARKETING_PHOTO_SLOTS.filter(s=>marketingPhotoState[s.id]?.dataUrl);if(!completed.length){setMarketingFbStatus('warn','Take or choose at least one vehicle photo first.');return;}
+  const files=completed.map(s=>dataUrlToFile(marketingPhotoState[s.id].dataUrl,photoFileName(s)));
+  try{
+    if(navigator.share&&navigator.canShare?.({files})){await navigator.share({files,title:`${$('marketingVehicle')?.value||'Vehicle'} photos`,text:'GrowthWise vehicle photo set'});setMarketingFbStatus('ok','Photo set opened in your device share/save menu.');return;}
+  }catch(err){if(err?.name==='AbortError')return;}
+  for(let i=0;i<completed.length;i++){const a=document.createElement('a');a.href=completed[i]&&marketingPhotoState[completed[i].id].dataUrl;a.download=photoFileName(completed[i]);document.body.appendChild(a);a.click();a.remove();await new Promise(r=>setTimeout(r,220));}
+  setMarketingFbStatus('ok','Photo files sent to your browser downloads. Your browser may ask permission for multiple downloads.');
 }
-$('marketingPhotoInput')?.addEventListener('change',e=>{addMarketingPhotoFiles(e.target.files);e.target.value='';});
-$('marketingUseSellPhoto')?.addEventListener('click',()=>{if(!imageDataUrl){setMarketingFbStatus('warn','No Sell photo is loaded yet. Take or choose a vehicle photo in the Sell section, or choose campaign photos here.');return;}if(!marketingCampaignImages.includes(imageDataUrl)){marketingCampaignImages.unshift(imageDataUrl);marketingCampaignImages=marketingCampaignImages.slice(0,4);}renderMarketingCampaignPhotos();setMarketingFbStatus('ok','Current Sell photo added as the campaign hero image.');});
-$('marketingClearPhotos')?.addEventListener('click',()=>{marketingCampaignImages=[];renderMarketingCampaignPhotos();setMarketingFbStatus('warn','Campaign photos cleared. Add at least one real vehicle photo before publishing.');});
+$('marketingUseSellPhoto')?.addEventListener('click',async()=>{if(!imageDataUrl){setMarketingFbStatus('warn','No Sell photo is loaded yet. Take or choose a vehicle photo in the Sell section first.');return;}marketingPhotoState.front_three_quarter={dataUrl:imageDataUrl,useInCampaign:true,capturedAt:new Date().toISOString()};await saveMarketingPhotoSet();renderGuidedPhotoSlots();syncMarketingCampaignImages();setMarketingFbStatus('ok','Current Sell photo saved as the Front ¾ marketing photo.');});
+$('marketingRestorePhotos')?.addEventListener('click',()=>loadMarketingPhotoSet(true));
+$('marketingSavePhotosDevice')?.addEventListener('click',saveAllMarketingPhotosToDevice);
+$('marketingClearPhotos')?.addEventListener('click',async()=>{if(!confirm('Clear this vehicle’s current photos and forget the saved GrowthWise photo set on this device?'))return;for(const slot of MARKETING_PHOTO_SLOTS)marketingPhotoState[slot.id]={dataUrl:'',useInCampaign:!!slot.defaultCampaign,capturedAt:''};await deleteMarketingPhotoSet();renderGuidedPhotoSlots();syncMarketingCampaignImages();setMarketingFbStatus('warn','Photo set cleared from this vehicle and the local GrowthWise photo library.');});
 function renderMarketingFacebookPreview(scroll=true){
   const preview=$('marketingFacebookPreview'),imgs=$('marketingFacebookPreviewImages'),copy=$('marketingFacebookPreviewCopy');if(!preview||!imgs||!copy)return;
   imgs.replaceChildren();
@@ -1427,7 +1532,7 @@ async function checkMarketingFacebookConnection(showStatus=true){
 $('marketingFbPublishBtn')?.addEventListener('click',async()=>{
   const key=sessionStorage.getItem('growthwise_admin_key')||'';
   if(!key){setMarketingFbStatus('error','Unlock AI first.');return;}
-  if(!marketingCampaignImages.length){setMarketingFbStatus('error','Add at least one real vehicle photo before publishing the test campaign.');return;}
+  if(!marketingCampaignImages.length){setMarketingFbStatus('error','Select at least one public vehicle photo for the Facebook campaign.');return;}
   const message=$('marketingFacebook').value.trim();if(!message){setMarketingFbStatus('error','Facebook campaign copy is empty.');return;}
   if(!marketingFacebookConnected && !(await checkMarketingFacebookConnection(true)))return;
   const btn=$('marketingFbPublishBtn');btn.disabled=true;const old=btn.textContent;btn.textContent='Publishing test…';setMarketingFbStatus('loading',`Publishing the approved campaign to ${marketingFacebookPageName}…`);
@@ -1438,6 +1543,7 @@ $('marketingFbPublishBtn')?.addEventListener('click',async()=>{
     btn.textContent='Published ✓';setTimeout(()=>{btn.textContent=old;btn.disabled=!marketingFacebookConnected;},2600);
   }catch(err){setMarketingFbStatus('error',err.message||'Could not publish the test campaign.');btn.textContent=old;btn.disabled=!marketingFacebookConnected;}
 });
+renderGuidedPhotoSlots();syncMarketingCampaignImages();
 
 $('copyMarketingHeadline')?.addEventListener('click',()=>copyMarketingDraft('marketingHeadline','copyMarketingHeadline','Headline copied ✓'));
 $('copyMarketingFacebook')?.addEventListener('click',()=>copyMarketingDraft('marketingFacebook','copyMarketingFacebook','Facebook copied ✓'));
