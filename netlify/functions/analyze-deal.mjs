@@ -123,6 +123,7 @@ export default async (request) => {
     body: JSON.stringify({
       model,
       store: false,
+      include: ["web_search_call.action.sources"],
       reasoning: { effort: "low" },
       tools: [{
         type: "web_search",
@@ -200,9 +201,17 @@ export default async (request) => {
   const projectedRoi = projectedAllIn > 0 ? (projectedGross / projectedAllIn) * 100 : 0;
 
   let decision = "MAYBE";
-  if (retailMid <= 0 || analysis.confidence === "Low") decision = "MAYBE";
-  else if (projectedGross >= targetGross && projectedRoi >= 15) decision = "BUY";
-  else if (projectedGross < Math.max(1000, targetGross * 0.5) || projectedRoi < 5) decision = "PASS";
+  if (currentAsk <= 0) {
+    decision = "PRICE NEEDED";
+  } else if (retailMid <= 0) {
+    decision = "MAYBE";
+  } else if (currentAsk > recommendedPurchase) {
+    decision = "PASS";
+  } else if (projectedGross >= targetGross && projectedRoi >= 15) {
+    decision = analysis.confidence === "Low" ? "MAYBE" : "BUY";
+  } else if (projectedGross < Math.max(1000, targetGross * 0.5) || projectedRoi < 5) {
+    decision = "PASS";
+  }
 
   return json(200, {
     ok: true,

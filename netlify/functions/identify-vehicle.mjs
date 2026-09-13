@@ -14,6 +14,16 @@ function clean(value, max = 1000) {
   return String(value ?? "").trim().slice(0, max);
 }
 
+function normalizeConfidence(value) {
+  let n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  // Vision models sometimes express confidence as a 0–1 fraction even when
+  // the schema requests 0–100. Normalize fractional values without turning
+  // an explicit "1%" result into 100%.
+  if (n > 0 && n < 1) n *= 100;
+  return Math.max(0, Math.min(100, n));
+}
+
 function extractOutputText(data) {
   for (const item of data?.output || []) {
     if (item?.type !== "message") continue;
@@ -74,6 +84,7 @@ export default async (request) => {
         "Do not infer VIN, title, accident history, mechanical condition, engine, drivetrain, options, warranty or service history. " +
         "Only suggest a trim when a trim badge or other strong visual evidence supports it; otherwise return an empty trim. " +
         "If the exact model year cannot be distinguished visually, provide the most likely year plus a year range and lower confidence. " +
+        "Report confidence on a 0–100 percentage scale (for example 92, not 0.92). " +
         "Return only the requested structured data.",
       input: [{
         role: "user",
@@ -146,13 +157,13 @@ export default async (request) => {
     make: clean(result.make, 80),
     vehicle_model: clean(result.model, 100),
     trim: clean(result.trim, 100),
-    confidence: Math.max(0, Math.min(100, Number(result.confidence) || 0)),
+    confidence: normalizeConfidence(result.confidence),
     explanation: clean(result.explanation, 1200),
     alternatives: Array.isArray(result.alternatives) ? result.alternatives.slice(0, 3).map(v => ({
       year: clean(v?.year, 10),
       make: clean(v?.make, 80),
       model: clean(v?.model, 100),
-      confidence: Math.max(0, Math.min(100, Number(v?.confidence) || 0)),
+      confidence: normalizeConfidence(v?.confidence),
     })) : [],
   });
 };
