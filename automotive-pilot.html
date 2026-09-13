@@ -178,6 +178,10 @@ body{
 .disabled-destination{opacity:.62;cursor:not-allowed}.disabled-destination input{cursor:not-allowed}
 
 .campaign-preview-modal{position:fixed;inset:0;z-index:9999;background:rgba(5,12,18,.72);display:flex;align-items:flex-end;justify-content:center;padding:14px}.campaign-preview-modal.hidden{display:none}.campaign-preview-sheet{width:min(680px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:22px 22px 14px 14px;box-shadow:0 20px 60px rgba(0,0,0,.35)}.campaign-preview-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 16px 10px;border-bottom:1px solid #e3e9ed}.campaign-preview-head strong{font-size:18px}.campaign-preview-close{border:0;background:#e9eef2;color:#173044;border-radius:999px;width:38px;height:38px;font-size:22px;font-weight:900}.campaign-preview-page{padding:10px 16px;color:#5b6872;font-size:12px;font-weight:800}.campaign-preview-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:2px;background:#dbe3e8}.campaign-preview-grid.one{grid-template-columns:1fr}.campaign-preview-grid img{width:100%;height:180px;object-fit:cover;display:block}.campaign-preview-copy{padding:15px 16px 8px;font-size:14px;line-height:1.5;white-space:pre-wrap;color:#1c2d3a}.campaign-preview-note{margin:8px 16px 16px;padding:10px 12px;border-radius:12px;background:#f4f7f9;color:#5c6974;font-size:12px;line-height:1.45}.campaign-preview-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px 16px}.campaign-preview-actions button{border:0;border-radius:12px;padding:12px;font-weight:900}.campaign-preview-actions .secondary{background:#e7edf2;color:#203749}.campaign-preview-actions .primary-preview{background:#0f2230;color:#fff}@media(max-width:390px){.campaign-preview-grid img{height:145px}.campaign-preview-actions{grid-template-columns:1fr}}
+
+.photo-ai-btn{width:100%;margin-top:12px;border:0;border-radius:13px;padding:13px 14px;font-weight:950;background:linear-gradient(135deg,#9f1f2d,#68131d);color:#fff;cursor:pointer;box-shadow:0 8px 20px rgba(104,19,29,.16)}
+.photo-ai-btn:disabled{opacity:.55;cursor:not-allowed}.photo-ai-result{margin-top:10px;border:1px solid #d5e0e7;background:linear-gradient(180deg,#fbfdff,#f0f6f9);border-radius:14px;padding:13px}.photo-ai-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.photo-ai-badge{font-size:10px;font-weight:950;border-radius:999px;padding:6px 8px;background:#eef1f4;color:#52606c;white-space:nowrap}.photo-ai-badge.verified{background:#e7f5e9;color:#286034}.photo-ai-badge.suggested{background:#fff4dc;color:#7b5a13}.photo-ai-identity{font-size:18px;font-weight:950;margin-top:4px}.photo-ai-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}.photo-ai-metric{background:#fff;border:1px solid #e1e7eb;border-radius:11px;padding:9px}.photo-ai-metric strong{display:block;font-size:13px}.photo-ai-metric span{display:block;font-size:10px;color:#7a8792;margin-top:2px;text-transform:uppercase;letter-spacing:.04em}.photo-ai-list{margin:8px 0 0;padding-left:18px;color:#55636f;font-size:12px;line-height:1.45}.photo-ai-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}.photo-ai-actions button{border:0;border-radius:11px;padding:10px 11px;font-weight:900;cursor:pointer}.photo-ai-apply{background:#e4edf3;color:#20384a}.photo-ai-campaign{background:#0d2130;color:#fff}@media(max-width:390px){.photo-ai-grid,.photo-ai-actions{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -239,7 +243,7 @@ body{
         <div class="today-line"><span class="today-dot"></span><div><strong id="todayVehicleStatus">No vehicle in progress yet.</strong><small>Take a photo below to start a live vehicle workflow.</small></div></div>
         <div class="today-line"><span class="today-dot"></span><div><strong id="todayDealStatus">Deal Finder</strong><small>Live AI opportunity scouting can search current public listings and rank potential buys.</small></div></div>
         <div class="today-line"><span class="today-dot"></span><div><strong>Service Center</strong><small>AI customer follow-up, open-bay promotions and service-retention drafts are ready to demo.</small></div></div>
-        <div class="today-line"><span class="today-dot"></span><div><strong>Inventory Marketing</strong><small>Move This Vehicle turns aging inventory facts into a margin-conscious action plan and campaign drafts.</small></div></div>
+        <div class="today-line"><span class="today-dot"></span><div><strong>Inventory Marketing</strong><small>Sell This Vehicle turns aging inventory facts into a margin-conscious action plan and campaign drafts.</small></div></div>
       </div>
 
       <div class="dash-grid">
@@ -256,7 +260,7 @@ body{
           <button class="dash-cta secondary-cta" type="button" id="goService">Open Service Center</button>
         </div>
         <div class="dash-action marketing-action">
-          <div class="dash-row"><div class="dash-icon">📣</div><div class="dash-copy"><strong>Move This Vehicle</strong><small>Turn days-on-lot, pricing and engagement into a specific plan to move owned inventory faster while protecting margin.</small></div><span class="dash-tag">LIVE AI</span></div>
+          <div class="dash-row"><div class="dash-icon">📣</div><div class="dash-copy"><strong>Sell This Vehicle</strong><small>Turn days-on-lot, pricing and engagement into a specific plan to move owned inventory faster while protecting margin.</small></div><span class="dash-tag">LIVE AI</span></div>
           <button class="dash-cta" type="button" id="goMarketing">Open Marketing Engine</button>
         </div>
       </div>
@@ -527,8 +531,8 @@ body{
 
 
     <section class="card section-anchor marketing-engine" id="marketingEngine">
-      <div class="tag">MARKETING · INVENTORY TURN ENGINE</div>
-      <h3>Move This Vehicle</h3>
+      <div class="tag">MARKETING · VEHICLE SALES ENGINE</div>
+      <h3>Sell This Vehicle</h3>
       <p class="helper">Give GrowthWise the facts Auto City already knows about an owned vehicle. AI recommends the least margin-destructive next move, then drafts the campaign. It will not invent market data, vehicle facts, discounts or customer activity.</p>
       <div class="marketing-hero-strip"><span>🏁</span><div><strong>Objective: turn inventory into cash faster</strong><small>Start with merchandising and promotion. Review price only when the evidence supports it.</small></div></div>
 
@@ -572,8 +576,23 @@ body{
         </div>
         <div id="marketingPhotoCount" class="field-note" style="margin-top:9px">0 campaign photos selected</div>
         <div id="marketingPhotoStrip" class="campaign-photo-strip"></div>
+        <button class="photo-ai-btn" id="marketingPhotoAiBtn" type="button">AI analyze photo set &amp; start campaign</button>
+        <div id="marketingPhotoAiStatus" class="status hidden"></div>
+        <div id="marketingPhotoAiResult" class="photo-ai-result hidden">
+          <div class="photo-ai-head"><div><div class="field-note">GrowthWise Photo Intelligence</div><div id="marketingPhotoAiIdentity" class="photo-ai-identity">—</div><div id="marketingPhotoAiExplain" class="field-note" style="margin-top:4px"></div></div><span id="marketingPhotoAiBadge" class="photo-ai-badge suggested">PHOTO SUGGESTION</span></div>
+          <div class="photo-ai-grid">
+            <div class="photo-ai-metric"><strong id="marketingPhotoAiConfidence">—</strong><span>identity confidence</span></div>
+            <div class="photo-ai-metric"><strong id="marketingPhotoAiMileage">—</strong><span>odometer</span></div>
+            <div class="photo-ai-metric"><strong id="marketingPhotoAiVin">—</strong><span>VIN / decode</span></div>
+            <div class="photo-ai-metric"><strong id="marketingPhotoAiHero">—</strong><span>recommended hero</span></div>
+          </div>
+          <div class="field-note" id="marketingPhotoAiQuality" style="margin-top:9px"></div>
+          <ul id="marketingPhotoAiFacts" class="photo-ai-list"></ul>
+          <div id="marketingPhotoAiConflict" class="status warn hidden" style="margin-top:9px"></div>
+          <div class="photo-ai-actions"><button id="marketingPhotoAiApply" class="photo-ai-apply" type="button">Apply AI suggestions</button><button id="marketingPhotoAiCampaign" class="photo-ai-campaign" type="button">Create / refresh campaign</button></div>
+        </div>
       </div>
-      <button class="primary" id="marketingAnalyzeBtn" type="button" style="margin-top:14px">AI create Move This Vehicle plan</button>
+      <button class="primary" id="marketingAnalyzeBtn" type="button" style="margin-top:14px">AI create Sell This Vehicle plan</button>
       <div id="marketingStatus" class="status hidden"></div>
 
       <div id="marketingResult" class="result hidden">
@@ -653,7 +672,7 @@ body{
     <div id="campaignPreviewNote" class="campaign-preview-note"></div>
     <div class="campaign-preview-actions">
       <button id="campaignPreviewEdit" class="secondary" type="button">Close & edit</button>
-      <button id="campaignPreviewGoPlan" class="primary-preview" type="button">Create / refresh AI plan</button>
+      <button id="campaignPreviewGoPlan" class="primary-preview" type="button">Create / refresh Sell plan</button>
     </div>
   </div>
 </div>
@@ -661,6 +680,9 @@ body{
 let imageDataUrl = '';
 let objectUrl = '';
 let marketingCampaignImages = [];
+let marketingHeroSlotId = '';
+let lastPhotoAiAnalysis = null;
+let photoAutoAnalysisTriggered = false;
 const MARKETING_PHOTO_SLOTS = [
   {id:'front_three_quarter',label:'Front ¾ view',help:'Stand slightly toward the driver side so the front and one side are both visible.',kind:'public',defaultCampaign:true},
   {id:'driver_side',label:"Driver’s side",help:'Capture the full side profile from bumper to bumper.',kind:'public',defaultCampaign:true},
@@ -1434,7 +1456,7 @@ function photoDb(){
 async function saveMarketingPhotoSet(){
   try{
     const db=await photoDb();
-    const record={key:safeVehiclePhotoKey(),vehicle:String($('marketingVehicle')?.value||currentVehicleLabel()||'').trim(),updatedAt:new Date().toISOString(),slots:marketingPhotoState};
+    const record={key:safeVehiclePhotoKey(),vehicle:String($('marketingVehicle')?.value||currentVehicleLabel()||'').trim(),updatedAt:new Date().toISOString(),slots:marketingPhotoState,analysis:lastPhotoAiAnalysis||null,hero_slot_id:marketingHeroSlotId||''};
     await new Promise((resolve,reject)=>{const tx=db.transaction('photoSets','readwrite');tx.objectStore('photoSets').put(record);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
     return true;
   }catch{return false;}
@@ -1445,7 +1467,9 @@ async function loadMarketingPhotoSet(showStatus=true){
     const record=await new Promise((resolve,reject)=>{const tx=db.transaction('photoSets','readonly');const req=tx.objectStore('photoSets').get(key);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);});
     if(!record){if(showStatus)setMarketingFbStatus('warn','No saved GrowthWise photo set was found on this device for this vehicle.');return false;}
     for(const slot of MARKETING_PHOTO_SLOTS){const saved=record.slots?.[slot.id];marketingPhotoState[slot.id]=saved?{dataUrl:String(saved.dataUrl||''),useInCampaign:!!saved.useInCampaign,capturedAt:String(saved.capturedAt||'')}:{dataUrl:'',useInCampaign:!!slot.defaultCampaign,capturedAt:''};}
-    renderGuidedPhotoSlots();syncMarketingCampaignImages();
+    if(!$('marketingVehicle')?.value.trim()&&record.vehicle)$('marketingVehicle').value=record.vehicle;
+    lastPhotoAiAnalysis=record.analysis||null;marketingHeroSlotId=String(record.hero_slot_id||'');
+    renderGuidedPhotoSlots();syncMarketingCampaignImages();if(lastPhotoAiAnalysis)renderPhotoAiAnalysis(lastPhotoAiAnalysis);
     if(showStatus)setMarketingFbStatus('ok',`Saved photo set restored for ${record.vehicle||'this vehicle'} from this device.`);
     return true;
   }catch{if(showStatus)setMarketingFbStatus('error','GrowthWise could not open the local photo library on this device.');return false;}
@@ -1453,8 +1477,13 @@ async function loadMarketingPhotoSet(showStatus=true){
 async function deleteMarketingPhotoSet(){
   try{const db=await photoDb(),key=safeVehiclePhotoKey();await new Promise((resolve,reject)=>{const tx=db.transaction('photoSets','readwrite');tx.objectStore('photoSets').delete(key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});return true;}catch{return false;}
 }
+function selectedMarketingPhotoSlots(){
+  const selected=MARKETING_PHOTO_SLOTS.filter(slot=>slot.kind==='public'&&marketingPhotoState[slot.id]?.dataUrl&&marketingPhotoState[slot.id]?.useInCampaign);
+  if(marketingHeroSlotId){selected.sort((a,b)=>(a.id===marketingHeroSlotId?-1:0)-(b.id===marketingHeroSlotId?-1:0));}
+  return selected.slice(0,4);
+}
 function syncMarketingCampaignImages(){
-  marketingCampaignImages=MARKETING_PHOTO_SLOTS.filter(slot=>slot.kind==='public').map(slot=>marketingPhotoState[slot.id]).filter(v=>v?.dataUrl&&v.useInCampaign).slice(0,4).map(v=>v.dataUrl);
+  marketingCampaignImages=selectedMarketingPhotoSlots().map(slot=>marketingPhotoState[slot.id].dataUrl);
   renderMarketingCampaignPhotos();
 }
 function completedPhotoCount(){return MARKETING_PHOTO_SLOTS.filter(s=>marketingPhotoState[s.id]?.dataUrl).length;}
@@ -1476,7 +1505,7 @@ function renderGuidedPhotoSlots(){
     const takeInput=document.createElement('input');takeInput.type='file';takeInput.accept='image/*';takeInput.setAttribute('capture','environment');
     const chooseInput=document.createElement('input');chooseInput.type='file';chooseInput.accept='image/*';
     take.addEventListener('click',()=>takeInput.click());choose.addEventListener('click',()=>chooseInput.click());
-    const handle=async input=>{const file=input.files?.[0];input.value='';if(!file)return;setMarketingFbStatus('loading',`Preparing ${slot.label}…`);try{const data=await optimizeCampaignImage(file);const currentSelected=selectedCampaignCount();const shouldCampaign=slot.kind==='public'&&(state.useInCampaign||(slot.defaultCampaign&&currentSelected<4));marketingPhotoState[slot.id]={dataUrl:data,useInCampaign:shouldCampaign,capturedAt:new Date().toISOString()};await saveMarketingPhotoSet();renderGuidedPhotoSlots();syncMarketingCampaignImages();setMarketingFbStatus('ok',`${slot.label} saved to this vehicle’s GrowthWise photo library on this device.`);}catch{setMarketingFbStatus('error',`${slot.label} could not be prepared.`);}};
+    const handle=async input=>{const file=input.files?.[0];input.value='';if(!file)return;setMarketingFbStatus('loading',`Preparing ${slot.label}…`);try{const data=await optimizeCampaignImage(file);const currentSelected=selectedCampaignCount();const shouldCampaign=slot.kind==='public'&&(state.useInCampaign||(slot.defaultCampaign&&currentSelected<4));marketingPhotoState[slot.id]={dataUrl:data,useInCampaign:shouldCampaign,capturedAt:new Date().toISOString()};await saveMarketingPhotoSet();renderGuidedPhotoSlots();syncMarketingCampaignImages();setMarketingFbStatus('ok',`${slot.label} saved to this vehicle’s GrowthWise photo library on this device.`);maybeAutoAnalyzePhotoSet();}catch{setMarketingFbStatus('error',`${slot.label} could not be prepared.`);}};
     takeInput.addEventListener('change',()=>handle(takeInput));chooseInput.addEventListener('change',()=>handle(chooseInput));actions.append(take,choose,takeInput,chooseInput);
     card.append(head,help,preview,actions);
     if(slot.kind==='public'){
@@ -1492,7 +1521,7 @@ function renderGuidedPhotoSlots(){
 function renderMarketingCampaignPhotos(){
   const strip=$('marketingPhotoStrip'), count=$('marketingPhotoCount'); if(!strip||!count)return;
   strip.replaceChildren();
-  const selected=MARKETING_PHOTO_SLOTS.filter(slot=>slot.kind==='public'&&marketingPhotoState[slot.id]?.dataUrl&&marketingPhotoState[slot.id]?.useInCampaign).slice(0,4);
+  const selected=selectedMarketingPhotoSlots();
   selected.forEach((slot,i)=>{const src=marketingPhotoState[slot.id].dataUrl;const box=document.createElement('div');box.className='campaign-thumb';const img=document.createElement('img');img.src=src;img.alt=slot.label;const tag=document.createElement('span');tag.textContent=i===0?'HERO':slot.label.toUpperCase();box.append(img,tag);strip.appendChild(box);});
   count.textContent=`${selected.length} of 4 Facebook campaign photo slots selected · ${completedPhotoCount()} total photos saved for this vehicle`;
   renderMarketingFacebookPreview(false);
@@ -1518,7 +1547,7 @@ async function saveAllMarketingPhotosToDevice(){
 $('marketingUseSellPhoto')?.addEventListener('click',async()=>{if(!imageDataUrl){setMarketingFbStatus('warn','No Sell photo is loaded yet. Take or choose a vehicle photo in the Sell section first.');return;}marketingPhotoState.front_three_quarter={dataUrl:imageDataUrl,useInCampaign:true,capturedAt:new Date().toISOString()};await saveMarketingPhotoSet();renderGuidedPhotoSlots();syncMarketingCampaignImages();setMarketingFbStatus('ok','Current Sell photo saved as the Front ¾ marketing photo.');});
 $('marketingRestorePhotos')?.addEventListener('click',()=>loadMarketingPhotoSet(true));
 $('marketingSavePhotosDevice')?.addEventListener('click',saveAllMarketingPhotosToDevice);
-$('marketingClearPhotos')?.addEventListener('click',async()=>{if(!confirm('Clear this vehicle’s current photos and forget the saved GrowthWise photo set on this device?'))return;for(const slot of MARKETING_PHOTO_SLOTS)marketingPhotoState[slot.id]={dataUrl:'',useInCampaign:!!slot.defaultCampaign,capturedAt:''};await deleteMarketingPhotoSet();renderGuidedPhotoSlots();syncMarketingCampaignImages();setMarketingFbStatus('warn','Photo set cleared from this vehicle and the local GrowthWise photo library.');});
+$('marketingClearPhotos')?.addEventListener('click',async()=>{if(!confirm('Clear this vehicle’s current photos and forget the saved GrowthWise photo set on this device?'))return;for(const slot of MARKETING_PHOTO_SLOTS)marketingPhotoState[slot.id]={dataUrl:'',useInCampaign:!!slot.defaultCampaign,capturedAt:''};lastPhotoAiAnalysis=null;marketingHeroSlotId='';photoAutoAnalysisTriggered=false;await deleteMarketingPhotoSet();renderGuidedPhotoSlots();syncMarketingCampaignImages();$('marketingPhotoAiResult')?.classList.add('hidden');setMarketingFbStatus('warn','Photo set cleared from this vehicle and the local GrowthWise photo library.');});
 function renderMarketingFacebookPreview(scroll=true){
   const preview=$('marketingFacebookPreview'),imgs=$('marketingFacebookPreviewImages'),copy=$('marketingFacebookPreviewCopy');if(!preview||!imgs||!copy)return;
   imgs.replaceChildren();
@@ -1555,7 +1584,7 @@ function openCampaignPreviewModal(){
   marketingCampaignImages.forEach((src,i)=>{const img=document.createElement('img');img.src=src;img.alt=i===0?'Hero vehicle photo':'Vehicle campaign photo';imgs.appendChild(img);});
   imgs.classList.toggle('one',marketingCampaignImages.length===1);
   const draft=safeCampaignPreviewCaption();copy.textContent=draft.text;
-  note.textContent=draft.ai?'Using the current GrowthWise AI Facebook campaign copy. Nothing will publish until you explicitly approve it.':'Photos are ready. This preview is using a basic fact-only caption because the AI Move This Vehicle plan has not been generated in this browser session yet. Tap Create / refresh AI plan for the polished campaign copy.';
+  note.textContent=draft.ai?'Using the current GrowthWise AI Facebook campaign copy. Nothing will publish until you explicitly approve it.':'Photos are ready. This preview is using a basic fact-only caption because the AI Sell This Vehicle plan has not been generated in this browser session yet. Tap Create / refresh Sell plan for the polished campaign copy.';
   modal.classList.remove('hidden');
   document.body.style.overflow='hidden';
 }
@@ -1598,6 +1627,66 @@ $('marketingFbPublishBtn')?.addEventListener('click',async()=>{
     btn.textContent='Published ✓';setTimeout(()=>{btn.textContent=old;btn.disabled=!marketingFacebookConnected;},2600);
   }catch(err){setMarketingFbStatus('error',err.message||'Could not publish the test campaign.');btn.textContent=old;btn.disabled=!marketingFacebookConnected;}
 });
+
+function setPhotoAiStatus(kind,msg){const el=$('marketingPhotoAiStatus');if(!el)return;el.className=`status ${kind}`;el.textContent=msg;}
+function slotLabelById(id){return MARKETING_PHOTO_SLOTS.find(s=>s.id===id)?.label||id||'—';}
+async function compressDataUrlForAnalysis(dataUrl){
+  const img=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src=dataUrl;});
+  const max=1000,scale=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.width*scale));c.height=Math.max(1,Math.round(img.height*scale));c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.68);
+}
+function photoAiSafeVehicleLabel(data){
+  const vin=data?.vin?.decoded;if(vin?.year&&vin?.make&&vin?.model)return [vin.year,vin.make,vin.model,vin.trim].filter(Boolean).join(' ');
+  const v=data?.visual_identity||{};if(!v.make||!v.model)return '';
+  const parts=[];if(Number(v.confidence)>=85&&v.year)parts.push(v.year);parts.push(v.make,v.model);return parts.filter(Boolean).join(' ');
+}
+function photoAiFactsBlock(data){
+  const facts=[];if(data.exterior_color)facts.push(`Exterior color appears ${data.exterior_color}`);if(data.body_style)facts.push(`Body style appears ${data.body_style}`);for(const x of data.safe_marketing_facts||[])facts.push(x);
+  return [...new Set(facts)].slice(0,8);
+}
+function renderPhotoAiAnalysis(data){
+  if(!data)return;const box=$('marketingPhotoAiResult');box?.classList.remove('hidden');const vin=data.vin?.decoded;const v=data.visual_identity||{};const label=photoAiSafeVehicleLabel(data)||'Vehicle needs confirmation';
+  $('marketingPhotoAiIdentity').textContent=label;$('marketingPhotoAiExplain').textContent=vin?'VIN read from the internal label photo and decoded through NHTSA vehicle data.':(v.explanation||'Visual identification only — dealer confirmation required.');
+  const badge=$('marketingPhotoAiBadge');badge.textContent=vin?'VIN VERIFIED':'PHOTO SUGGESTION';badge.className=`photo-ai-badge ${vin?'verified':'suggested'}`;
+  $('marketingPhotoAiConfidence').textContent=vin?'VIN DECODED':`${Math.round(Number(v.confidence)||0)}%`;
+  $('marketingPhotoAiMileage').textContent=data.odometer?.value?(Number(data.odometer.confidence)>=80?`${data.odometer.value} ✓`:`${data.odometer.value} ?`):'Not read';
+  $('marketingPhotoAiVin').textContent=vin?`${String(vin.vin).slice(0,5)}••••${String(vin.vin).slice(-4)}`:(data.vin?.candidate?`${String(data.vin.candidate).slice(0,5)}••••${String(data.vin.candidate).slice(-4)} ?`:'Not captured');
+  $('marketingPhotoAiHero').textContent=slotLabelById(data.hero_slot_id);$('marketingPhotoAiQuality').textContent=data.photo_quality_summary||'';
+  const list=$('marketingPhotoAiFacts');list.replaceChildren();const items=[...photoAiFactsBlock(data),...(data.photo_quality_issues||[]).map(x=>`Photo: ${x}`),...(data.missing_critical_photos||[]).map(x=>`Missing: ${x}`)].slice(0,10);for(const t of items){const li=document.createElement('li');li.textContent=t;list.appendChild(li);}
+}
+function clearDemoMarketingContextIfNeeded(newLabel){
+  const current=$('marketingVehicle').value.trim();if(current==='2018 Chevrolet Trax LT AWD'&&newLabel&&newLabel!==current){$('marketingPrice').value='';$('marketingDays').value='';$('marketingViews').value='';$('marketingLeads').value='';$('marketingPriceHistory').value='';$('marketingFacts').value='';return true;}return false;
+}
+function applyPhotoAiSuggestions(force=false){
+  const data=lastPhotoAiAnalysis;if(!data)return false;const label=photoAiSafeVehicleLabel(data);const field=$('marketingVehicle');const current=field.value.trim();let conflict=false;
+  clearDemoMarketingContextIfNeeded(label);
+  if(label){if(!current||current==='2018 Chevrolet Trax LT AWD'||force)field.value=label;else if(current.toLowerCase()!==label.toLowerCase())conflict=true;}
+  if(data.odometer?.value&&Number(data.odometer.confidence)>=80){const m=$('marketingMileage');if(!m.value.trim()||m.value.trim()==='82,500'||force)m.value=data.odometer.value;}
+  marketingHeroSlotId=data.hero_slot_id&&marketingPhotoState[data.hero_slot_id]?.dataUrl?data.hero_slot_id:marketingHeroSlotId;syncMarketingCampaignImages();
+  const facts=photoAiFactsBlock(data);if(facts.length){const prefix='AI visual observations — verify before publishing:';const existing=$('marketingFacts').value.split(/\n\nAI visual observations — verify before publishing:/)[0].trim();$('marketingFacts').value=[existing,`${prefix} ${facts.join('; ')}.`].filter(Boolean).join('\n\n');}
+  const conflictBox=$('marketingPhotoAiConflict');if(conflict&&!force){conflictBox.textContent=`Photo AI suggests “${label}”, but the Vehicle field currently says “${current}”. GrowthWise did not overwrite it. Review the photos and tap Apply AI suggestions if the photo result is correct.`;conflictBox.classList.remove('hidden');}else conflictBox.classList.add('hidden');
+  saveMarketingPhotoSet();return !conflict||force;
+}
+async function analyzeMarketingPhotoSet({autoStartCampaign=true}={}){
+  const key=sessionStorage.getItem('growthwise_admin_key')||'';if(!key){setPhotoAiStatus('error','Unlock AI in Demo access first.');return;}
+  const completed=MARKETING_PHOTO_SLOTS.filter(s=>marketingPhotoState[s.id]?.dataUrl);if(!completed.length){setPhotoAiStatus('warn','Take or choose at least one vehicle photo first.');return;}
+  const btn=$('marketingPhotoAiBtn');btn.disabled=true;btn.textContent='GrowthWise is analyzing the photo set…';setPhotoAiStatus('loading',`Analyzing ${completed.length} photo${completed.length===1?'':'s'}, reading any visible VIN/odometer, and choosing the strongest hero image…`);
+  try{
+    const priority=['vin_label','odometer','front_three_quarter','rear_three_quarter','driver_side','passenger_side','front_interior','rear_seats','cargo','wheels_tires'];const ordered=[...completed].sort((a,b)=>priority.indexOf(a.id)-priority.indexOf(b.id)).slice(0,8);const photos=[];
+    for(const slot of ordered){photos.push({slot_id:slot.id,label:slot.label,kind:slot.kind,image_data_url:await compressDataUrlForAnalysis(marketingPhotoState[slot.id].dataUrl)});}
+    const r=await fetch('/.netlify/functions/analyze-vehicle-photo-set',{method:'POST',headers:{'Content-Type':'application/json','X-GrowthWise-Key':key},body:JSON.stringify({photos,known_vehicle:$('marketingVehicle').value.trim(),known_mileage:$('marketingMileage').value.trim()})});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||`Photo analysis failed (HTTP ${r.status}).`);
+    lastPhotoAiAnalysis=data;marketingHeroSlotId=data.hero_slot_id||'';renderPhotoAiAnalysis(data);const applied=applyPhotoAiSuggestions(false);await saveMarketingPhotoSet();
+    const id=data.vin?.decoded?'VIN-decoded vehicle':`${Math.round(Number(data.visual_identity?.confidence)||0)}% visual match`;setPhotoAiStatus('ok',`Photo intelligence ready ✓ ${id}. GrowthWise filled safe fields where possible and selected a hero photo.`);
+    if(autoStartCampaign&&applied&&photoAiSafeVehicleLabel(data)){setTimeout(()=>$('marketingAnalyzeBtn')?.click(),250);}
+  }catch(err){setPhotoAiStatus('error',err.message||'Could not analyze the vehicle photos.');}
+  finally{btn.disabled=false;btn.textContent='AI analyze photo set & start campaign';}
+}
+function maybeAutoAnalyzePhotoSet(){
+  const publicCount=MARKETING_PHOTO_SLOTS.filter(s=>s.kind==='public'&&marketingPhotoState[s.id]?.dataUrl).length;if(photoAutoAnalysisTriggered||publicCount<4||lastPhotoAiAnalysis)return;const key=sessionStorage.getItem('growthwise_admin_key')||'';if(!key)return;photoAutoAnalysisTriggered=true;setTimeout(()=>analyzeMarketingPhotoSet({autoStartCampaign:true}),500);
+}
+$('marketingPhotoAiBtn')?.addEventListener('click',()=>analyzeMarketingPhotoSet({autoStartCampaign:true}));
+$('marketingPhotoAiApply')?.addEventListener('click',()=>{if(applyPhotoAiSuggestions(true)){setPhotoAiStatus('ok','AI photo suggestions applied. Review the vehicle and mileage before publishing.');}});
+$('marketingPhotoAiCampaign')?.addEventListener('click',()=>{if(lastPhotoAiAnalysis)applyPhotoAiSuggestions(false);$('marketingAnalyzeBtn')?.click();});
+
 renderGuidedPhotoSlots();syncMarketingCampaignImages();
 
 $('copyMarketingHeadline')?.addEventListener('click',()=>copyMarketingDraft('marketingHeadline','copyMarketingHeadline','Headline copied ✓'));
@@ -1673,12 +1762,12 @@ $('marketingAnalyzeBtn')?.addEventListener('click',async()=>{
     $('marketingMissingBox').classList.toggle('hidden',missing.length===0);
     $('marketingResult').classList.remove('hidden');
     sessionStorage.setItem('growthwise_admin_key',key);
-    setMarketingStatus('ok','Move This Vehicle plan ready ✓ Auto City can edit the drafts, preview the full campaign, and publish a test to the GrowthWise Test Page.');
+    setMarketingStatus('ok','Sell This Vehicle plan ready ✓ Auto City can edit the drafts, preview the full campaign, and publish a test to the GrowthWise Test Page.');
     renderMarketingFacebookPreview(false);
     checkMarketingFacebookConnection(false);
     $('marketingResult').scrollIntoView({behavior:'smooth',block:'start'});
   }catch(err){setMarketingStatus('error',err.message||'Could not create the marketing plan.');}
-  finally{btn.disabled=false;btn.textContent='AI create Move This Vehicle plan';}
+  finally{btn.disabled=false;btn.textContent='AI create Sell This Vehicle plan';}
 });
 
 $('goSell')?.addEventListener('click',()=>{$('sellStart')?.scrollIntoView({behavior:'smooth',block:'start'});});
