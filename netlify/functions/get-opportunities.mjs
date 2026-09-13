@@ -62,13 +62,25 @@ export default async (request)=>{
     const maxBuy=Math.max(0,retailMid-fees-transport-recon-labor-targetGross);
     const freshnessStatus=["Current","Recent","Stale","Unknown"].includes(clean(raw.freshness_status,20))?clean(raw.freshness_status,20):"Unknown";
     const freshnessPenalty={Current:0,Recent:5,Stale:25,Unknown:10}[freshnessStatus] ?? 10;
-    const baseScore=Math.max(0,Math.min(100,Math.round(num(raw.score))));
-    const adjustedScore=Math.max(0,baseScore-freshnessPenalty);
+    const aiFitScore=Math.max(0,Math.min(100,Math.round(num(raw.score))));
+    const evidenceQuality=clean(raw.evidence_quality,20)||"Low";
+    const evidencePenalty={High:0,Medium:2,Low:5}[evidenceQuality] ?? 5;
+
+    // Dealer score is intentionally economics-first. AI fit is useful, but it must not
+    // allow a fresh-but-unprofitable PASS to outrank a more profitable WATCH/STRONG LEAD.
+    const profitRatio=targetGross>0?projectedGross/targetGross:0;
+    const profitComponent=Math.max(0,Math.min(55,profitRatio*55));
+    const roiComponent=Math.max(0,Math.min(20,(roi/25)*20));
+    const budgetComponent=ask>0&&ask<=maxPurchase?10:Math.max(0,10-(((ask-maxPurchase)/Math.max(1,maxPurchase))*20));
+    const qualitativeComponent=Math.max(0,Math.min(15,(aiFitScore/100)*15));
+    const adjustedScore=Math.max(0,Math.min(100,Math.round(profitComponent+roiComponent+budgetComponent+qualitativeComponent-freshnessPenalty-evidencePenalty)));
+
     const caveats=Array.isArray(raw.caveats)?raw.caveats.map(v=>clean(v,320)).filter(Boolean):[];
     const freshnessNote=clean(raw.freshness_note,320);
-    if(freshnessStatus==="Stale") caveats.unshift(`Freshness: stale evidence. ${freshnessNote||"Confirm the vehicle is still available and re-check the current asking price before relying on this lead."}`);
+    if(freshnessStatus==="Current") caveats.unshift(`Freshness: current. ${freshnessNote||"Source evidence appears current; exact listing verification is still required."}`);
+    else if(freshnessStatus==="Stale") caveats.unshift(`Freshness: stale evidence. ${freshnessNote||"Confirm the vehicle is still available and re-check the current asking price before relying on this lead."}`);
     else if(freshnessStatus==="Unknown") caveats.unshift(`Freshness: unknown. ${freshnessNote||"GrowthWise could not establish how current the source evidence is."}`);
-    else if(freshnessStatus==="Recent"&&freshnessNote) caveats.unshift(`Freshness: recent. ${freshnessNote}`);
+    else if(freshnessStatus==="Recent") caveats.unshift(`Freshness: recent. ${freshnessNote||"Source evidence appears recent; exact listing verification is still required."}`);
 
     let recommendation="WATCH";
     if(ask>0&&projectedGross>=targetGross&&roi>=15&&ask<=maxPurchase&&freshnessStatus!=="Stale"&&freshnessStatus!=="Unknown") recommendation="STRONG LEAD";
@@ -78,11 +90,18 @@ export default async (request)=>{
       year:Math.round(num(raw.year)),make:clean(raw.make,80),model:clean(raw.model,100),trim:clean(raw.trim,100),source_type:clean(raw.source_type,80),
       listing_url:"",discovery_url:normalizeUrl(raw.listing_url),verified:false,verification_status:"UNVERIFIED LEAD",location:clean(raw.location,160),asking_price:Math.round(ask),mileage:Math.round(Math.max(0,num(raw.mileage))),
       retail_low:Math.round(retailLow),retail_mid:Math.round(retailMid),retail_high:Math.round(retailHigh),estimated_fees:Math.round(fees),estimated_transport:Math.round(transport),estimated_recon:Math.round(recon),estimated_labor:Math.round(labor),
-      projected_all_in:Math.round(allIn),projected_gross:Math.round(projectedGross),projected_roi:Math.round(roi*10)/10,recommended_max_buy:Math.round(maxBuy),score:adjustedScore,base_score:baseScore,evidence_quality:clean(raw.evidence_quality,20)||"Low",freshness_status:freshnessStatus,freshness_note:freshnessNote,recommendation,why_fit:clean(raw.why_fit,800),caveats
+      projected_all_in:Math.round(allIn),projected_gross:Math.round(projectedGross),projected_roi:Math.round(roi*10)/10,recommended_max_buy:Math.round(maxBuy),score:adjustedScore,base_score:aiFitScore,evidence_quality:evidenceQuality,freshness_status:freshnessStatus,freshness_note:freshnessNote,recommendation,why_fit:clean(raw.why_fit,800),caveats
     });
   }
 
-  opportunities.sort((a,b)=>{const rank={Current:4,Recent:3,Unknown:2,Stale:1};return (rank[b.freshness_status]||0)-(rank[a.freshness_status]||0)||b.score-a.score||b.projected_gross-a.projected_gross});
+  opportunities.sort((a,b)=>{
+    const recommendationRank={"STRONG LEAD":3,"WATCH":2,"PASS":1};
+    const freshnessRank={Current:4,Recent:3,Unknown:2,Stale:1};
+    return (recommendationRank[b.recommendation]||0)-(recommendationRank[a.recommendation]||0)
+      || b.projected_gross-a.projected_gross
+      || (freshnessRank[b.freshness_status]||0)-(freshnessRank[a.freshness_status]||0)
+      || b.score-a.score;
+  });
   return json(200,{
     ok:true,
     done:true,
