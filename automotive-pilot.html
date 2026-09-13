@@ -168,6 +168,8 @@ body{
 @media(max-width:390px){.marketing-grid,.marketing-kpis{grid-template-columns:1fr}.dash-logo{width:48px;height:48px}.copy-draft-btn{width:100%}.campaign-photo-actions,.fb-publish-actions{grid-template-columns:1fr}.campaign-photo-strip{grid-template-columns:repeat(2,1fr)}}
 
 
+
+.disabled-destination{opacity:.62;cursor:not-allowed}.disabled-destination input{cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -614,10 +616,10 @@ body{
       <p class="helper">These choices are included now so the dealership can tell us what matters. We will only enable live publishing after each business connects its own accounts.</p>
       <div class="dest">
         <label><input type="checkbox" checked /> Facebook <span class="badge">TEST PAGE LIVE</span></label>
-        <label><input type="checkbox" checked /> Instagram <span class="badge">connect next</span></label>
-        <label><input type="checkbox" /> Dealership website <span class="badge">needs platform</span></label>
-        <label><input type="checkbox" /> Google Business Profile <span class="badge">future</span></label>
-        <label><input type="checkbox" /> Dealer marketplace <span class="badge">future</span></label>
+        <label class="disabled-destination"><input type="checkbox" disabled /> Instagram <span class="badge">connect next</span></label>
+        <label class="disabled-destination"><input type="checkbox" disabled /> Dealership website <span class="badge">needs platform</span></label>
+        <label class="disabled-destination"><input type="checkbox" disabled /> Google Business Profile <span class="badge">future</span></label>
+        <label class="disabled-destination"><input type="checkbox" disabled /> Dealer marketplace <span class="badge">future</span></label>
         <label><input type="checkbox" /> Other / request a destination <span class="badge">feedback</span></label>
       </div>
       <div class="note"><strong>Pilot safety:</strong> Facebook test publishing is enabled only for the GrowthWise Test Page. Auto City’s real Facebook, Instagram, website and marketplace accounts remain unconnected until the dealership explicitly authorizes them.</div>
