@@ -72,6 +72,99 @@ function findVerifiedSourceUrl(candidateUrl, sourceUrls) {
   return "";
 }
 
+
+async function verifyCandidateListing({ openaiKey, model, candidate, retailMarket }) {
+  const verifierResponse = await fetch(OPENAI_URL, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${openaiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      store: false,
+      include: ["web_search_call.action.sources"],
+      reasoning: { effort: "low" },
+      tools: [{
+        type: "web_search",
+        search_context_size: "medium",
+        user_location: { type: "approximate", city: retailMarket, country: "US" }
+      }],
+      instructions:
+        "You are a strict vehicle-listing verifier. Search the public web for the exact advertised vehicle candidate provided. " +
+        "A match requires the same year, make and model, and should closely match the stated asking price, mileage and location/source. " +
+        "Return matched=true only when you find a DIRECT PUBLIC DETAIL PAGE for that exact vehicle. " +
+        "Do not return a search-results page, category page, generic inventory page, homepage, redirect hub, or a URL you inferred. " +
+        "listing_url must be copied verbatim from an actual web-search source URL for the exact detail page. " +
+        "If an exact direct listing cannot be verified, return matched=false and leave listing_url empty. Do not guess.",
+      input: [{
+        role: "user",
+        content: [{
+          type: "input_text",
+          text:
+            `Verify this candidate listing and locate its exact direct public detail page if it still exists:\n` +
+            `Vehicle: ${clean(candidate.year, 10)} ${clean(candidate.make, 80)} ${clean(candidate.model, 100)} ${clean(candidate.trim, 100)}\n` +
+            `Source/type: ${clean(candidate.source_type, 120)}\n` +
+            `Location: ${clean(candidate.location, 160)}\n` +
+            `Asking price: $${Math.round(Math.max(0, num(candidate.asking_price)))}\n` +
+            `Mileage: ${Math.round(Math.max(0, num(candidate.mileage)))}\n` +
+            `Candidate URL from discovery (may be broad/unverified): ${clean(candidate.listing_url, 1200) || "none"}`
+        }]
+      }],
+      text: {
+        verbosity: "low",
+        format: {
+          type: "json_schema",
+          name: "growthwise_listing_verification",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              matched: { type: "boolean" },
+              listing_url: { type: "string" },
+              asking_price: { type: "number" },
+              mileage: { type: "number" },
+              location: { type: "string" },
+              evidence_note: { type: "string" }
+            },
+            required: ["matched", "listing_url", "asking_price", "mileage", "location", "evidence_note"]
+          }
+        }
+      }
+    })
+  });
+
+  const verifierData = await verifierResponse.json().catch(() => ({}));
+  if (!verifierResponse.ok) return { matched: false, url: "", sources: [], data: null };
+
+  const verifierText = extractOutputText(verifierData);
+  let verified = null;
+  try { verified = JSON.parse(verifierText); } catch {}
+  const sources = collectSourceUrls(verifierData);
+  if (!verified?.matched) return { matched: false, url: "", sources, data: verified };
+
+  const exactUrl = findVerifiedSourceUrl(verified.listing_url, sources);
+  if (!exactUrl) return { matched: false, url: "", sources, data: verified };
+
+  const originalAsk = Math.max(0, num(candidate.asking_price));
+  const verifiedAsk = Math.max(0, num(verified.asking_price));
+  const originalMileage = Math.max(0, num(candidate.mileage));
+  const verifiedMileage = Math.max(0, num(verified.mileage));
+
+  // Reject obviously different listings. Allow modest drift because advertised prices can change.
+  const priceTolerance = Math.max(1500, originalAsk * 0.15);
+  const mileageTolerance = Math.max(10000, originalMileage * 0.12);
+  if (originalAsk && verifiedAsk && Math.abs(originalAsk - verifiedAsk) > priceTolerance) {
+    return { matched: false, url: "", sources, data: verified };
+  }
+  if (originalMileage && verifiedMileage && Math.abs(originalMileage - verifiedMileage) > mileageTolerance) {
+    return { matched: false, url: "", sources, data: verified };
+  }
+
+  return { matched: true, url: exactUrl, sources, data: verified };
+}
+
 export default async (request) => {
   if (request.method === "OPTIONS") {
     return new Response(null, {
@@ -236,11 +329,12 @@ export default async (request) => {
   catch { return json(502, { error: "AI returned an unreadable opportunity search." }); }
 
   const sourceUrls = collectSourceUrls(data);
+  const allSourceUrls = [...sourceUrls];
   const opportunities = [];
   let omittedUnverified = 0;
 
   for (const raw of Array.isArray(result.opportunities) ? result.opportunities : []) {
-    const ask = Math.max(0, num(raw.asking_price));
+    let ask = Math.max(0, num(raw.asking_price));
     const retailLow = Math.max(0, num(raw.retail_low));
     const retailMid = Math.max(retailLow, num(raw.retail_mid));
     const retailHigh = Math.max(retailMid, num(raw.retail_high));
@@ -248,15 +342,45 @@ export default async (request) => {
     const transport = Math.max(0, num(raw.estimated_transport));
     const recon = Math.max(0, num(raw.estimated_recon));
     const labor = Math.max(0, num(raw.estimated_labor));
-    const allIn = ask + fees + transport + recon + labor;
-    const projectedGross = retailMid - allIn;
-    const roi = allIn > 0 ? (projectedGross / allIn) * 100 : 0;
-    const maxBuy = Math.max(0, retailMid - fees - transport - recon - labor - targetGross);
+    let mileage = Math.round(Math.max(0, num(raw.mileage)));
+    let allIn = ask + fees + transport + recon + labor;
+    let projectedGross = retailMid - allIn;
+    let roi = allIn > 0 ? (projectedGross / allIn) * 100 : 0;
+    let maxBuy = Math.max(0, retailMid - fees - transport - recon - labor - targetGross);
     const rawUrl = normalizeUrl(raw.listing_url);
-    const verifiedUrl = findVerifiedSourceUrl(rawUrl, sourceUrls);
+    let verifiedUrl = findVerifiedSourceUrl(rawUrl, sourceUrls);
+    let verifiedListingData = null;
+
+    if (!verifiedUrl) {
+      const secondPass = await verifyCandidateListing({
+        openaiKey,
+        model,
+        candidate: raw,
+        retailMarket,
+      });
+      for (const u of secondPass.sources || []) {
+        if (u && !allSourceUrls.includes(u)) allSourceUrls.push(u);
+      }
+      if (secondPass.matched && secondPass.url) {
+        verifiedUrl = secondPass.url;
+        verifiedListingData = secondPass.data;
+      }
+    }
+
     if (!verifiedUrl) {
       omittedUnverified += 1;
       continue;
+    }
+
+    if (verifiedListingData) {
+      const verifiedAsk = Math.max(0, num(verifiedListingData.asking_price));
+      const verifiedMileage = Math.max(0, num(verifiedListingData.mileage));
+      if (verifiedAsk) ask = verifiedAsk;
+      if (verifiedMileage) mileage = Math.round(verifiedMileage);
+      allIn = ask + fees + transport + recon + labor;
+      projectedGross = retailMid - allIn;
+      roi = allIn > 0 ? (projectedGross / allIn) * 100 : 0;
+      maxBuy = Math.max(0, retailMid - fees - transport - recon - labor - targetGross);
     }
 
     let recommendation = "WATCH";
@@ -272,7 +396,7 @@ export default async (request) => {
       listing_url: verifiedUrl,
       location: clean(raw.location, 160),
       asking_price: Math.round(ask),
-      mileage: Math.round(Math.max(0, num(raw.mileage))),
+      mileage,
       retail_low: Math.round(retailLow),
       retail_mid: Math.round(retailMid),
       retail_high: Math.round(retailHigh),
@@ -315,8 +439,8 @@ export default async (request) => {
       preferred_makes: preferredMakes,
     },
     opportunities,
-    source_urls: sourceUrls,
+    source_urls: allSourceUrls.slice(0, 40),
     omitted_unverified: omittedUnverified,
-    caution: "Only candidates whose listing URL matched a returned web-search source are shown. Opportunity search is still preliminary: verify listing availability, VIN, title, condition, fees, transport and repair needs before buying or bidding."
+    caution: "Only candidates whose direct listing page was verified against web-search sources are shown. GrowthWise performs a candidate-level second verification pass when the discovery search returns only broad inventory pages. Opportunity search is still preliminary: verify listing availability, VIN, title, condition, fees, transport and repair needs before buying or bidding."
   });
 };
