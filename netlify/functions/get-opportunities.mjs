@@ -60,19 +60,29 @@ export default async (request)=>{
     const projectedGross=retailMid-allIn;
     const roi=allIn>0?(projectedGross/allIn)*100:0;
     const maxBuy=Math.max(0,retailMid-fees-transport-recon-labor-targetGross);
+    const freshnessStatus=["Current","Recent","Stale","Unknown"].includes(clean(raw.freshness_status,20))?clean(raw.freshness_status,20):"Unknown";
+    const freshnessPenalty={Current:0,Recent:5,Stale:25,Unknown:10}[freshnessStatus] ?? 10;
+    const baseScore=Math.max(0,Math.min(100,Math.round(num(raw.score))));
+    const adjustedScore=Math.max(0,baseScore-freshnessPenalty);
+    const caveats=Array.isArray(raw.caveats)?raw.caveats.map(v=>clean(v,320)).filter(Boolean):[];
+    const freshnessNote=clean(raw.freshness_note,320);
+    if(freshnessStatus==="Stale") caveats.unshift(`Freshness: stale evidence. ${freshnessNote||"Confirm the vehicle is still available and re-check the current asking price before relying on this lead."}`);
+    else if(freshnessStatus==="Unknown") caveats.unshift(`Freshness: unknown. ${freshnessNote||"GrowthWise could not establish how current the source evidence is."}`);
+    else if(freshnessStatus==="Recent"&&freshnessNote) caveats.unshift(`Freshness: recent. ${freshnessNote}`);
+
     let recommendation="WATCH";
-    if(ask>0&&projectedGross>=targetGross&&roi>=15&&ask<=maxPurchase) recommendation="STRONG LEAD";
+    if(ask>0&&projectedGross>=targetGross&&roi>=15&&ask<=maxPurchase&&freshnessStatus!=="Stale"&&freshnessStatus!=="Unknown") recommendation="STRONG LEAD";
     else if(ask>maxPurchase||projectedGross<Math.max(1000,targetGross*.5)||roi<5) recommendation="PASS";
 
     opportunities.push({
       year:Math.round(num(raw.year)),make:clean(raw.make,80),model:clean(raw.model,100),trim:clean(raw.trim,100),source_type:clean(raw.source_type,80),
       listing_url:"",discovery_url:normalizeUrl(raw.listing_url),verified:false,verification_status:"UNVERIFIED LEAD",location:clean(raw.location,160),asking_price:Math.round(ask),mileage:Math.round(Math.max(0,num(raw.mileage))),
       retail_low:Math.round(retailLow),retail_mid:Math.round(retailMid),retail_high:Math.round(retailHigh),estimated_fees:Math.round(fees),estimated_transport:Math.round(transport),estimated_recon:Math.round(recon),estimated_labor:Math.round(labor),
-      projected_all_in:Math.round(allIn),projected_gross:Math.round(projectedGross),projected_roi:Math.round(roi*10)/10,recommended_max_buy:Math.round(maxBuy),score:Math.max(0,Math.min(100,Math.round(num(raw.score)))),evidence_quality:clean(raw.evidence_quality,20)||"Low",recommendation,why_fit:clean(raw.why_fit,800),caveats:Array.isArray(raw.caveats)?raw.caveats.map(v=>clean(v,320)).filter(Boolean):[]
+      projected_all_in:Math.round(allIn),projected_gross:Math.round(projectedGross),projected_roi:Math.round(roi*10)/10,recommended_max_buy:Math.round(maxBuy),score:adjustedScore,base_score:baseScore,evidence_quality:clean(raw.evidence_quality,20)||"Low",freshness_status:freshnessStatus,freshness_note:freshnessNote,recommendation,why_fit:clean(raw.why_fit,800),caveats
     });
   }
 
-  opportunities.sort((a,b)=>b.score-a.score||b.projected_gross-a.projected_gross);
+  opportunities.sort((a,b)=>{const rank={Current:4,Recent:3,Unknown:2,Stale:1};return (rank[b.freshness_status]||0)-(rank[a.freshness_status]||0)||b.score-a.score||b.projected_gross-a.projected_gross});
   return json(200,{
     ok:true,
     done:true,
