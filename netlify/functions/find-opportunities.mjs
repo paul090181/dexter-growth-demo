@@ -46,6 +46,32 @@ function normalizeUrl(url) {
   return value;
 }
 
+function canonicalUrlKey(url) {
+  const value = normalizeUrl(url);
+  if (!value) return "";
+  try {
+    const u = new URL(value);
+    const host = u.hostname.toLowerCase().replace(/^www\./, "");
+    let path = u.pathname.replace(/\/+/g, "/").replace(/\/$/, "");
+    try { path = decodeURIComponent(path); } catch {}
+    return `${host}${path}`.toLowerCase();
+  } catch {
+    return value.toLowerCase().replace(/[?#].*$/, "").replace(/\/$/, "");
+  }
+}
+
+function findVerifiedSourceUrl(candidateUrl, sourceUrls) {
+  const raw = normalizeUrl(candidateUrl);
+  if (!raw) return "";
+  if (sourceUrls.includes(raw)) return raw;
+  const key = canonicalUrlKey(raw);
+  if (!key) return "";
+  for (const sourceUrl of sourceUrls) {
+    if (canonicalUrlKey(sourceUrl) === key) return sourceUrl;
+  }
+  return "";
+}
+
 export default async (request) => {
   if (request.method === "OPTIONS") {
     return new Response(null, {
@@ -124,6 +150,7 @@ export default async (request) => {
         "Treat this as opportunity discovery, not a purchase recommendation. Use direct public listing evidence whenever possible. " +
         "Do not invent vehicles, prices, mileage, locations, VINs, listing URLs, title status, condition, accident history, repair needs, or completed-sale prices. " +
         "If an exact candidate does not have a visible asking price and enough identifying information, exclude it. " +
+        "For every returned candidate, listing_url MUST be copied verbatim from a direct web-search source URL for that exact listing; never synthesize, shorten, rewrite, or guess a URL. " +
         "Estimate retail conservatively from current asking-price evidence, not guaranteed transaction values. " +
         "Estimate recon and internal labor as conservative allowances; do not infer hidden defects. " +
         "Prefer candidates where the asking price is at or below the dealer's budget and projected gross can meet the target after fees, transport, recon and labor. " +
@@ -209,8 +236,8 @@ export default async (request) => {
   catch { return json(502, { error: "AI returned an unreadable opportunity search." }); }
 
   const sourceUrls = collectSourceUrls(data);
-  const sourceSet = new Set(sourceUrls);
   const opportunities = [];
+  let omittedUnverified = 0;
 
   for (const raw of Array.isArray(result.opportunities) ? result.opportunities : []) {
     const ask = Math.max(0, num(raw.asking_price));
@@ -226,7 +253,11 @@ export default async (request) => {
     const roi = allIn > 0 ? (projectedGross / allIn) * 100 : 0;
     const maxBuy = Math.max(0, retailMid - fees - transport - recon - labor - targetGross);
     const rawUrl = normalizeUrl(raw.listing_url);
-    const verifiedUrl = rawUrl && sourceSet.has(rawUrl) ? rawUrl : "";
+    const verifiedUrl = findVerifiedSourceUrl(rawUrl, sourceUrls);
+    if (!verifiedUrl) {
+      omittedUnverified += 1;
+      continue;
+    }
 
     let recommendation = "WATCH";
     if (ask > 0 && projectedGross >= targetGross && roi >= 15 && ask <= maxPurchase) recommendation = "STRONG LEAD";
@@ -263,11 +294,15 @@ export default async (request) => {
 
   opportunities.sort((a, b) => b.score - a.score || b.projected_gross - a.projected_gross);
 
+  const verifiedSummary = opportunities.length
+    ? `${opportunities.length} candidate listing${opportunities.length === 1 ? "" : "s"} verified against returned web-search sources. ${omittedUnverified ? `${omittedUnverified} unverified candidate${omittedUnverified === 1 ? " was" : "s were"} withheld.` : ""}`.trim()
+    : `No candidate-level listing links could be verified from this search. ${omittedUnverified ? `${omittedUnverified} unverified candidate${omittedUnverified === 1 ? " was" : "s were"} withheld.` : ""} Broaden the criteria or rerun the search; GrowthWise will not present unverifiable leads as current listings.`;
+
   return json(200, {
     ok: true,
     model,
-    search_summary: clean(result.search_summary, 1600),
-    confidence: clean(result.confidence, 20) || "Low",
+    search_summary: `${verifiedSummary}${result.search_summary ? ` ${clean(result.search_summary, 1200)}` : ""}`.trim(),
+    confidence: opportunities.length ? (clean(result.confidence, 20) || "Low") : "Low",
     criteria: {
       retail_market: retailMarket,
       search_radius: Math.round(searchRadius),
@@ -281,6 +316,7 @@ export default async (request) => {
     },
     opportunities,
     source_urls: sourceUrls,
-    caution: "Opportunity search is preliminary. Verify listing availability, VIN, title, condition, fees, transport and repair needs before buying or bidding."
+    omitted_unverified: omittedUnverified,
+    caution: "Only candidates whose listing URL matched a returned web-search source are shown. Opportunity search is still preliminary: verify listing availability, VIN, title, condition, fees, transport and repair needs before buying or bidding."
   });
 };
