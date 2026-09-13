@@ -176,6 +176,8 @@ body{
 
 
 .disabled-destination{opacity:.62;cursor:not-allowed}.disabled-destination input{cursor:not-allowed}
+
+.campaign-preview-modal{position:fixed;inset:0;z-index:9999;background:rgba(5,12,18,.72);display:flex;align-items:flex-end;justify-content:center;padding:14px}.campaign-preview-modal.hidden{display:none}.campaign-preview-sheet{width:min(680px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:22px 22px 14px 14px;box-shadow:0 20px 60px rgba(0,0,0,.35)}.campaign-preview-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 16px 10px;border-bottom:1px solid #e3e9ed}.campaign-preview-head strong{font-size:18px}.campaign-preview-close{border:0;background:#e9eef2;color:#173044;border-radius:999px;width:38px;height:38px;font-size:22px;font-weight:900}.campaign-preview-page{padding:10px 16px;color:#5b6872;font-size:12px;font-weight:800}.campaign-preview-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:2px;background:#dbe3e8}.campaign-preview-grid.one{grid-template-columns:1fr}.campaign-preview-grid img{width:100%;height:180px;object-fit:cover;display:block}.campaign-preview-copy{padding:15px 16px 8px;font-size:14px;line-height:1.5;white-space:pre-wrap;color:#1c2d3a}.campaign-preview-note{margin:8px 16px 16px;padding:10px 12px;border-radius:12px;background:#f4f7f9;color:#5c6974;font-size:12px;line-height:1.45}.campaign-preview-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px 16px}.campaign-preview-actions button{border:0;border-radius:12px;padding:12px;font-weight:900}.campaign-preview-actions .secondary{background:#e7edf2;color:#203749}.campaign-preview-actions .primary-preview{background:#0f2230;color:#fff}@media(max-width:390px){.campaign-preview-grid img{height:145px}.campaign-preview-actions{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -637,6 +639,23 @@ body{
       <div class="note"><strong>Pilot safety:</strong> Facebook test publishing is enabled only for the GrowthWise Test Page. Auto City’s real Facebook, Instagram, website and marketplace accounts remain unconnected until the dealership explicitly authorizes them.</div>
     </section>
   </main>
+</div>
+
+<div id="campaignPreviewModal" class="campaign-preview-modal hidden" role="dialog" aria-modal="true" aria-labelledby="campaignPreviewTitle">
+  <div class="campaign-preview-sheet">
+    <div class="campaign-preview-head">
+      <div><strong id="campaignPreviewTitle">Facebook campaign preview</strong><div class="field-note">Review before anything is published.</div></div>
+      <button id="campaignPreviewClose" class="campaign-preview-close" type="button" aria-label="Close preview">×</button>
+    </div>
+    <div class="campaign-preview-page">Destination: GrowthWise Test Page</div>
+    <div id="campaignPreviewImages" class="campaign-preview-grid"></div>
+    <div id="campaignPreviewCopy" class="campaign-preview-copy"></div>
+    <div id="campaignPreviewNote" class="campaign-preview-note"></div>
+    <div class="campaign-preview-actions">
+      <button id="campaignPreviewEdit" class="secondary" type="button">Close & edit</button>
+      <button id="campaignPreviewGoPlan" class="primary-preview" type="button">Create / refresh AI plan</button>
+    </div>
+  </div>
 </div>
 <script>
 let imageDataUrl = '';
@@ -1509,7 +1528,43 @@ function renderMarketingFacebookPreview(scroll=true){
   preview.classList.remove('hidden');
   if(scroll)preview.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
-$('marketingPreviewPhotos')?.addEventListener('click',()=>renderMarketingFacebookPreview());
+function safeCampaignPreviewCaption(){
+  const ai=$('marketingFacebook')?.value.trim();
+  if(ai)return {text:ai,ai:true};
+  const vehicle=String($('marketingVehicle')?.value||'').trim();
+  const mileage=String($('marketingMileage')?.value||'').trim();
+  const price=String($('marketingPrice')?.value||'').trim();
+  const business=String($('businessName')?.value||'Auto City Sales').trim()||'Auto City Sales';
+  const phone=String($('businessPhone')?.value||'').trim();
+  const website=String($('businessWebsite')?.value||'').trim();
+  const market=String($('defaultMarket')?.value||'Buffalo, NY').trim()||'Buffalo, NY';
+  const facts=[];
+  if(vehicle)facts.push(vehicle);
+  if(mileage)facts.push(`${mileage.replace(/\B(?=(\d{3})+(?!\d))/g,',')} miles`);
+  if(price)facts.push(`$${price.replace(/^\$/,'')}`);
+  let text=facts.length?`${facts.join(' · ')}. Available at ${business} in ${market}.`:`Vehicle campaign for ${business}.`;
+  if(phone)text+=` Call ${phone}.`;
+  if(website)text+=` ${website.replace(/^https?:\/\//,'')}`;
+  return {text,ai:false};
+}
+function openCampaignPreviewModal(){
+  if(!marketingCampaignImages.length){setMarketingFbStatus('warn','Select at least one public vehicle photo for the Facebook campaign first.');return;}
+  const modal=$('campaignPreviewModal'),imgs=$('campaignPreviewImages'),copy=$('campaignPreviewCopy'),note=$('campaignPreviewNote');
+  if(!modal||!imgs||!copy||!note)return;
+  imgs.replaceChildren();
+  marketingCampaignImages.forEach((src,i)=>{const img=document.createElement('img');img.src=src;img.alt=i===0?'Hero vehicle photo':'Vehicle campaign photo';imgs.appendChild(img);});
+  imgs.classList.toggle('one',marketingCampaignImages.length===1);
+  const draft=safeCampaignPreviewCaption();copy.textContent=draft.text;
+  note.textContent=draft.ai?'Using the current GrowthWise AI Facebook campaign copy. Nothing will publish until you explicitly approve it.':'Photos are ready. This preview is using a basic fact-only caption because the AI Move This Vehicle plan has not been generated in this browser session yet. Tap Create / refresh AI plan for the polished campaign copy.';
+  modal.classList.remove('hidden');
+  document.body.style.overflow='hidden';
+}
+function closeCampaignPreviewModal(){const modal=$('campaignPreviewModal');if(modal)modal.classList.add('hidden');document.body.style.overflow='';}
+$('marketingPreviewPhotos')?.addEventListener('click',openCampaignPreviewModal);
+$('campaignPreviewClose')?.addEventListener('click',closeCampaignPreviewModal);
+$('campaignPreviewEdit')?.addEventListener('click',closeCampaignPreviewModal);
+$('campaignPreviewModal')?.addEventListener('click',e=>{if(e.target===$('campaignPreviewModal'))closeCampaignPreviewModal();});
+$('campaignPreviewGoPlan')?.addEventListener('click',()=>{closeCampaignPreviewModal();$('marketingAnalyzeBtn')?.scrollIntoView({behavior:'smooth',block:'center'});});
 $('marketingFbPreviewBtn')?.addEventListener('click',()=>renderMarketingFacebookPreview());
 $('marketingFacebook')?.addEventListener('input',()=>renderMarketingFacebookPreview(false));
 async function checkMarketingFacebookConnection(showStatus=true){
