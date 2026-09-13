@@ -962,21 +962,112 @@ function renderScoutResults(){
   if(!scoutCurrentOps.length){const empty=document.createElement('div');empty.className='scout-empty';empty.textContent='No useful research leads matched these rules right now. GrowthWise will not invent vehicles just to fill the screen.';cards.appendChild(empty);return;}
   scoutCurrentOps.forEach((o,i)=>cards.appendChild(renderScoutOpportunity(o,i)));
 }
+function sleepMs(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
+function renderCompletedScout(data,key){
+  $('scoutConfidence').textContent=`${data.confidence||'Low'} confidence`;
+  $('scoutConfidence').className='decision maybe';
+  $('scoutSummary').textContent=data.search_summary||'GrowthWise completed the current-market opportunity search.';
+  scoutCurrentOps=(Array.isArray(data.opportunities)?data.opportunities:[]).map(o=>({
+    ...o,
+    verified:Boolean(o.verified&&o.listing_url),
+    verification_attempted:Boolean(o.verification_attempted)
+  }));
+  renderScoutResults();
+
+  const src=$('scoutSources');
+  src.replaceChildren();
+  if(Array.isArray(data.source_urls)&&data.source_urls.length){
+    const strong=document.createElement('strong');
+    strong.textContent='Public sources searched:';
+    src.appendChild(strong);
+    const div=document.createElement('div');
+    data.source_urls.slice(0,10).forEach(url=>{
+      const a=document.createElement('a');
+      a.href=url;a.target='_blank';a.rel='noopener noreferrer';a.textContent=url;
+      div.append(a,document.createElement('br'));
+    });
+    src.appendChild(div);
+  }else{
+    src.textContent='No source URLs were returned. Research leads remain unverified until GrowthWise can match an exact listing.';
+  }
+
+  $('scoutResult').classList.remove('hidden');
+  sessionStorage.setItem('growthwise_admin_key',key);
+  $('adminKey').value='';
+  setScoutStatus(
+    scoutCurrentOps.length?'ok':'warn',
+    scoutCurrentOps.length
+      ? `Vehicle Scout ready ✓ ${scoutCurrentOps.length} research lead${scoutCurrentOps.length===1?'':'s'} ranked. Verify the exact listing only when a candidate is worth pursuing.`
+      : 'Vehicle Scout finished without a useful lead for these rules. Try widening the search radius, budget, year range, or mileage limit.'
+  );
+  $('scoutResult').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+async function pollVehicleScout(responseId,key,btn){
+  const maxAttempts=60;
+  for(let attempt=1;attempt<=maxAttempts;attempt++){
+    const seconds=Math.round((attempt-1)*3);
+    btn.textContent='Researching current listings…';
+    setScoutStatus('loading',`GrowthWise is researching current listings in the background… ${seconds?`${seconds}s elapsed. `:''}You can leave the filters alone while it works.`);
+    await sleepMs(attempt===1?1200:3000);
+
+    const poll=await fetch('/.netlify/functions/get-opportunities',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-GrowthWise-Key':key},
+      body:JSON.stringify({response_id:responseId})
+    });
+    const data=await poll.json().catch(()=>({}));
+    if(!poll.ok) throw new Error(data.error||`Vehicle Scout status check failed (HTTP ${poll.status}).`);
+
+    if(data.done){
+      if(data.ok===false) throw new Error(data.error||'Vehicle Scout research did not complete successfully.');
+      renderCompletedScout(data,key);
+      return;
+    }
+  }
+  throw new Error('Vehicle Scout is still researching after about 3 minutes. Try again shortly; the search may still be finishing in the background.');
+}
+
 $('scoutBtn')?.addEventListener('click',async()=>{
   const key=$('adminKey').value||sessionStorage.getItem('growthwise_admin_key')||'';
   if(!key){setScoutStatus('error','Enter the demo access code at the top of GrowthWise Automotive first.');return;}
-  const btn=$('scoutBtn');btn.disabled=true;btn.textContent='Searching current vehicle listings…';setScoutStatus('loading','GrowthWise is searching current public listings and ranking opportunities for Auto City…');
+
+  const btn=$('scoutBtn');
+  btn.disabled=true;
+  btn.textContent='Starting Vehicle Scout…';
+  setScoutStatus('loading','Starting a background search so Vehicle Scout can research thoroughly without timing out…');
+
   try{
-    const response=await fetch('/.netlify/functions/find-opportunities',{method:'POST',headers:{'Content-Type':'application/json','X-GrowthWise-Key':key},body:JSON.stringify({
-      retail_market:$('scoutMarket').value.trim()||$('defaultMarket').value.trim()||'Buffalo, NY',search_radius:$('scoutRadius').value,max_purchase:$('scoutMaxPurchase').value,target_gross:$('scoutTargetGross').value,min_year:$('scoutMinYear').value,max_year:$('scoutMaxYear').value,max_mileage:$('scoutMaxMileage').value,vehicle_types:$('scoutTypes').value.trim(),preferred_makes:$('scoutPreferredMakes').value.trim(),excluded_makes:$('scoutExcludedMakes').value.trim(),notes:$('scoutNotes').value.trim(),max_results:5
-    })});
-    const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||`Opportunity search failed (HTTP ${response.status}).`);
-    $('scoutConfidence').textContent=`${data.confidence||'Low'} confidence`;$('scoutConfidence').className='decision maybe';$('scoutSummary').textContent=data.search_summary||'GrowthWise completed the current-market opportunity search.';
-    scoutCurrentOps=(Array.isArray(data.opportunities)?data.opportunities:[]).map(o=>({...o,verified:Boolean(o.verified&&o.listing_url),verification_attempted:Boolean(o.verification_attempted)}));renderScoutResults();
-    const src=$('scoutSources');src.replaceChildren();if(Array.isArray(data.source_urls)&&data.source_urls.length){const strong=document.createElement('strong');strong.textContent='Public sources searched:';src.appendChild(strong);const div=document.createElement('div');data.source_urls.slice(0,10).forEach(url=>{const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener noreferrer';a.textContent=url;div.append(a,document.createElement('br'));});src.appendChild(div);}else src.textContent='No source URLs were returned. Research leads remain unverified until GrowthWise can match an exact listing.';
-    $('scoutResult').classList.remove('hidden');sessionStorage.setItem('growthwise_admin_key',key);$('adminKey').value='';setScoutStatus('ok',`Vehicle Scout ready ✓ ${scoutCurrentOps.length} research lead${scoutCurrentOps.length===1?'':'s'} ranked. Verify the exact listing only when a candidate is worth pursuing.`);$('scoutResult').scrollIntoView({behavior:'smooth',block:'start'});
-  }catch(err){setScoutStatus('error',err.message||'Could not search vehicle opportunities.');}
-  finally{btn.disabled=false;btn.textContent='AI find profitable vehicle opportunities';}
+    const response=await fetch('/.netlify/functions/find-opportunities',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-GrowthWise-Key':key},
+      body:JSON.stringify({
+        retail_market:$('scoutMarket').value.trim()||$('defaultMarket').value.trim()||'Buffalo, NY',
+        search_radius:$('scoutRadius').value,
+        max_purchase:$('scoutMaxPurchase').value,
+        target_gross:$('scoutTargetGross').value,
+        min_year:$('scoutMinYear').value,
+        max_year:$('scoutMaxYear').value,
+        max_mileage:$('scoutMaxMileage').value,
+        vehicle_types:$('scoutTypes').value.trim(),
+        preferred_makes:$('scoutPreferredMakes').value.trim(),
+        excluded_makes:$('scoutExcludedMakes').value.trim(),
+        notes:$('scoutNotes').value.trim(),
+        max_results:5
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error||`Opportunity search failed (HTTP ${response.status}).`);
+    if(!data.response_id) throw new Error('Vehicle Scout started but did not return a research job ID.');
+
+    sessionStorage.setItem('growthwise_admin_key',key);
+    await pollVehicleScout(data.response_id,key,btn);
+  }catch(err){
+    setScoutStatus('error',err.message||'Could not search vehicle opportunities.');
+  }finally{
+    btn.disabled=false;
+    btn.textContent='AI find profitable vehicle opportunities';
+  }
 });
 
 $('goSell')?.addEventListener('click',()=>{$('sellStart')?.scrollIntoView({behavior:'smooth',block:'start'});});
