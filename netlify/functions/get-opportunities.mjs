@@ -25,7 +25,7 @@ export default async (request)=>{
   const responseId=clean(body.response_id,200);
   if(!/^resp_[A-Za-z0-9_-]+$/.test(responseId)) return json(400,{error:"A valid Vehicle Scout response ID is required."});
 
-  const response=await fetch(`${OPENAI_URL}/${encodeURIComponent(responseId)}?include=web_search_call.action.sources`,{headers:{"Authorization":`Bearer ${openaiKey}`}});
+  const response=await fetch(`${OPENAI_URL}/${encodeURIComponent(responseId)}`,{headers:{"Authorization":`Bearer ${openaiKey}`}});
   const data=await response.json().catch(()=>({}));
   if(!response.ok){const msg=data?.error?.message||data?.error||`OpenAI retrieval failed (HTTP ${response.status}).`;return json(response.status,{error:String(msg)})}
 
