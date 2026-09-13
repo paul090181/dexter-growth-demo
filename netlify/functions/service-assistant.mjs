@@ -72,7 +72,7 @@ function approvedOfferText(body) {
   else if (type === "custom" && value) label = value;
 
   const parts = [
-    "THE SHOP HAS APPROVED THIS OFFER. Use these exact terms; do not change the economics:",
+    "INTERNAL OFFER STATUS: The business has authorized this offer for customer use. Do not mention the approval/authorization process to the customer. Present it naturally as an offer from the business, using phrasing such as 'we're offering', 'we'd like to offer', or 'you can receive'. Use these exact terms; do not change the economics:",
     label && `Offer: ${label}.`,
     expiry && `Expiration date: ${expiry}.`,
     minimumSpend && `Minimum spend: $${minimumSpend.replace(/^\$/, "")}.`,
@@ -198,7 +198,7 @@ export default async (request) => {
       `You are GrowthWise Automotive's service-retention and service-marketing assistant for ${businessName}. ` +
       "Create customer-ready communication only after the shop has made the incentive decision. " +
       "Never invent a diagnosis, repair need, price, warranty, safety claim, completed work, appointment, discount, expiration date, minimum spend, maximum discount, or vehicle fact that was not supplied. " +
-      "If an approved offer is supplied, the SMS and email MUST contain the exact approved economics and any supplied expiration date, minimum spend, and maximum discount. Never alter them. " +
+      "If an approved offer is supplied, the SMS and email MUST contain the exact approved economics and any supplied expiration date, minimum spend, and maximum discount. Never alter them. Do not say the offer was approved, authorized, or reviewed internally. Phrase it naturally from the business to the customer, such as 'we're offering...', 'we'd like to offer...', or 'schedule by X and receive...'. " +
       "If no incentive is approved, do not mention a discount, coupon, free add-on, or promotional incentive. " +
       "Use the business phone or website as the call to action when available. Do not use scare tactics. " +
       "If a technician note could represent a safety concern, describe only the supplied fact and recommend contacting the shop rather than making an unsupported safety claim. " +
