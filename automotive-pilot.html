@@ -21,6 +21,8 @@
 .deal-watchlist{margin-top:13px}.watch-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.watch-head h3{margin:5px 0 4px}.watch-count{font-size:9px;font-weight:950;border-radius:999px;padding:5px 8px;background:#eef4fb;color:#335b84;white-space:nowrap}.watch-note{background:#eef4fb;border:1px solid #d9e6f2;border-radius:13px;padding:11px;color:#335b84;font-size:11px;line-height:1.45;margin-top:10px}.watch-list{display:grid;gap:9px;margin-top:11px}.watch-empty{border:1px dashed #ccd5dd;border-radius:14px;padding:14px;color:#68747f;text-align:center;font-size:12px;line-height:1.45}.watch-card{border:1px solid #e1e6ea;border-radius:14px;padding:12px;background:#fff}.watch-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.watch-card h4{margin:0;font-size:15px}.watch-card small{display:block;color:#71808d;line-height:1.35;margin-top:3px}.watch-zone{font-size:9px;font-weight:950;border-radius:999px;padding:5px 7px;background:#fff8e7;color:#745b24;white-space:nowrap}.watch-zone.ready{background:#e8f5ea;color:#285e32}.watch-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}.watch-metric{background:#f6f8f9;border-radius:11px;padding:9px}.watch-metric strong{display:block;font-size:13px}.watch-metric span{display:block;font-size:8px;color:#71808d;text-transform:uppercase;letter-spacing:.04em;margin-top:2px}.watch-gap{margin-top:9px;font-size:11px;line-height:1.4;color:#52616f}.watch-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:10px}.watch-actions a,.watch-actions button,.scout-watch{border:0;border-radius:10px;padding:9px 10px;text-align:center;font-weight:850;font-size:11px;text-decoration:none}.watch-open{background:#eef1f3;color:#17222e}.watch-deep{background:#0e1b2b;color:#fff}.watch-remove{background:#fff0ee;color:#963b31}.scout-watch{background:#eef4fb;color:#335b84}.scout-watch.saved{background:#e8f5ea;color:#285e32}
 @media(max-width:390px){.watch-metrics{grid-template-columns:1fr 1fr 1fr}.watch-actions{grid-template-columns:1fr}.scout-actions{grid-template-columns:1fr}}
 
+
+.verification-row{display:flex;align-items:center;justify-content:space-between;gap:9px;margin:10px 0 2px}.verify-badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:950;letter-spacing:.02em}.verify-badge.verified{background:#e8f5ea;color:#285e32}.verify-badge.unverified{background:#fff8e7;color:#745b24}.verify-badge.review{background:#fff0ee;color:#963b31}.verification-note{font-size:11px;color:#6b7782;line-height:1.4}.scout-verify{border:0;border-radius:11px;padding:10px 12px;background:#eef4fb;color:#274f78;font-weight:900}.scout-research{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border-radius:11px;padding:10px 12px;background:#f4f6f8;color:#52616f;font-weight:850}.watch-verify{font-size:10px;font-weight:950;border-radius:999px;padding:5px 7px;background:#fff8e7;color:#745b24}.watch-verify.ok{background:#e8f5ea;color:#285e32}.scout-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.scout-actions>*{min-width:0}.scout-watch{grid-column:1/-1}.scout-safety strong{color:#17222e}.watch-card .verification-row{margin-top:8px}.watch-actions{display:flex;flex-wrap:wrap;gap:8px}.watch-actions>*{flex:1 1 auto;text-align:center}.watch-research{border:0;border-radius:10px;padding:9px 10px;background:#fff8e7;color:#745b24;font-weight:850}.watch-note strong{color:#334a60}
 </style>
 </head>
 <body>
@@ -184,7 +186,7 @@
     <section class="card section-anchor opportunity-scout" id="opportunityScout">
       <div class="tag">BUY · AI VEHICLE SCOUT</div>
       <h3>Find vehicles Auto City may be able to buy profitably</h3>
-      <p class="helper">GrowthWise searches current public listings using Auto City's buying rules, then ranks the most promising candidates. It does not bid, contact a seller or buy anything automatically.</p>
+      <p class="helper">GrowthWise searches current public listings using Auto City's buying rules, then ranks the most promising candidates. It shows useful research leads even before an exact listing is verified, with a clear status badge on every vehicle. It does not bid, contact a seller or buy anything automatically.</p>
       <div class="scout-intro"><span>🔎</span><div><strong>Tomorrow's demo:</strong> set Auto City's budget and target gross, tap one button, and let GrowthWise return a short ranked list instead of making staff hunt through hundreds of listings.</div></div>
       <div class="source-hub" aria-label="Vehicle sourcing hub">
         <div class="source-hub-head">
@@ -192,7 +194,7 @@
           <span class="source-hub-count">1 LIVE</span>
         </div>
         <div class="source-hub-list">
-          <div class="source-hub-row"><div class="source-hub-icon">🌐</div><div class="source-hub-copy"><strong>Public Listings</strong><small>Verified public web listings · active in today's scout</small></div><span class="source-hub-status live">LIVE</span></div>
+          <div class="source-hub-row"><div class="source-hub-icon">🌐</div><div class="source-hub-copy"><strong>Public Listings</strong><small>Public web research · active in today's scout; exact listings can be verified individually</small></div><span class="source-hub-status live">LIVE</span></div>
           <div class="source-hub-row"><div class="source-hub-icon">🏷️</div><div class="source-hub-copy"><strong>Wholesale Auctions</strong><small>Manheim / OVE, ACV, OPENLANE and other dealer accounts</small></div><span class="source-hub-status connect">CONNECT</span></div>
           <div class="source-hub-row"><div class="source-hub-icon">🤝</div><div class="source-hub-copy"><strong>Dealer-to-Dealer</strong><small>Wholesalers, dealer networks and direct inventory feeds</small></div><span class="source-hub-status connect">CONNECT</span></div>
           <div class="source-hub-row"><div class="source-hub-icon">👤</div><div class="source-hub-copy"><strong>Private Party</strong><small>Seller marketplaces and other permitted public sources</small></div><span class="source-hub-status">PLANNED</span></div>
@@ -221,7 +223,7 @@
         <div id="scoutSummary" class="scout-summary"></div>
         <div id="scoutCards" class="scout-results"></div>
         <div id="scoutSources" class="source-links"></div>
-        <div class="scout-safety">Preliminary leads only. Auto City should verify listing availability, VIN, title, condition, seller, fees, transport and repair needs before bidding or buying.</div>
+        <div class="scout-safety"><strong>Verification matters:</strong> GrowthWise shows useful research leads instead of hiding them. VERIFIED LISTING means an exact direct source page was matched. UNVERIFIED LEAD and NEEDS REVIEW still require confirmation before Auto City relies on the vehicle.</div>
       </div>
     </section>
 
@@ -229,10 +231,10 @@
     <section class="card deal-watchlist" id="dealWatchlist">
       <div class="tag">BUY · DEAL WATCHLIST</div>
       <div class="watch-head">
-        <div><h3>Save almost-good deals and wait for the profit zone</h3><p class="helper" style="margin-bottom:0">When Vehicle Scout finds a real listing that is close—but not profitable enough yet—Auto City can save it here instead of losing track of it.</p></div>
+        <div><h3>Save almost-good deals and wait for the profit zone</h3><p class="helper" style="margin-bottom:0">Auto City can save both verified listings and promising research leads here. Unverified leads remain clearly flagged until an exact source listing is confirmed.</p></div>
         <span class="watch-count" id="watchCount">0 WATCHED</span>
       </div>
-      <div class="watch-note"><strong>Demo behavior:</strong> watched vehicles are saved on this device. Automatic price re-checks and alerts will turn on when GrowthWise connects scheduled source monitoring for Auto City.</div>
+      <div class="watch-note"><strong>Demo behavior:</strong> watched vehicles are saved on this device. Automatic price re-checks and alerts will turn on when GrowthWise connects scheduled source monitoring for Auto City. Unverified research leads stay flagged until verified.</div>
       <div class="watch-list" id="watchList"></div>
     </section>
 
@@ -835,6 +837,7 @@ $('serviceNoOfferBtn')?.addEventListener('click',()=>createServiceMessages(false
 
 
 const DEAL_WATCHLIST_KEY='growthwise_auto_deal_watchlist_v1';
+let scoutCurrentOps=[];
 function getDealWatchlist(){
   try{
     const parsed=JSON.parse(localStorage.getItem(DEAL_WATCHLIST_KEY)||'[]');
@@ -846,27 +849,38 @@ function saveDealWatchlist(items){
   renderDealWatchlist();
 }
 function candidateKey(o){
-  return String(o?.listing_url||[o?.year,o?.make,o?.model,o?.asking_price,o?.location].filter(Boolean).join('|'));
+  return String(o?.listing_url||o?.discovery_url||[o?.year,o?.make,o?.model,o?.asking_price,o?.location].filter(Boolean).join('|'));
 }
 function isCandidateWatched(o){const k=candidateKey(o);return getDealWatchlist().some(x=>x.key===k);}
+function leadStatus(o){
+  if(o?.verified&&o?.listing_url)return {label:'VERIFIED LISTING',cls:'verified'};
+  if(o?.verification_attempted)return {label:'NEEDS REVIEW',cls:'review'};
+  return {label:'UNVERIFIED LEAD',cls:'unverified'};
+}
 function watchCandidate(o){
-  if(!o?.listing_url){setScoutStatus('warn','GrowthWise only watches verified listing links in the demo.');return;}
   const items=getDealWatchlist(),key=candidateKey(o);
   if(items.some(x=>x.key===key)){setScoutStatus('ok','That vehicle is already on the Deal Watchlist.');return;}
   items.unshift({key,saved_at:new Date().toISOString(),...o});
   saveDealWatchlist(items);
-  setScoutStatus('ok',`Watching ${[o.year,o.make,o.model].filter(Boolean).join(' ')} ✓ GrowthWise saved the lead and target buy price on this device.`);
+  const st=leadStatus(o);
+  setScoutStatus('ok',`${st.label==='VERIFIED LISTING'?'Watching verified listing':'Research lead saved'} ✓ ${[o.year,o.make,o.model].filter(Boolean).join(' ')} is now on the Deal Watchlist.`);
 }
 async function loadCandidateIntoDeepDive(o){
   await applyVehicleSelection({year:o.year,make:o.make,model:o.model,trim:o.trim});
-  $('mileage').value=o.mileage||'';$('currentAsk').value=o.asking_price||'';$('sourceLocation').value=o.location||'';$('sourceUrl').value=o.listing_url||'';$('sourceType').value=scoutSourceType(o.source_type);$('marketLocation').value=$('scoutMarket').value.trim()||$('defaultMarket').value.trim();$('targetGross').value=$('scoutTargetGross').value||'3500';
+  $('mileage').value=o.mileage||'';$('currentAsk').value=o.asking_price||'';$('sourceLocation').value=o.location||'';$('sourceUrl').value=o.verified&&o.listing_url?o.listing_url:'';$('sourceType').value=scoutSourceType(o.source_type);$('marketLocation').value=$('scoutMarket').value.trim()||$('defaultMarket').value.trim();$('targetGross').value=$('scoutTargetGross').value||'3500';
   $('dealAnalysis').scrollIntoView({behavior:'smooth',block:'start'});calc();updateReadiness();
+  if(!o.verified)setDealStatus?.('warn','This deep-dive started from an unverified research lead. Confirm the exact source listing before acting.');
 }
 function addWatchMetric(parent,label,value){
   const box=document.createElement('div');box.className='watch-metric';
   const strong=document.createElement('strong');strong.textContent=value;
   const span=document.createElement('span');span.textContent=label;
   box.append(strong,span);parent.appendChild(box);
+}
+function replaceWatchedCandidate(updated){
+  const oldKeys=new Set([candidateKey(updated),updated._oldKey].filter(Boolean));
+  const items=getDealWatchlist().map(x=>oldKeys.has(x.key)?{...x,...updated,key:candidateKey(updated)}:x);
+  saveDealWatchlist(items);
 }
 function renderDealWatchlist(){
   const list=$('watchList'); if(!list) return;
@@ -876,7 +890,7 @@ function renderDealWatchlist(){
   list.replaceChildren();
   if(!items.length){
     const empty=document.createElement('div');empty.className='watch-empty';
-    empty.textContent='No vehicles watched yet. Run Vehicle Scout and tap “Watch this lead” on a verified candidate.';
+    empty.textContent='No vehicles watched yet. Vehicle Scout can save verified listings or promising research leads; unverified items stay clearly flagged.';
     list.appendChild(empty);return;
   }
   for(const o of items){
@@ -888,16 +902,17 @@ function renderDealWatchlist(){
     const ask=Number(o.asking_price||0), max=Number(o.recommended_max_buy||0), gap=Math.max(0,ask-max);
     const zone=document.createElement('span');zone.className=`watch-zone ${ask>0&&max>0&&ask<=max?'ready':''}`;zone.textContent=ask>0&&max>0&&ask<=max?'PROFIT ZONE':'WATCH';
     top.append(left,zone);card.appendChild(top);
+    const vr=document.createElement('div');vr.className='verification-row';const st=leadStatus(o);const vb=document.createElement('span');vb.className=`verify-badge ${st.cls}`;vb.textContent=st.label;const vn=document.createElement('span');vn.className='verification-note';vn.textContent=o.verification_note|| (o.verified?'Exact direct listing matched.':'Research lead; exact listing not yet confirmed.');vr.append(vb,vn);card.appendChild(vr);
     const metrics=document.createElement('div');metrics.className='watch-metrics';
     addWatchMetric(metrics,'current ask',money(o.asking_price));addWatchMetric(metrics,'target max buy',money(o.recommended_max_buy));addWatchMetric(metrics,'projected gross',money(o.projected_gross));card.appendChild(metrics);
     const g=document.createElement('div');g.className='watch-gap';
     if(ask>0&&max>0){
-      g.textContent=ask<=max?`At or below GrowthWise's estimated max buy for the current target gross. Re-verify the listing and condition before acting.`:`Needs about ${money(gap)} of price movement or improved economics to reach the current target-buy threshold.`;
+      g.textContent=ask<=max?`At or below GrowthWise's estimated max buy for the current target gross. ${o.verified?'Confirm condition and seller details before acting.':'Verify the exact listing before acting.'}`:`Needs about ${money(gap)} of price movement or improved economics to reach the current target-buy threshold.`;
     }else g.textContent='GrowthWise saved this lead. Re-run deal analysis when the acquisition price or economics change.';
     card.appendChild(g);
     const actions=document.createElement('div');actions.className='watch-actions';
-    if(o.listing_url){const a=document.createElement('a');a.className='watch-open';a.href=o.listing_url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Open listing';actions.appendChild(a);}
-    const deep=document.createElement('button');deep.type='button';deep.className='watch-deep';deep.textContent='Deep-dive';deep.addEventListener('click',()=>loadCandidateIntoDeepDive(o));actions.appendChild(deep);
+    if(o.verified&&o.listing_url){const a=document.createElement('a');a.className='watch-open';a.href=o.listing_url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Open verified listing';actions.appendChild(a);}else if(o.discovery_url){const a=document.createElement('a');a.className='watch-research';a.href=o.discovery_url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Open research source';actions.appendChild(a);}
+    const deep=document.createElement('button');deep.type='button';deep.className='watch-deep';deep.textContent=o.verified?'Deep-dive':'Deep-dive cautiously';deep.addEventListener('click',()=>loadCandidateIntoDeepDive(o));actions.appendChild(deep);
     const rem=document.createElement('button');rem.type='button';rem.className='watch-remove';rem.textContent='Remove';rem.addEventListener('click',()=>saveDealWatchlist(getDealWatchlist().filter(x=>x.key!==o.key)));actions.appendChild(rem);
     card.appendChild(actions);list.appendChild(card);
   }
@@ -907,20 +922,45 @@ function setScoutStatus(kind,msg){setBoxStatus('scoutStatus',kind,msg);}
 function scoutRecClass(rec){const v=String(rec||'').toUpperCase();return v==='STRONG LEAD'?'strong':(v==='PASS'?'pass':'');}
 function scoutSourceType(value){const v=String(value||'').toLowerCase();if(v.includes('auction'))return 'Auction';if(v.includes('private'))return 'Private seller';if(v.includes('trade'))return 'Trade-in';return 'Dealer / wholesale';}
 function addScoutMetric(parent,label,value){const box=document.createElement('div');box.className='scout-metric';const strong=document.createElement('strong');strong.textContent=value;const span=document.createElement('span');span.textContent=label;box.append(strong,span);parent.appendChild(box);}
+async function verifyScoutOpportunity(o,index){
+  const key=$('adminKey').value||sessionStorage.getItem('growthwise_admin_key')||'';
+  if(!key){setScoutStatus('error','Enter the demo access code at the top of GrowthWise Automotive first.');return;}
+  setScoutStatus('loading',`Verifying the exact listing for ${[o.year,o.make,o.model].filter(Boolean).join(' ')}…`);
+  try{
+    const response=await fetch('/.netlify/functions/verify-opportunity',{method:'POST',headers:{'Content-Type':'application/json','X-GrowthWise-Key':key},body:JSON.stringify({year:o.year,make:o.make,model:o.model,trim:o.trim,location:o.location,asking_price:o.asking_price,mileage:o.mileage,source_type:o.source_type,discovery_url:o.discovery_url})});
+    const data=await response.json().catch(()=>({}));
+    o._oldKey=candidateKey(o);o.verification_attempted=true;
+    if(response.ok&&data.verified){
+      o.verified=true;o.listing_url=data.listing_url||'';o.asking_price=data.asking_price||o.asking_price;o.mileage=data.mileage||o.mileage;o.location=data.location||o.location;o.verification_note=data.evidence_note||'Exact direct listing matched.';
+      setScoutStatus('ok',`Verified listing ✓ GrowthWise matched an exact public source page for ${[o.year,o.make,o.model].filter(Boolean).join(' ')}.`);
+    }else{
+      o.verified=false;o.verification_note=data.message||'GrowthWise could not confirm an exact direct listing page yet. Keep this as a research lead.';
+      setScoutStatus('warn',o.verification_note);
+    }
+    scoutCurrentOps[index]=o;renderScoutResults();replaceWatchedCandidate(o);
+  }catch(err){o.verification_attempted=true;o.verified=false;o.verification_note='Verification was unavailable. Keep this as a research lead.';scoutCurrentOps[index]=o;renderScoutResults();setScoutStatus('warn',o.verification_note);}
+}
 function renderScoutOpportunity(o,index){
   const card=document.createElement('article');card.className='scout-card';
   const top=document.createElement('div');top.className='scout-card-top';
   const titleWrap=document.createElement('div');const h=document.createElement('h4');h.textContent=[o.year,o.make,o.model,o.trim].filter(Boolean).join(' ');const sub=document.createElement('div');sub.className='scout-sub';sub.textContent=[o.source_type,o.location,o.mileage?`${Number(o.mileage).toLocaleString()} miles`:null].filter(Boolean).join(' • ');titleWrap.append(h,sub);
   const score=document.createElement('div');score.className='score-badge';score.innerHTML=`${Number(o.score)||0}<small>SCORE</small>`;top.append(titleWrap,score);card.appendChild(top);
+  const st=leadStatus(o);const vr=document.createElement('div');vr.className='verification-row';const vb=document.createElement('span');vb.className=`verify-badge ${st.cls}`;vb.textContent=st.label;const vn=document.createElement('span');vn.className='verification-note';vn.textContent=o.verification_note||(o.verified?'Exact direct listing matched.':o.evidence_quality==='Low'?'Evidence is thin; review before relying on this lead.':'Promising research lead; exact listing not yet confirmed.');vr.append(vb,vn);card.appendChild(vr);
   const rec=document.createElement('span');rec.className=`rec-badge ${scoutRecClass(o.recommendation)}`;rec.textContent=o.recommendation||'WATCH';card.appendChild(rec);
   const metrics=document.createElement('div');metrics.className='scout-metrics';addScoutMetric(metrics,'asking price',money(o.asking_price));addScoutMetric(metrics,'estimated retail',`${money(o.retail_low)}–${money(o.retail_high)}`);addScoutMetric(metrics,'projected all-in',money(o.projected_all_in));addScoutMetric(metrics,'projected gross',money(o.projected_gross));addScoutMetric(metrics,'projected ROI',`${Number(o.projected_roi||0).toFixed(1)}%`);addScoutMetric(metrics,'max buy for target',money(o.recommended_max_buy));card.appendChild(metrics);
   const why=document.createElement('div');why.className='scout-why';why.textContent=o.why_fit||'Review the numbers and listing evidence before acting.';card.appendChild(why);
   if(Array.isArray(o.caveats)&&o.caveats.length){const ul=document.createElement('ul');ul.className='scout-caveats';for(const c of o.caveats.slice(0,4)){const li=document.createElement('li');li.textContent=c;ul.appendChild(li);}card.appendChild(ul);}
   const actions=document.createElement('div');actions.className='scout-actions';
-  if(o.listing_url){const a=document.createElement('a');a.className='scout-open';a.href=o.listing_url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Open public listing';actions.appendChild(a);}else{const no=document.createElement('div');no.className='scout-open';no.textContent='Listing link not verified';actions.appendChild(no);}
-  const analyze=document.createElement('button');analyze.className='scout-analyze';analyze.type='button';analyze.textContent='Deep-dive this candidate';analyze.addEventListener('click',()=>loadCandidateIntoDeepDive(o));actions.appendChild(analyze);
-  const watch=document.createElement('button');watch.className=`scout-watch ${isCandidateWatched(o)?'saved':''}`;watch.type='button';watch.textContent=isCandidateWatched(o)?'✓ Watching':'Watch this lead';watch.disabled=!o.listing_url;watch.addEventListener('click',()=>{watchCandidate(o);watch.classList.add('saved');watch.textContent='✓ Watching';});actions.appendChild(watch);
+  if(o.verified&&o.listing_url){const a=document.createElement('a');a.className='scout-open';a.href=o.listing_url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Open verified listing';actions.appendChild(a);}else if(o.discovery_url){const a=document.createElement('a');a.className='scout-research';a.href=o.discovery_url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Open research source';actions.appendChild(a);}
+  if(!o.verified){const verify=document.createElement('button');verify.className='scout-verify';verify.type='button';verify.textContent=o.verification_attempted?'Try verification again':'Verify exact listing';verify.addEventListener('click',()=>verifyScoutOpportunity(o,index));actions.appendChild(verify);}
+  const analyze=document.createElement('button');analyze.className='scout-analyze';analyze.type='button';analyze.textContent=o.verified?'Deep-dive this candidate':'Deep-dive cautiously';analyze.addEventListener('click',()=>loadCandidateIntoDeepDive(o));actions.appendChild(analyze);
+  const watch=document.createElement('button');watch.className=`scout-watch ${isCandidateWatched(o)?'saved':''}`;watch.type='button';watch.textContent=isCandidateWatched(o)?'✓ Saved':(o.verified?'Watch this lead':'Save research lead');watch.addEventListener('click',()=>{watchCandidate(o);watch.classList.add('saved');watch.textContent='✓ Saved';});actions.appendChild(watch);
   card.appendChild(actions);return card;
+}
+function renderScoutResults(){
+  const cards=$('scoutCards');cards.replaceChildren();
+  if(!scoutCurrentOps.length){const empty=document.createElement('div');empty.className='scout-empty';empty.textContent='No useful research leads matched these rules right now. GrowthWise will not invent vehicles just to fill the screen.';cards.appendChild(empty);return;}
+  scoutCurrentOps.forEach((o,i)=>cards.appendChild(renderScoutOpportunity(o,i)));
 }
 $('scoutBtn')?.addEventListener('click',async()=>{
   const key=$('adminKey').value||sessionStorage.getItem('growthwise_admin_key')||'';
@@ -932,10 +972,9 @@ $('scoutBtn')?.addEventListener('click',async()=>{
     })});
     const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||`Opportunity search failed (HTTP ${response.status}).`);
     $('scoutConfidence').textContent=`${data.confidence||'Low'} confidence`;$('scoutConfidence').className='decision maybe';$('scoutSummary').textContent=data.search_summary||'GrowthWise completed the current-market opportunity search.';
-    const cards=$('scoutCards');cards.replaceChildren();const ops=Array.isArray(data.opportunities)?data.opportunities:[];
-    if(!ops.length){const empty=document.createElement('div');empty.className='scout-empty';empty.textContent='No strong public-listing opportunities matched these rules right now. That is a useful result too—GrowthWise will not invent weak deals just to fill the screen.';cards.appendChild(empty);}else{ops.forEach((o,i)=>cards.appendChild(renderScoutOpportunity(o,i)));}
-    const src=$('scoutSources');src.replaceChildren();if(Array.isArray(data.source_urls)&&data.source_urls.length){const strong=document.createElement('strong');strong.textContent='Public sources searched:';src.appendChild(strong);const div=document.createElement('div');data.source_urls.slice(0,10).forEach(url=>{const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener noreferrer';a.textContent=url;div.append(a,document.createElement('br'));});src.appendChild(div);}else src.textContent='No verified public source links were returned; treat results as preliminary.';
-    $('scoutResult').classList.remove('hidden');sessionStorage.setItem('growthwise_admin_key',key);$('adminKey').value='';setScoutStatus('ok',`Vehicle Scout ready ✓ ${ops.length} candidate${ops.length===1?'':'s'} ranked for review.`);$('scoutResult').scrollIntoView({behavior:'smooth',block:'start'});
+    scoutCurrentOps=(Array.isArray(data.opportunities)?data.opportunities:[]).map(o=>({...o,verified:Boolean(o.verified&&o.listing_url),verification_attempted:Boolean(o.verification_attempted)}));renderScoutResults();
+    const src=$('scoutSources');src.replaceChildren();if(Array.isArray(data.source_urls)&&data.source_urls.length){const strong=document.createElement('strong');strong.textContent='Public sources searched:';src.appendChild(strong);const div=document.createElement('div');data.source_urls.slice(0,10).forEach(url=>{const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener noreferrer';a.textContent=url;div.append(a,document.createElement('br'));});src.appendChild(div);}else src.textContent='No source URLs were returned. Research leads remain unverified until GrowthWise can match an exact listing.';
+    $('scoutResult').classList.remove('hidden');sessionStorage.setItem('growthwise_admin_key',key);$('adminKey').value='';setScoutStatus('ok',`Vehicle Scout ready ✓ ${scoutCurrentOps.length} research lead${scoutCurrentOps.length===1?'':'s'} ranked. Verify the exact listing only when a candidate is worth pursuing.`);$('scoutResult').scrollIntoView({behavior:'smooth',block:'start'});
   }catch(err){setScoutStatus('error',err.message||'Could not search vehicle opportunities.');}
   finally{btn.disabled=false;btn.textContent='AI find profitable vehicle opportunities';}
 });
