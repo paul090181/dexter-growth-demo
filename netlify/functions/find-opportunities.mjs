@@ -3,243 +3,40 @@ const OPENAI_URL = "https://api.openai.com/v1/responses";
 function json(status, body) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store",
-    },
+    headers: {"content-type":"application/json; charset=utf-8","cache-control":"no-store"},
   });
 }
+function clean(value, max=5000){return String(value??"").trim().slice(0,max)}
+function num(value,fallback=0){const n=Number(value);return Number.isFinite(n)?n:fallback}
+function extractOutputText(data){for(const item of data?.output||[]){if(item?.type!=="message")continue;for(const part of item?.content||[]){if(part?.type==="output_text"&&typeof part.text==="string")return part.text}}return ""}
+function collectSourceUrls(data){const urls=[];for(const item of data?.output||[]){if(item?.type!=="web_search_call")continue;for(const source of item?.action?.sources||[]){if(source?.url&&!urls.includes(source.url))urls.push(source.url)}}return urls.slice(0,20)}
+function normalizeUrl(url){const v=clean(url,1200);return /^https?:\/\//i.test(v)?v:""}
 
-function clean(value, max = 5000) {
-  return String(value ?? "").trim().slice(0, max);
-}
+export default async (request)=>{
+  if(request.method==="OPTIONS") return new Response(null,{status:204,headers:{"Access-Control-Allow-Methods":"POST, OPTIONS","Access-Control-Allow-Headers":"Content-Type, X-GrowthWise-Key"}});
+  if(request.method!=="POST") return json(405,{error:"Method not allowed"});
 
-function num(value, fallback = 0) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
-}
+  const adminKey=Netlify.env.get("GROWTHWISE_ADMIN_KEY");
+  const openaiKey=Netlify.env.get("OPENAI_API_KEY");
+  const model=Netlify.env.get("OPENAI_AUTOMOTIVE_MODEL")||Netlify.env.get("OPENAI_PRODUCT_MODEL")||"gpt-5.6-luna";
+  if(!adminKey||!openaiKey) return json(500,{error:"Server AI configuration is incomplete."});
+  if((request.headers.get("x-growthwise-key")||"")!==adminKey) return json(401,{error:"Invalid GrowthWise admin key."});
 
-function extractOutputText(data) {
-  for (const item of data?.output || []) {
-    if (item?.type !== "message") continue;
-    for (const part of item?.content || []) {
-      if (part?.type === "output_text" && typeof part.text === "string") return part.text;
-    }
-  }
-  return "";
-}
+  let body; try{body=await request.json()}catch{return json(400,{error:"Invalid JSON body."})}
+  const retailMarket=clean(body.retail_market,120)||"Buffalo, NY";
+  const searchRadius=Math.min(500,Math.max(10,num(body.search_radius,150)));
+  const maxPurchase=Math.max(1000,num(body.max_purchase,12000));
+  const targetGross=Math.max(500,num(body.target_gross,3500));
+  const minYear=Math.max(1990,Math.min(2030,num(body.min_year,2012)));
+  const maxYear=Math.max(minYear,Math.min(2030,num(body.max_year,2024)));
+  const maxMileage=Math.max(10000,num(body.max_mileage,140000));
+  const vehicleTypes=clean(body.vehicle_types,300)||"Any body style";
+  const preferredMakes=clean(body.preferred_makes,400)||"Any mainstream make";
+  const excludedMakes=clean(body.excluded_makes,400);
+  const notes=clean(body.notes,1400);
+  const maxResults=Math.min(5,Math.max(1,Math.round(num(body.max_results,5))));
 
-function collectSourceUrls(data) {
-  const urls = [];
-  for (const item of data?.output || []) {
-    if (item?.type !== "web_search_call") continue;
-    for (const source of item?.action?.sources || []) {
-      if (source?.url && !urls.includes(source.url)) urls.push(source.url);
-    }
-  }
-  return urls.slice(0, 20);
-}
-
-function normalizeUrl(url) {
-  const value = clean(url, 1200);
-  if (!/^https?:\/\//i.test(value)) return "";
-  return value;
-}
-
-function canonicalUrlKey(url) {
-  const value = normalizeUrl(url);
-  if (!value) return "";
-  try {
-    const u = new URL(value);
-    const host = u.hostname.toLowerCase().replace(/^www\./, "");
-    let path = u.pathname.replace(/\/+/g, "/").replace(/\/$/, "");
-    try { path = decodeURIComponent(path); } catch {}
-    return `${host}${path}`.toLowerCase();
-  } catch {
-    return value.toLowerCase().replace(/[?#].*$/, "").replace(/\/$/, "");
-  }
-}
-
-function findVerifiedSourceUrl(candidateUrl, sourceUrls) {
-  const raw = normalizeUrl(candidateUrl);
-  if (!raw) return "";
-  if (sourceUrls.includes(raw)) return raw;
-  const key = canonicalUrlKey(raw);
-  if (!key) return "";
-  for (const sourceUrl of sourceUrls) {
-    if (canonicalUrlKey(sourceUrl) === key) return sourceUrl;
-  }
-  return "";
-}
-
-
-async function verifyCandidateBatch({ openaiKey, model, candidates, retailMarket }) {
-  if (!Array.isArray(candidates) || !candidates.length) {
-    return { sources: [], matches: new Map(), timed_out: false };
-  }
-
-  const candidateText = candidates.map(({ index, candidate }) => {
-    return [
-      `Candidate #${index}`,
-      `Vehicle: ${clean(candidate.year, 10)} ${clean(candidate.make, 80)} ${clean(candidate.model, 100)} ${clean(candidate.trim, 100)}`,
-      `Source/type: ${clean(candidate.source_type, 120)}`,
-      `Location: ${clean(candidate.location, 160)}`,
-      `Asking price: $${Math.round(Math.max(0, num(candidate.asking_price)))}`,
-      `Mileage: ${Math.round(Math.max(0, num(candidate.mileage)))}`,
-      `Discovery URL (may be broad/unverified): ${clean(candidate.listing_url, 1200) || "none"}`,
-    ].join("\n");
-  }).join("\n\n");
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 9000);
-
-  try {
-    const verifierResponse = await fetch(OPENAI_URL, {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "Authorization": `Bearer ${openaiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        store: false,
-        include: ["web_search_call.action.sources"],
-        reasoning: { effort: "none" },
-        tools: [{
-          type: "web_search",
-          search_context_size: "medium",
-          user_location: { type: "approximate", city: retailMarket, country: "US" }
-        }],
-        instructions:
-          "You are a strict vehicle-listing verifier. Verify the supplied candidate vehicles against CURRENT public web listings. " +
-          "For each candidate, matched=true only if you find a DIRECT PUBLIC DETAIL PAGE for that exact advertised vehicle. " +
-          "The match must have the same year, make and model and should closely match price, mileage and location/source. " +
-          "Do not use search-result pages, category pages, generic inventory pages, homepages, redirect hubs, cached snippets, or inferred URLs. " +
-          "Every listing_url must be copied verbatim from an actual web-search source URL returned in this response. " +
-          "If an exact direct listing cannot be verified, matched=false and listing_url must be empty. Never guess.",
-        input: [{
-          role: "user",
-          content: [{
-            type: "input_text",
-            text: `Verify these candidates. Return one verification row for every candidate number.\n\n${candidateText}`
-          }]
-        }],
-        text: {
-          verbosity: "low",
-          format: {
-            type: "json_schema",
-            name: "growthwise_listing_verification_batch",
-            strict: true,
-            schema: {
-              type: "object",
-              additionalProperties: false,
-              properties: {
-                verifications: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    additionalProperties: false,
-                    properties: {
-                      candidate_index: { type: "number" },
-                      matched: { type: "boolean" },
-                      listing_url: { type: "string" },
-                      asking_price: { type: "number" },
-                      mileage: { type: "number" },
-                      location: { type: "string" },
-                      evidence_note: { type: "string" }
-                    },
-                    required: ["candidate_index", "matched", "listing_url", "asking_price", "mileage", "location", "evidence_note"]
-                  }
-                }
-              },
-              required: ["verifications"]
-            }
-          }
-        }
-      })
-    });
-
-    const verifierData = await verifierResponse.json().catch(() => ({}));
-    if (!verifierResponse.ok) return { sources: [], matches: new Map(), timed_out: false };
-
-    const verifierText = extractOutputText(verifierData);
-    let parsed = null;
-    try { parsed = JSON.parse(verifierText); } catch {}
-    const sources = collectSourceUrls(verifierData);
-    const matches = new Map();
-
-    for (const row of Array.isArray(parsed?.verifications) ? parsed.verifications : []) {
-      const idx = Math.round(num(row.candidate_index, -1));
-      if (idx < 0) continue;
-      const candidateWrap = candidates.find(c => c.index === idx);
-      if (!candidateWrap || !row?.matched) continue;
-
-      const exactUrl = findVerifiedSourceUrl(row.listing_url, sources);
-      if (!exactUrl) continue;
-
-      const candidate = candidateWrap.candidate;
-      const originalAsk = Math.max(0, num(candidate.asking_price));
-      const verifiedAsk = Math.max(0, num(row.asking_price));
-      const originalMileage = Math.max(0, num(candidate.mileage));
-      const verifiedMileage = Math.max(0, num(row.mileage));
-      const priceTolerance = Math.max(1500, originalAsk * 0.15);
-      const mileageTolerance = Math.max(10000, originalMileage * 0.12);
-      if (originalAsk && verifiedAsk && Math.abs(originalAsk - verifiedAsk) > priceTolerance) continue;
-      if (originalMileage && verifiedMileage && Math.abs(originalMileage - verifiedMileage) > mileageTolerance) continue;
-
-      matches.set(idx, { url: exactUrl, data: row });
-    }
-
-    return { sources, matches, timed_out: false };
-  } catch (err) {
-    if (err?.name === "AbortError") return { sources: [], matches: new Map(), timed_out: true };
-    return { sources: [], matches: new Map(), timed_out: false };
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-export default async (request) => {
-  if (request.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, X-GrowthWise-Key",
-      },
-    });
-  }
-
-  if (request.method !== "POST") return json(405, { error: "Method not allowed" });
-
-  const adminKey = Netlify.env.get("GROWTHWISE_ADMIN_KEY");
-  const openaiKey = Netlify.env.get("OPENAI_API_KEY");
-  const model = Netlify.env.get("OPENAI_AUTOMOTIVE_MODEL") || Netlify.env.get("OPENAI_PRODUCT_MODEL") || "gpt-5.6-luna";
-
-  if (!adminKey || !openaiKey) return json(500, { error: "Server AI configuration is incomplete." });
-
-  const suppliedKey = request.headers.get("x-growthwise-key") || "";
-  if (suppliedKey !== adminKey) return json(401, { error: "Invalid GrowthWise admin key." });
-
-  let body;
-  try { body = await request.json(); }
-  catch { return json(400, { error: "Invalid JSON body." }); }
-
-  const retailMarket = clean(body.retail_market, 120) || "Buffalo, NY";
-  const searchRadius = Math.min(500, Math.max(10, num(body.search_radius, 150)));
-  const maxPurchase = Math.max(1000, num(body.max_purchase, 12000));
-  const targetGross = Math.max(500, num(body.target_gross, 3000));
-  const minYear = Math.max(1990, Math.min(2030, num(body.min_year, 2012)));
-  const maxYear = Math.max(minYear, Math.min(2030, num(body.max_year, 2024)));
-  const maxMileage = Math.max(10000, num(body.max_mileage, 140000));
-  const vehicleTypes = clean(body.vehicle_types, 300) || "Any body style";
-  const preferredMakes = clean(body.preferred_makes, 400) || "Any reliable mainstream make";
-  const excludedMakes = clean(body.excluded_makes, 400);
-  const notes = clean(body.notes, 1400);
-  const maxResults = Math.min(4, Math.max(1, Math.round(num(body.max_results, 4))));
-
-  const criteria = [
+  const criteria=[
     `Retail market: ${retailMarket}`,
     `Search radius: about ${Math.round(searchRadius)} miles`,
     `Maximum acquisition price: $${Math.round(maxPurchase)}`,
@@ -248,255 +45,54 @@ export default async (request) => {
     `Maximum mileage: ${Math.round(maxMileage)}`,
     `Preferred vehicle types: ${vehicleTypes}`,
     `Preferred makes: ${preferredMakes}`,
-    excludedMakes && `Exclude makes: ${excludedMakes}`,
-    notes && `Dealer preferences / notes: ${notes}`,
+    excludedMakes&&`Exclude makes: ${excludedMakes}`,
+    notes&&`Dealer preferences / notes: ${notes}`,
   ].filter(Boolean).join("\n");
 
-  const response = await fetch(OPENAI_URL, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${openaiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      store: false,
-      include: ["web_search_call.action.sources"],
-      reasoning: { effort: "low" },
-      tools: [{
-        type: "web_search",
-        search_context_size: "medium",
-        user_location: {
-          type: "approximate",
-          city: retailMarket,
-          country: "US"
-        }
-      }],
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),7500);
+  try{
+    const response=await fetch(OPENAI_URL,{method:"POST",signal:controller.signal,headers:{"Authorization":`Bearer ${openaiKey}`,"Content-Type":"application/json"},body:JSON.stringify({
+      model,store:false,include:["web_search_call.action.sources"],reasoning:{effort:"none"},
+      tools:[{type:"web_search",search_context_size:"low",user_location:{type:"approximate",city:retailMarket,country:"US"}}],
       instructions:
-        "You are GrowthWise Vehicle Scout for a small independent dealership with an in-house repair shop. " +
-        "Search CURRENT public vehicle listings and identify acquisition leads that could plausibly be resold profitably in the dealer's retail market. " +
-        "Treat this as opportunity discovery, not a purchase recommendation. Use direct public listing evidence whenever possible. " +
-        "Do not invent vehicles, prices, mileage, locations, VINs, listing URLs, title status, condition, accident history, repair needs, or completed-sale prices. " +
-        "If an exact candidate does not have a visible asking price and enough identifying information, exclude it. " +
-        "For every returned candidate, listing_url MUST be copied verbatim from a direct web-search source URL for that exact listing; never synthesize, shorten, rewrite, or guess a URL. " +
-        "Estimate retail conservatively from current asking-price evidence, not guaranteed transaction values. " +
-        "Estimate recon and internal labor as conservative allowances; do not infer hidden defects. " +
-        "Prefer candidates where the asking price is at or below the dealer's budget and projected gross can meet the target after fees, transport, recon and labor. " +
-        "If few strong candidates exist, return fewer results rather than weak or fabricated ones. Return only the requested structured data.",
-      input: [{
-        role: "user",
-        content: [{
-          type: "input_text",
-          text:
-            `Find up to ${maxResults} currently advertised vehicle acquisition opportunities that best match these dealer criteria:\n\n${criteria}\n\n` +
-            "For each candidate, use the actual public listing asking price and mileage when shown. Estimate a realistic local retail midpoint and major acquisition allowances. " +
-            "Give each candidate a 0-100 opportunity score that rewards margin, resale fit, evidence quality, reasonable mileage, and proximity. " +
-            "Also provide a concise reason the vehicle may fit this dealership and the most important caveats to verify before buying."
-        }]
-      }],
-      text: {
-        verbosity: "low",
-        format: {
-          type: "json_schema",
-          name: "growthwise_vehicle_opportunity_search",
-          strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              search_summary: { type: "string" },
-              confidence: { type: "string", enum: ["Low", "Medium", "High"] },
-              opportunities: {
-                type: "array",
-                maxItems: 6,
-                items: {
-                  type: "object",
-                  additionalProperties: false,
-                  properties: {
-                    year: { type: "number" },
-                    make: { type: "string" },
-                    model: { type: "string" },
-                    trim: { type: "string" },
-                    source_type: { type: "string" },
-                    listing_url: { type: "string" },
-                    location: { type: "string" },
-                    asking_price: { type: "number" },
-                    mileage: { type: "number" },
-                    retail_low: { type: "number" },
-                    retail_mid: { type: "number" },
-                    retail_high: { type: "number" },
-                    estimated_fees: { type: "number" },
-                    estimated_transport: { type: "number" },
-                    estimated_recon: { type: "number" },
-                    estimated_labor: { type: "number" },
-                    score: { type: "number" },
-                    evidence_quality: { type: "string", enum: ["Low", "Medium", "High"] },
-                    why_fit: { type: "string" },
-                    caveats: { type: "array", items: { type: "string" } }
-                  },
-                  required: [
-                    "year", "make", "model", "trim", "source_type", "listing_url", "location",
-                    "asking_price", "mileage", "retail_low", "retail_mid", "retail_high",
-                    "estimated_fees", "estimated_transport", "estimated_recon", "estimated_labor",
-                    "score", "evidence_quality", "why_fit", "caveats"
-                  ]
-                }
-              }
-            },
-            required: ["search_summary", "confidence", "opportunities"]
-          }
-        }
-      }
-    })
-  });
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const apiMessage = data?.error?.message || data?.error || `OpenAI request failed (HTTP ${response.status}).`;
-    return json(response.status, { error: String(apiMessage) });
-  }
-
-  const outputText = extractOutputText(data);
-  if (!outputText) return json(502, { error: "AI returned no vehicle opportunities." });
-
-  let result;
-  try { result = JSON.parse(outputText); }
-  catch { return json(502, { error: "AI returned an unreadable opportunity search." }); }
-
-  const sourceUrls = collectSourceUrls(data);
-  const allSourceUrls = [...sourceUrls];
-  const rawOpportunities = Array.isArray(result.opportunities) ? result.opportunities : [];
-  const opportunities = [];
-  let omittedUnverified = 0;
-  let verificationTimedOut = false;
-
-  // First accept any candidate already backed by a direct source URL from discovery.
-  // Only the most promising remaining candidates get one batched verification request,
-  // which keeps this Netlify function inside a safe synchronous time budget.
-  const pending = [];
-  rawOpportunities.forEach((raw, index) => {
-    const rawUrl = normalizeUrl(raw.listing_url);
-    const verifiedUrl = findVerifiedSourceUrl(rawUrl, sourceUrls);
-    if (verifiedUrl) {
-      pending.push({ index, candidate: raw, direct_verified_url: verifiedUrl });
-    } else {
-      pending.push({ index, candidate: raw, direct_verified_url: "" });
+        "You are GrowthWise Vehicle Scout for a small independent dealership with an in-house repair shop. Search CURRENT public vehicle listings and surface plausible acquisition RESEARCH LEADS. This is a fast scouting pass, not final listing verification. Do not invent vehicles, prices, mileage, locations, VINs, title status, condition, accident history, repair needs or completed-sale prices. Use current public listing evidence only. Return a short list of the best research leads and conservative economics. A later separate verification step will confirm the exact direct listing page before a lead can be watched or treated as verified. If evidence is weak, return fewer leads. Return only the requested structured data.",
+      input:[{role:"user",content:[{type:"input_text",text:`Find up to ${maxResults} current vehicle research leads matching these criteria:\n\n${criteria}\n\nFor each lead, use visible public asking price and mileage when available. Estimate local retail conservatively, estimate fees/transport/recon/internal labor as allowances, and score 0-100 for likely fit. listing_url may be a candidate/detail URL if the search exposes one, but it is NOT considered verified until a later verification step.`}]}],
+      text:{verbosity:"low",format:{type:"json_schema",name:"growthwise_vehicle_scout_fast",strict:true,schema:{type:"object",additionalProperties:false,properties:{search_summary:{type:"string"},confidence:{type:"string",enum:["Low","Medium","High"]},opportunities:{type:"array",maxItems:5,items:{type:"object",additionalProperties:false,properties:{year:{type:"number"},make:{type:"string"},model:{type:"string"},trim:{type:"string"},source_type:{type:"string"},listing_url:{type:"string"},location:{type:"string"},asking_price:{type:"number"},mileage:{type:"number"},retail_low:{type:"number"},retail_mid:{type:"number"},retail_high:{type:"number"},estimated_fees:{type:"number"},estimated_transport:{type:"number"},estimated_recon:{type:"number"},estimated_labor:{type:"number"},score:{type:"number"},evidence_quality:{type:"string",enum:["Low","Medium","High"]},why_fit:{type:"string"},caveats:{type:"array",items:{type:"string"}}},required:["year","make","model","trim","source_type","listing_url","location","asking_price","mileage","retail_low","retail_mid","retail_high","estimated_fees","estimated_transport","estimated_recon","estimated_labor","score","evidence_quality","why_fit","caveats"]}}},required:["search_summary","confidence","opportunities"]}}}
+    })});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok){const msg=data?.error?.message||data?.error||`OpenAI request failed (HTTP ${response.status}).`;return json(response.status,{error:String(msg)})}
+    const text=extractOutputText(data); if(!text) return json(502,{error:"AI returned no vehicle opportunities."});
+    let result; try{result=JSON.parse(text)}catch{return json(502,{error:"AI returned an unreadable opportunity search."})}
+    const sourceUrls=collectSourceUrls(data);
+    const opportunities=[];
+    for(const raw of Array.isArray(result.opportunities)?result.opportunities:[]){
+      const ask=Math.max(0,num(raw.asking_price));
+      const retailLow=Math.max(0,num(raw.retail_low));
+      const retailMid=Math.max(retailLow,num(raw.retail_mid));
+      const retailHigh=Math.max(retailMid,num(raw.retail_high));
+      const fees=Math.max(0,num(raw.estimated_fees));
+      const transport=Math.max(0,num(raw.estimated_transport));
+      const recon=Math.max(0,num(raw.estimated_recon));
+      const labor=Math.max(0,num(raw.estimated_labor));
+      const allIn=ask+fees+transport+recon+labor;
+      const projectedGross=retailMid-allIn;
+      const roi=allIn>0?(projectedGross/allIn)*100:0;
+      const maxBuy=Math.max(0,retailMid-fees-transport-recon-labor-targetGross);
+      let recommendation="WATCH";
+      if(ask>0&&projectedGross>=targetGross&&roi>=15&&ask<=maxPurchase) recommendation="STRONG LEAD";
+      else if(ask>maxPurchase||projectedGross<Math.max(1000,targetGross*.5)||roi<5) recommendation="PASS";
+      opportunities.push({
+        year:Math.round(num(raw.year)),make:clean(raw.make,80),model:clean(raw.model,100),trim:clean(raw.trim,100),source_type:clean(raw.source_type,80),
+        listing_url:"",discovery_url:normalizeUrl(raw.listing_url),verified:false,location:clean(raw.location,160),asking_price:Math.round(ask),mileage:Math.round(Math.max(0,num(raw.mileage))),
+        retail_low:Math.round(retailLow),retail_mid:Math.round(retailMid),retail_high:Math.round(retailHigh),estimated_fees:Math.round(fees),estimated_transport:Math.round(transport),estimated_recon:Math.round(recon),estimated_labor:Math.round(labor),
+        projected_all_in:Math.round(allIn),projected_gross:Math.round(projectedGross),projected_roi:Math.round(roi*10)/10,recommended_max_buy:Math.round(maxBuy),score:Math.max(0,Math.min(100,Math.round(num(raw.score)))),evidence_quality:clean(raw.evidence_quality,20)||"Low",recommendation,why_fit:clean(raw.why_fit,800),caveats:Array.isArray(raw.caveats)?raw.caveats.map(v=>clean(v,320)).filter(Boolean):[]
+      });
     }
-  });
-
-  const needsVerification = pending
-    .filter(v => !v.direct_verified_url)
-    .sort((a, b) => num(b.candidate.score) - num(a.candidate.score))
-    .slice(0, 3);
-
-  const batchVerification = needsVerification.length
-    ? await verifyCandidateBatch({ openaiKey, model, candidates: needsVerification, retailMarket })
-    : { sources: [], matches: new Map(), timed_out: false };
-
-  verificationTimedOut = Boolean(batchVerification.timed_out);
-  for (const u of batchVerification.sources || []) {
-    if (u && !allSourceUrls.includes(u)) allSourceUrls.push(u);
-  }
-
-  for (const entry of pending) {
-    const raw = entry.candidate;
-    let verifiedUrl = entry.direct_verified_url;
-    let verifiedListingData = null;
-
-    if (!verifiedUrl) {
-      const verified = batchVerification.matches?.get(entry.index);
-      if (verified?.url) {
-        verifiedUrl = verified.url;
-        verifiedListingData = verified.data;
-      }
-    }
-
-    if (!verifiedUrl) {
-      omittedUnverified += 1;
-      continue;
-    }
-
-    let ask = Math.max(0, num(raw.asking_price));
-    const retailLow = Math.max(0, num(raw.retail_low));
-    const retailMid = Math.max(retailLow, num(raw.retail_mid));
-    const retailHigh = Math.max(retailMid, num(raw.retail_high));
-    const fees = Math.max(0, num(raw.estimated_fees));
-    const transport = Math.max(0, num(raw.estimated_transport));
-    const recon = Math.max(0, num(raw.estimated_recon));
-    const labor = Math.max(0, num(raw.estimated_labor));
-    let mileage = Math.round(Math.max(0, num(raw.mileage)));
-
-    if (verifiedListingData) {
-      const verifiedAsk = Math.max(0, num(verifiedListingData.asking_price));
-      const verifiedMileage = Math.max(0, num(verifiedListingData.mileage));
-      if (verifiedAsk) ask = verifiedAsk;
-      if (verifiedMileage) mileage = Math.round(verifiedMileage);
-    }
-
-    const allIn = ask + fees + transport + recon + labor;
-    const projectedGross = retailMid - allIn;
-    const roi = allIn > 0 ? (projectedGross / allIn) * 100 : 0;
-    const maxBuy = Math.max(0, retailMid - fees - transport - recon - labor - targetGross);
-
-    let recommendation = "WATCH";
-    if (ask > 0 && projectedGross >= targetGross && roi >= 15 && ask <= maxPurchase) recommendation = "STRONG LEAD";
-    else if (ask > maxPurchase || projectedGross < Math.max(1000, targetGross * 0.5) || roi < 5) recommendation = "PASS";
-
-    opportunities.push({
-      year: Math.round(num(raw.year)),
-      make: clean(raw.make, 80),
-      model: clean(raw.model, 100),
-      trim: clean(raw.trim, 100),
-      source_type: clean(raw.source_type, 80),
-      listing_url: verifiedUrl,
-      location: clean(raw.location, 160),
-      asking_price: Math.round(ask),
-      mileage,
-      retail_low: Math.round(retailLow),
-      retail_mid: Math.round(retailMid),
-      retail_high: Math.round(retailHigh),
-      estimated_fees: Math.round(fees),
-      estimated_transport: Math.round(transport),
-      estimated_recon: Math.round(recon),
-      estimated_labor: Math.round(labor),
-      projected_all_in: Math.round(allIn),
-      projected_gross: Math.round(projectedGross),
-      projected_roi: Math.round(roi * 10) / 10,
-      recommended_max_buy: Math.round(maxBuy),
-      score: Math.max(0, Math.min(100, Math.round(num(raw.score)))),
-      evidence_quality: clean(raw.evidence_quality, 20) || "Low",
-      recommendation,
-      why_fit: clean(raw.why_fit, 800),
-      caveats: Array.isArray(raw.caveats) ? raw.caveats.map(v => clean(v, 320)).filter(Boolean) : [],
-    });
-  }
-
-  opportunities.sort((a, b) => b.score - a.score || b.projected_gross - a.projected_gross);
-
-  const verificationNote = verificationTimedOut ? " Candidate verification reached the demo time limit, so unverified leads were withheld instead of delaying the page." : "";
-  const verifiedSummary = opportunities.length
-    ? `${opportunities.length} candidate listing${opportunities.length === 1 ? "" : "s"} verified against returned web-search sources. ${omittedUnverified ? `${omittedUnverified} unverified candidate${omittedUnverified === 1 ? " was" : "s were"} withheld.` : ""}${verificationNote}`.trim()
-    : `No candidate-level listing links could be verified from this search. ${omittedUnverified ? `${omittedUnverified} unverified candidate${omittedUnverified === 1 ? " was" : "s were"} withheld.` : ""}${verificationNote} Broaden the criteria or rerun the search; GrowthWise will not present unverifiable leads as current listings.`;
-
-  return json(200, {
-    ok: true,
-    model,
-    search_summary: `${verifiedSummary}${result.search_summary ? ` ${clean(result.search_summary, 1200)}` : ""}`.trim(),
-    confidence: opportunities.length ? (clean(result.confidence, 20) || "Low") : "Low",
-    criteria: {
-      retail_market: retailMarket,
-      search_radius: Math.round(searchRadius),
-      max_purchase: Math.round(maxPurchase),
-      target_gross: Math.round(targetGross),
-      min_year: Math.round(minYear),
-      max_year: Math.round(maxYear),
-      max_mileage: Math.round(maxMileage),
-      vehicle_types: vehicleTypes,
-      preferred_makes: preferredMakes,
-    },
-    opportunities,
-    source_urls: allSourceUrls.slice(0, 40),
-    omitted_unverified: omittedUnverified,
-    caution: "Only candidates whose direct listing page was verified against web-search sources are shown. GrowthWise performs at most one batched verification pass for the strongest candidates and withholds anything it cannot verify within the demo time budget. Opportunity search is still preliminary: verify listing availability, VIN, title, condition, fees, transport and repair needs before buying or bidding."
-  });
+    opportunities.sort((a,b)=>b.score-a.score||b.projected_gross-a.projected_gross);
+    return json(200,{ok:true,model,search_summary:`Fast research pass complete. Exact listing verification is intentionally deferred to a separate one-candidate step so Vehicle Scout stays responsive. ${clean(result.search_summary,1200)}`.trim(),confidence:clean(result.confidence,20)||"Low",criteria:{retail_market:retailMarket,search_radius:Math.round(searchRadius),max_purchase:Math.round(maxPurchase),target_gross:Math.round(targetGross),min_year:Math.round(minYear),max_year:Math.round(maxYear),max_mileage:Math.round(maxMileage),vehicle_types:vehicleTypes,preferred_makes:preferredMakes},opportunities,source_urls:sourceUrls,caution:"These are research leads, not verified listings. Auto City should tap Verify exact listing before opening, watching, bidding on or relying on a candidate."});
+  }catch(err){
+    if(err?.name==="AbortError") return json(200,{ok:true,search_summary:"Vehicle Scout reached the fast-search time limit before it could return reliable research leads. Try a narrower search or rerun it; GrowthWise did not fabricate results.",confidence:"Low",opportunities:[],source_urls:[],caution:"Search timed out safely; no unverified vehicle was presented as a current listing."});
+    return json(502,{error:"Vehicle Scout could not complete the public-listing research pass."});
+  }finally{clearTimeout(timer)}
 };
