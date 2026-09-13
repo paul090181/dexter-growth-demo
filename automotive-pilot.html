@@ -146,7 +146,16 @@ body{
 .marketing-plan-box strong{display:block;margin-bottom:6px}.marketing-plan-box p{margin:0;color:#4f5f6d;font-size:13px;line-height:1.5}
 .marketing-list{margin:7px 0 0;padding-left:19px;color:#4f5f6d;font-size:13px;line-height:1.5}.marketing-list li+li{margin-top:5px}
 .marketing-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.marketing-kpi{background:#101b25;color:#fff;border-radius:13px;padding:11px}.marketing-kpi strong{display:block;font-size:16px}.marketing-kpi span{display:block;font-size:9px;letter-spacing:.05em;opacity:.7;margin-top:2px;text-transform:uppercase}
-@media(max-width:390px){.marketing-grid,.marketing-kpis{grid-template-columns:1fr}.dash-logo{width:48px;height:48px}}
+
+.marketing-draft-block{margin-top:11px}
+.marketing-draft-block>label{margin-top:0}
+.copy-action-row{display:flex;justify-content:flex-end;margin-top:7px}
+.copy-draft-btn{border:1px solid #d6e0e8;background:#eef3f7;color:#23384b;border-radius:11px;padding:9px 12px;font-weight:900;font-size:12px;cursor:pointer;min-width:132px;transition:transform .12s ease,background .12s ease,border-color .12s ease}
+.copy-draft-btn:active{transform:scale(.98)}
+.copy-draft-btn.copied{background:#e8f5ea;border-color:#c9e4ce;color:#285e32}
+.copy-draft-btn.copy-error{background:#fff0ee;border-color:#f0d0cb;color:#963b31}
+@media(max-width:390px){.marketing-grid,.marketing-kpis{grid-template-columns:1fr}.dash-logo{width:48px;height:48px}.copy-draft-btn{width:100%}}
+
 
 </style>
 </head>
@@ -542,9 +551,18 @@ body{
         <div class="marketing-plan-box"><strong>Price strategy</strong><p id="marketingPriceStrategy"></p></div>
         <div class="marketing-plan-box"><strong>Protect the margin</strong><p id="marketingMarginNote"></p></div>
         <div class="marketing-plan-box"><strong>Photo / merchandising plan</strong><ul class="marketing-list" id="marketingPhotoPlan"></ul></div>
-        <label>Listing headline<input id="marketingHeadline" /></label>
-        <label>Facebook campaign<textarea id="marketingFacebook"></textarea></label>
-        <label>Instagram campaign<textarea id="marketingInstagram"></textarea></label>
+        <div class="marketing-draft-block">
+          <label>Listing headline<input id="marketingHeadline" /></label>
+          <div class="copy-action-row"><button class="copy-draft-btn" id="copyMarketingHeadline" type="button">Copy headline</button></div>
+        </div>
+        <div class="marketing-draft-block">
+          <label>Facebook campaign<textarea id="marketingFacebook"></textarea></label>
+          <div class="copy-action-row"><button class="copy-draft-btn" id="copyMarketingFacebook" type="button">Copy Facebook</button></div>
+        </div>
+        <div class="marketing-draft-block">
+          <label>Instagram campaign<textarea id="marketingInstagram"></textarea></label>
+          <div class="copy-action-row"><button class="copy-draft-btn" id="copyMarketingInstagram" type="button">Copy Instagram</button></div>
+        </div>
         <div class="marketing-plan-box"><strong>Staff next steps</strong><ul class="marketing-list" id="marketingStaffSteps"></ul></div>
         <div class="marketing-plan-box hidden" id="marketingMissingBox"><strong>What would make this recommendation smarter</strong><ul class="marketing-list" id="marketingMissing"></ul></div>
         <div class="note"><strong>Pilot safety:</strong> GrowthWise creates the plan and drafts. Auto City reviews pricing, offers, vehicle facts and customer-facing content before anything is published or sent.</div>
@@ -1268,6 +1286,48 @@ function currentVehicleLabel(){
   const f=vehicleFacts();
   return [f.year,f.make,f.model,f.trim].filter(Boolean).join(' ').trim();
 }
+
+async function copyMarketingDraft(sourceId,buttonId,successLabel){
+  const source=$(sourceId), button=$(buttonId);
+  if(!source || !button) return;
+  const text=String(source.value||source.textContent||'').trim();
+  if(!text){
+    const original=button.dataset.originalLabel||button.textContent;
+    button.dataset.originalLabel=original;
+    button.textContent='Nothing to copy';
+    button.classList.add('copy-error');
+    setTimeout(()=>{button.textContent=original;button.classList.remove('copy-error');},1500);
+    return;
+  }
+  const original=button.dataset.originalLabel||button.textContent;
+  button.dataset.originalLabel=original;
+  try{
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+    }else{
+      source.focus();
+      if(typeof source.select==='function') source.select();
+      source.setSelectionRange?.(0,text.length);
+      const ok=document.execCommand('copy');
+      if(!ok) throw new Error('Copy command unavailable');
+    }
+    button.textContent=successLabel||'Copied ✓';
+    button.classList.remove('copy-error');
+    button.classList.add('copied');
+    setTimeout(()=>{button.textContent=original;button.classList.remove('copied');},1600);
+  }catch{
+    button.textContent='Select + copy';
+    button.classList.add('copy-error');
+    source.focus();
+    if(typeof source.select==='function') source.select();
+    source.setSelectionRange?.(0,text.length);
+    setTimeout(()=>{button.textContent=original;button.classList.remove('copy-error');},2200);
+  }
+}
+
+$('copyMarketingHeadline')?.addEventListener('click',()=>copyMarketingDraft('marketingHeadline','copyMarketingHeadline','Headline copied ✓'));
+$('copyMarketingFacebook')?.addEventListener('click',()=>copyMarketingDraft('marketingFacebook','copyMarketingFacebook','Facebook copied ✓'));
+$('copyMarketingInstagram')?.addEventListener('click',()=>copyMarketingDraft('marketingInstagram','copyMarketingInstagram','Instagram copied ✓'));
 function useCurrentVehicleForMarketing(){
   const label=currentVehicleLabel();
   if(label) $('marketingVehicle').value=label;
