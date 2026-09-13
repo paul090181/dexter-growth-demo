@@ -37,7 +37,7 @@
         <h3>Today</h3>
         <div class="today-line"><span class="today-dot"></span><div><strong id="todayVehicleStatus">No vehicle in progress yet.</strong><small>Take a photo below to start a live vehicle workflow.</small></div></div>
         <div class="today-line"><span class="today-dot"></span><div><strong>Deal Finder</strong><small>Evaluate a candidate now; automated opportunity scouting is the next build.</small></div></div>
-        <div class="today-line"><span class="today-dot"></span><div><strong>Service Center</strong><small>Customer reminders, open-bay promotions and declined-service follow-up are queued next.</small></div></div>
+        <div class="today-line"><span class="today-dot"></span><div><strong>Service Center</strong><small>AI customer follow-up, open-bay promotions and service-retention drafts are ready to demo.</small></div></div>
       </div>
 
       <div class="dash-grid">
@@ -51,7 +51,7 @@
         </div>
         <div class="dash-action">
           <div class="dash-row"><div class="dash-icon">🔧</div><div class="dash-copy"><strong>Service Center</strong><small>Fill open appointments, follow up on declined work, promote specials and retain customers.</small></div><span class="dash-tag next">NEXT</span></div>
-          <button class="dash-cta secondary-cta" type="button" id="goService">Preview Service Center</button>
+          <button class="dash-cta secondary-cta" type="button" id="goService">Open Service Center</button>
         </div>
       </div>
     </section>
@@ -185,16 +185,43 @@
 
 
     <section class="card section-anchor" id="servicePreview">
-      <div class="tag">SERVICE CENTER PREVIEW</div>
-      <h3>Turn the repair shop into a retention engine</h3>
-      <p class="helper">For tomorrow's demo this shows where GrowthWise fits. The next build will make these actions AI-assisted and connect them to the shop's real customer/appointment system.</p>
-      <div class="service-preview-grid">
-        <div class="service-preview-item"><strong>Fill open bays</strong><small>Spot slow appointment windows and prepare targeted service offers before technicians sit idle.</small></div>
-        <div class="service-preview-item"><strong>Follow up on declined work</strong><small>Turn technician notes into clear customer messages and schedule a respectful follow-up.</small></div>
-        <div class="service-preview-item"><strong>Maintenance reminders</strong><small>Bring customers back for oil changes, inspections, tires, brakes and seasonal service.</small></div>
-        <div class="service-preview-item"><strong>Promote a special</strong><small>Create Facebook, Instagram, email and SMS copy from one service offer.</small></div>
+      <div class="tag">SERVICE CENTER · LIVE AI DEMO</div>
+      <h3>Turn shop notes into customer retention</h3>
+      <p class="helper">Give GrowthWise the facts the shop already knows. It drafts the customer follow-up, email, social promotion and a recommended staff action. Nothing is sent automatically in the pilot.</p>
+
+      <label class="field">Service workflow
+        <select id="serviceMode">
+          <option value="declined_work">Follow up on declined work</option>
+          <option value="open_bays">Fill open appointment slots</option>
+          <option value="maintenance_reminder">Maintenance reminder</option>
+          <option value="service_special">Promote a service special</option>
+        </select>
+      </label>
+      <div class="grid2">
+        <label class="field">Customer name (optional)<input id="serviceCustomer" placeholder="e.g. Maria" /></label>
+        <label class="field">Vehicle (optional)<input id="serviceVehicle" placeholder="e.g. 2018 Honda CR-V" /></label>
       </div>
-      <div class="demo-ribbon">DEMO PREVIEW · no customer messages are sent from this screen yet</div>
+      <label class="field">Technician / service notes<textarea id="serviceNotes" placeholder="e.g. Front brake pads measured low. Customer declined replacement today. No other facts should be added."></textarea></label>
+      <label class="field">Offer / service details (optional)<textarea id="serviceOffer" placeholder="e.g. $20 off brake service this week, or oil change + tire rotation special"></textarea></label>
+      <label class="field">Open appointments / timing (optional)<input id="serviceAvailability" placeholder="e.g. Thursday 1–4 PM, three openings" /></label>
+
+      <div class="inline-actions">
+        <button class="secondary" id="serviceDemoDeclined" type="button">Load declined-work demo</button>
+        <button class="secondary" id="serviceDemoBays" type="button">Load open-bays demo</button>
+      </div>
+      <button class="primary" id="serviceAiBtn" type="button" style="margin-top:12px">AI create service follow-up &amp; promotion</button>
+      <div id="serviceStatus" class="status hidden"></div>
+
+      <div id="serviceResult" class="result hidden">
+        <label>Customer SMS<textarea id="serviceSms"></textarea></label>
+        <label>Email subject<input id="serviceEmailSubject" /></label>
+        <label>Email body<textarea id="serviceEmailBody"></textarea></label>
+        <label>Social / service promotion<textarea id="serviceSocial"></textarea></label>
+        <div class="mini"><strong>Recommended staff action</strong><div id="serviceStaffAction" style="margin-top:5px"></div></div>
+        <div class="mini"><strong>Suggested follow-up</strong><div id="serviceFollowup" style="margin-top:5px"></div></div>
+        <div class="note" id="serviceCaution"></div>
+      </div>
+      <div class="demo-ribbon">PILOT SAFETY · drafts only; no customer message is sent without staff approval</div>
     </section>
 
     <section class="card">
@@ -488,6 +515,53 @@ $('dealAnalyzeBtn').addEventListener('click', async ()=>{
     $('dealResult').classList.remove('hidden'); dealSnapshot=dealSnapshotKey(); sessionStorage.setItem('growthwise_admin_key',key); calc(); setDealStatus('ok','AI deal analysis ready ✓ Review and adjust the estimates before acting.'); $('dealResult').scrollIntoView({behavior:'smooth',block:'start'});updateReadiness();
   }catch(err){setDealStatus('error',err.message||'Could not analyze the deal.');}
   finally{btn.disabled=false;btn.textContent='AI research market & estimate deal';}
+});
+
+
+function setServiceStatus(kind,msg){setBoxStatus('serviceStatus',kind,msg);}
+$('serviceDemoDeclined')?.addEventListener('click',()=>{
+  $('serviceMode').value='declined_work';
+  $('serviceCustomer').value='Maria';
+  $('serviceVehicle').value='2018 Honda CR-V';
+  $('serviceNotes').value='Front brake pads measured low during inspection. Customer declined replacement today. Do not add any diagnosis, price, or safety claim beyond these notes.';
+  $('serviceOffer').value='';
+  $('serviceAvailability').value='';
+  setServiceStatus('ok','Demo loaded. Tap the AI button to turn rough shop notes into customer-ready communication.');
+});
+$('serviceDemoBays')?.addEventListener('click',()=>{
+  $('serviceMode').value='open_bays';
+  $('serviceCustomer').value='';
+  $('serviceVehicle').value='';
+  $('serviceNotes').value='The shop wants to fill open service appointments without sounding desperate or spammy.';
+  $('serviceOffer').value='Oil change + tire rotation special. Do not invent a price or discount.';
+  $('serviceAvailability').value='Thursday from 1 PM to 4 PM, three openings.';
+  setServiceStatus('ok','Open-bays demo loaded. Tap the AI button to build the campaign.');
+});
+$('serviceAiBtn')?.addEventListener('click', async()=>{
+  const key=$('adminKey').value || sessionStorage.getItem('growthwise_admin_key') || '';
+  if(!key){setServiceStatus('error','Enter the GrowthWise beta admin key in the vehicle section first.');return;}
+  const notes=$('serviceNotes').value.trim(), offer=$('serviceOffer').value.trim(), availability=$('serviceAvailability').value.trim();
+  if(!notes && !offer && !availability){setServiceStatus('error','Add service notes, an offer, or appointment availability first.');return;}
+  const btn=$('serviceAiBtn');btn.disabled=true;btn.textContent='Creating service package…';setServiceStatus('loading','GrowthWise is turning the shop facts into customer-ready follow-up and marketing…');
+  try{
+    const response=await fetch('/.netlify/functions/service-assistant',{method:'POST',headers:{'Content-Type':'application/json','X-GrowthWise-Key':key},body:JSON.stringify({
+      business_name:$('businessName').value.trim()||'Automotive Pilot Service Center',
+      mode:$('serviceMode').value,
+      customer_name:$('serviceCustomer').value.trim(),
+      vehicle:$('serviceVehicle').value.trim(),
+      notes,offer,availability
+    })});
+    const data=await response.json().catch(()=>({}));if(!response.ok) throw new Error(data.error||`Service AI failed (HTTP ${response.status}).`);
+    $('serviceSms').value=data.customer_sms||'';$('serviceEmailSubject').value=data.email_subject||'';$('serviceEmailBody').value=data.email_body||'';$('serviceSocial').value=data.social_caption||'';
+    $('serviceStaffAction').textContent=data.staff_action||'Review the drafts and choose the appropriate customer action.';
+    $('serviceFollowup').textContent=data.suggested_followup||'Set follow-up timing based on the shop workflow.';
+    $('serviceCaution').textContent=data.caution_note||'Review every draft before sending.';
+    $('serviceResult').classList.remove('hidden');sessionStorage.setItem('growthwise_admin_key',key);$('adminKey').value='';
+    setServiceStatus('ok','Service package ready ✓ Review and edit before sending or posting.');
+    $('serviceResult').scrollIntoView({behavior:'smooth',block:'start'});
+    const today=$('todayVehicleStatus');
+  }catch(err){setServiceStatus('error',err.message||'Could not create service package.');}
+  finally{btn.disabled=false;btn.textContent='AI create service follow-up & promotion';}
 });
 
 $('goSell')?.addEventListener('click',()=>{$('sellStart')?.scrollIntoView({behavior:'smooth',block:'start'});});
