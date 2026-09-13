@@ -154,7 +154,18 @@ body{
 .copy-draft-btn:active{transform:scale(.98)}
 .copy-draft-btn.copied{background:#e8f5ea;border-color:#c9e4ce;color:#285e32}
 .copy-draft-btn.copy-error{background:#fff0ee;border-color:#f0d0cb;color:#963b31}
-@media(max-width:390px){.marketing-grid,.marketing-kpis{grid-template-columns:1fr}.dash-logo{width:48px;height:48px}.copy-draft-btn{width:100%}}
+.campaign-photo-panel{margin-top:12px;border:1px solid #dfe6eb;background:#f8fafb;border-radius:14px;padding:12px}
+.campaign-photo-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+.campaign-photo-actions label,.campaign-photo-actions button{border:0;border-radius:11px;padding:10px 11px;font-weight:900;font-size:12px;text-align:center;cursor:pointer;background:#eaf0f4;color:#23384b}
+.campaign-photo-actions label{background:#101b25;color:#fff}.campaign-photo-actions input{display:none}
+.campaign-photo-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:10px}
+.campaign-thumb{position:relative;aspect-ratio:1.2/1;border-radius:10px;overflow:hidden;background:#e7edf1;border:1px solid #d8e1e7}
+.campaign-thumb img{width:100%;height:100%;object-fit:cover;display:block}.campaign-thumb span{position:absolute;left:5px;bottom:5px;background:rgba(9,17,24,.82);color:#fff;border-radius:999px;padding:3px 6px;font-size:9px;font-weight:900}
+.fb-publish-card{margin-top:13px;border:1px solid #cfdbe4;background:linear-gradient(180deg,#f7fbfe,#eef5f9);border-radius:15px;padding:13px}
+.fb-publish-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.fb-publish-head strong{display:block}.fb-page-badge{font-size:10px;font-weight:950;border-radius:999px;padding:6px 8px;background:#edf1f4;color:#53616d;white-space:nowrap}.fb-page-badge.ok{background:#e8f5ea;color:#285e32}.fb-page-badge.error{background:#fff0ee;color:#963b31}
+.fb-preview{margin-top:10px;border:1px solid #dce4e9;border-radius:13px;background:#fff;overflow:hidden}.fb-preview-images{display:grid;grid-template-columns:repeat(2,1fr);gap:2px;background:#dbe3e8}.fb-preview-images.one{grid-template-columns:1fr}.fb-preview-images img{width:100%;height:140px;object-fit:cover;display:block}.fb-preview-copy{padding:11px;font-size:12px;line-height:1.45;white-space:pre-wrap;color:#273746}
+.fb-publish-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.fb-publish-actions button{border:0;border-radius:11px;padding:11px 12px;font-weight:900;cursor:pointer}.fb-preview-btn{background:#e6edf2;color:#203749}.fb-live-btn{background:#1769aa;color:#fff}.fb-live-btn:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:390px){.marketing-grid,.marketing-kpis{grid-template-columns:1fr}.dash-logo{width:48px;height:48px}.copy-draft-btn{width:100%}.campaign-photo-actions,.fb-publish-actions{grid-template-columns:1fr}.campaign-photo-strip{grid-template-columns:repeat(2,1fr)}}
 
 
 </style>
@@ -534,6 +545,18 @@ body{
       </div>
       <label class="field">Known pricing history<input id="marketingPriceHistory" placeholder="e.g. Listed at $14,495; reduced to $13,995 after 30 days" /></label>
       <label class="field">Known vehicle + marketing facts<textarea id="marketingFacts" placeholder="Only facts you know: trim/features, condition notes, photos already taken, channels already posted, inquiries, recent service, etc."></textarea></label>
+      <div class="campaign-photo-panel">
+        <strong>Campaign photos</strong>
+        <div class="field-note">GrowthWise will package the approved campaign with real vehicle photos. Use the current Sell photo or add up to 4 photos for this pilot.</div>
+        <div class="campaign-photo-actions">
+          <button id="marketingUseSellPhoto" type="button">Use current Sell photo</button>
+          <label for="marketingPhotoInput">Choose campaign photos<input id="marketingPhotoInput" type="file" accept="image/*" multiple /></label>
+          <button id="marketingClearPhotos" type="button">Clear photos</button>
+          <button id="marketingPreviewPhotos" type="button">Preview campaign</button>
+        </div>
+        <div id="marketingPhotoCount" class="field-note" style="margin-top:8px">0 photos selected</div>
+        <div id="marketingPhotoStrip" class="campaign-photo-strip"></div>
+      </div>
       <button class="primary" id="marketingAnalyzeBtn" type="button" style="margin-top:14px">AI create Move This Vehicle plan</button>
       <div id="marketingStatus" class="status hidden"></div>
 
@@ -558,6 +581,22 @@ body{
         <div class="marketing-draft-block">
           <label>Facebook campaign<textarea id="marketingFacebook"></textarea></label>
           <div class="copy-action-row"><button class="copy-draft-btn" id="copyMarketingFacebook" type="button">Copy Facebook</button></div>
+          <div class="fb-publish-card">
+            <div class="fb-publish-head">
+              <div><strong>Full Facebook campaign</strong><div class="field-note">For this pilot, publishing is locked to your GrowthWise Test Page. The Facebook token stays server-side in Netlify.</div></div>
+              <span class="fb-page-badge" id="marketingFbBadge">NOT CHECKED</span>
+            </div>
+            <div id="marketingFbPageName" class="field-note" style="margin-top:7px">Check the connection before publishing.</div>
+            <div id="marketingFacebookPreview" class="fb-preview hidden">
+              <div id="marketingFacebookPreviewImages" class="fb-preview-images"></div>
+              <div id="marketingFacebookPreviewCopy" class="fb-preview-copy"></div>
+            </div>
+            <div class="fb-publish-actions">
+              <button class="fb-preview-btn" id="marketingFbPreviewBtn" type="button">Preview full post</button>
+              <button class="fb-live-btn" id="marketingFbPublishBtn" type="button" disabled>Publish TEST post</button>
+            </div>
+            <div id="marketingFbStatus" class="status hidden"></div>
+          </div>
         </div>
         <div class="marketing-draft-block">
           <label>Instagram campaign<textarea id="marketingInstagram"></textarea></label>
@@ -574,20 +613,24 @@ body{
       <h3>Where should GrowthWise send it?</h3>
       <p class="helper">These choices are included now so the dealership can tell us what matters. We will only enable live publishing after each business connects its own accounts.</p>
       <div class="dest">
-        <label><input type="checkbox" checked /> Facebook <span class="badge">connect next</span></label>
+        <label><input type="checkbox" checked /> Facebook <span class="badge">TEST PAGE LIVE</span></label>
         <label><input type="checkbox" checked /> Instagram <span class="badge">connect next</span></label>
         <label><input type="checkbox" /> Dealership website <span class="badge">needs platform</span></label>
         <label><input type="checkbox" /> Google Business Profile <span class="badge">future</span></label>
         <label><input type="checkbox" /> Dealer marketplace <span class="badge">future</span></label>
         <label><input type="checkbox" /> Other / request a destination <span class="badge">feedback</span></label>
       </div>
-      <div class="note"><strong>Pilot safety:</strong> this screen does not publish to the dealership yet. It prepares the content while we connect the business's real accounts and website.</div>
+      <div class="note"><strong>Pilot safety:</strong> Facebook test publishing is enabled only for the GrowthWise Test Page. Auto City’s real Facebook, Instagram, website and marketplace accounts remain unconnected until the dealership explicitly authorizes them.</div>
     </section>
   </main>
 </div>
 <script>
 let imageDataUrl = '';
 let objectUrl = '';
+let marketingCampaignImages = [];
+const GROWTHWISE_TEST_FACEBOOK_PAGE = 'GrowthWise Test Page';
+let marketingFacebookConnected = false;
+let marketingFacebookPageName = '';
 let aiRecommendedPurchase = 0;
 let lastIdentifySuggestion = null;
 let listingSnapshot = '';
@@ -1325,6 +1368,75 @@ async function copyMarketingDraft(sourceId,buttonId,successLabel){
   }
 }
 
+
+function setMarketingFbStatus(kind,msg){const el=$('marketingFbStatus');if(!el)return;el.className=`status ${kind}`;el.textContent=msg;}
+function renderMarketingCampaignPhotos(){
+  const strip=$('marketingPhotoStrip'), count=$('marketingPhotoCount'); if(!strip||!count)return;
+  strip.replaceChildren();
+  marketingCampaignImages.forEach((src,i)=>{const box=document.createElement('div');box.className='campaign-thumb';const img=document.createElement('img');img.src=src;img.alt=`Campaign vehicle photo ${i+1}`;const tag=document.createElement('span');tag.textContent=i===0?'HERO':`PHOTO ${i+1}`;box.append(img,tag);strip.appendChild(box);});
+  count.textContent=`${marketingCampaignImages.length} photo${marketingCampaignImages.length===1?'':'s'} selected${marketingCampaignImages.length?' · first photo will lead the campaign':''}`;
+  renderMarketingFacebookPreview(false);
+}
+async function optimizeCampaignImage(file){
+  const raw=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file);});
+  const img=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=reject;i.src=raw;});
+  const max=1200,scale=Math.min(1,max/Math.max(img.width,img.height));
+  const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.width*scale));canvas.height=Math.max(1,Math.round(img.height*scale));canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+  return canvas.toDataURL('image/jpeg',.80);
+}
+async function addMarketingPhotoFiles(files){
+  const chosen=Array.from(files||[]).slice(0,Math.max(0,4-marketingCampaignImages.length));
+  if(!chosen.length)return;
+  setMarketingFbStatus('loading','Preparing campaign photos…');
+  try{for(const file of chosen){marketingCampaignImages.push(await optimizeCampaignImage(file));}renderMarketingCampaignPhotos();setMarketingFbStatus('ok',`${marketingCampaignImages.length} campaign photo${marketingCampaignImages.length===1?'':'s'} ready.`);}catch{setMarketingFbStatus('error','One of the selected photos could not be prepared.');}
+}
+$('marketingPhotoInput')?.addEventListener('change',e=>{addMarketingPhotoFiles(e.target.files);e.target.value='';});
+$('marketingUseSellPhoto')?.addEventListener('click',()=>{if(!imageDataUrl){setMarketingFbStatus('warn','No Sell photo is loaded yet. Take or choose a vehicle photo in the Sell section, or choose campaign photos here.');return;}if(!marketingCampaignImages.includes(imageDataUrl)){marketingCampaignImages.unshift(imageDataUrl);marketingCampaignImages=marketingCampaignImages.slice(0,4);}renderMarketingCampaignPhotos();setMarketingFbStatus('ok','Current Sell photo added as the campaign hero image.');});
+$('marketingClearPhotos')?.addEventListener('click',()=>{marketingCampaignImages=[];renderMarketingCampaignPhotos();setMarketingFbStatus('warn','Campaign photos cleared. Add at least one real vehicle photo before publishing.');});
+function renderMarketingFacebookPreview(scroll=true){
+  const preview=$('marketingFacebookPreview'),imgs=$('marketingFacebookPreviewImages'),copy=$('marketingFacebookPreviewCopy');if(!preview||!imgs||!copy)return;
+  imgs.replaceChildren();
+  marketingCampaignImages.forEach(src=>{const img=document.createElement('img');img.src=src;img.alt='Vehicle campaign photo';imgs.appendChild(img);});
+  imgs.classList.toggle('one',marketingCampaignImages.length===1);
+  copy.textContent=$('marketingFacebook')?.value.trim()||'Generate or enter Facebook campaign copy to preview the finished post.';
+  preview.classList.remove('hidden');
+  if(scroll)preview.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+$('marketingPreviewPhotos')?.addEventListener('click',()=>renderMarketingFacebookPreview());
+$('marketingFbPreviewBtn')?.addEventListener('click',()=>renderMarketingFacebookPreview());
+$('marketingFacebook')?.addEventListener('input',()=>renderMarketingFacebookPreview(false));
+async function checkMarketingFacebookConnection(showStatus=true){
+  const key=sessionStorage.getItem('growthwise_admin_key')||'';
+  if(!key){marketingFacebookConnected=false;$('marketingFbPublishBtn').disabled=true;if(showStatus)setMarketingFbStatus('error','Unlock AI in Demo access first.');return false;}
+  const badge=$('marketingFbBadge');badge.textContent='CHECKING…';badge.className='fb-page-badge';
+  try{
+    const r=await fetch('/.netlify/functions/facebook-post',{method:'GET',headers:{'X-GrowthWise-Key':key}});const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(d.error||`Facebook connection check failed (HTTP ${r.status}).`);
+    marketingFacebookPageName=String(d.page_name||'Connected Facebook Page');
+    const isTest=marketingFacebookPageName.trim().toLowerCase()===GROWTHWISE_TEST_FACEBOOK_PAGE.toLowerCase();
+    marketingFacebookConnected=!!d.connected&&isTest;
+    badge.textContent=isTest?'TEST PAGE CONNECTED':'WRONG PAGE';badge.className=`fb-page-badge ${isTest?'ok':'error'}`;
+    $('marketingFbPageName').textContent=isTest?`Connected safely to ${marketingFacebookPageName}.`:`Connected Page is “${marketingFacebookPageName}”. Publishing is blocked because this pilot is locked to ${GROWTHWISE_TEST_FACEBOOK_PAGE}.`;
+    $('marketingFbPublishBtn').disabled=!marketingFacebookConnected;
+    if(showStatus)setMarketingFbStatus(isTest?'ok':'error',isTest?'GrowthWise Test Page is ready for a real test post.':'Publishing blocked to protect the wrong Facebook Page.');
+    return marketingFacebookConnected;
+  }catch(err){marketingFacebookConnected=false;badge.textContent='NOT CONNECTED';badge.className='fb-page-badge error';$('marketingFbPublishBtn').disabled=true;if(showStatus)setMarketingFbStatus('error',err.message||'Could not verify Facebook.');return false;}
+}
+$('marketingFbPublishBtn')?.addEventListener('click',async()=>{
+  const key=sessionStorage.getItem('growthwise_admin_key')||'';
+  if(!key){setMarketingFbStatus('error','Unlock AI first.');return;}
+  if(!marketingCampaignImages.length){setMarketingFbStatus('error','Add at least one real vehicle photo before publishing the test campaign.');return;}
+  const message=$('marketingFacebook').value.trim();if(!message){setMarketingFbStatus('error','Facebook campaign copy is empty.');return;}
+  if(!marketingFacebookConnected && !(await checkMarketingFacebookConnection(true)))return;
+  const btn=$('marketingFbPublishBtn');btn.disabled=true;const old=btn.textContent;btn.textContent='Publishing test…';setMarketingFbStatus('loading',`Publishing the approved campaign to ${marketingFacebookPageName}…`);
+  try{
+    const r=await fetch('/.netlify/functions/facebook-post',{method:'POST',headers:{'Content-Type':'application/json','X-GrowthWise-Key':key},body:JSON.stringify({message,image_data_urls:marketingCampaignImages.slice(0,4),expected_page_name:GROWTHWISE_TEST_FACEBOOK_PAGE})});
+    const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Facebook publish failed (HTTP ${r.status}).`);
+    setMarketingFbStatus('ok',`TEST post published ✓ ${d.photo_count||marketingCampaignImages.length} photo${(d.photo_count||marketingCampaignImages.length)===1?'':'s'} + campaign copy sent to ${d.page_name||marketingFacebookPageName}.`);
+    btn.textContent='Published ✓';setTimeout(()=>{btn.textContent=old;btn.disabled=!marketingFacebookConnected;},2600);
+  }catch(err){setMarketingFbStatus('error',err.message||'Could not publish the test campaign.');btn.textContent=old;btn.disabled=!marketingFacebookConnected;}
+});
+
 $('copyMarketingHeadline')?.addEventListener('click',()=>copyMarketingDraft('marketingHeadline','copyMarketingHeadline','Headline copied ✓'));
 $('copyMarketingFacebook')?.addEventListener('click',()=>copyMarketingDraft('marketingFacebook','copyMarketingFacebook','Facebook copied ✓'));
 $('copyMarketingInstagram')?.addEventListener('click',()=>copyMarketingDraft('marketingInstagram','copyMarketingInstagram','Instagram copied ✓'));
@@ -1398,7 +1510,9 @@ $('marketingAnalyzeBtn')?.addEventListener('click',async()=>{
     $('marketingMissingBox').classList.toggle('hidden',missing.length===0);
     $('marketingResult').classList.remove('hidden');
     sessionStorage.setItem('growthwise_admin_key',key);
-    setMarketingStatus('ok','Move This Vehicle plan ready ✓ Auto City can edit the drafts before using them.');
+    setMarketingStatus('ok','Move This Vehicle plan ready ✓ Auto City can edit the drafts, preview the full campaign, and publish a test to the GrowthWise Test Page.');
+    renderMarketingFacebookPreview(false);
+    checkMarketingFacebookConnection(false);
     $('marketingResult').scrollIntoView({behavior:'smooth',block:'start'});
   }catch(err){setMarketingStatus('error',err.message||'Could not create the marketing plan.');}
   finally{btn.disabled=false;btn.textContent='AI create Move This Vehicle plan';}
