@@ -8,9 +8,6 @@ function json(status, body) {
 }
 function clean(value, max=5000){return String(value??"").trim().slice(0,max)}
 function num(value,fallback=0){const n=Number(value);return Number.isFinite(n)?n:fallback}
-function extractOutputText(data){for(const item of data?.output||[]){if(item?.type!=="message")continue;for(const part of item?.content||[]){if(part?.type==="output_text"&&typeof part.text==="string")return part.text}}return ""}
-function collectSourceUrls(data){const urls=[];for(const item of data?.output||[]){if(item?.type!=="web_search_call")continue;for(const source of item?.action?.sources||[]){if(source?.url&&!urls.includes(source.url))urls.push(source.url)}}return urls.slice(0,20)}
-function normalizeUrl(url){const v=clean(url,1200);return /^https?:\/\//i.test(v)?v:""}
 
 export default async (request)=>{
   if(request.method==="OPTIONS") return new Response(null,{status:204,headers:{"Access-Control-Allow-Methods":"POST, OPTIONS","Access-Control-Allow-Headers":"Content-Type, X-GrowthWise-Key"}});
@@ -49,50 +46,41 @@ export default async (request)=>{
     notes&&`Dealer preferences / notes: ${notes}`,
   ].filter(Boolean).join("\n");
 
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),7500);
-  try{
-    const response=await fetch(OPENAI_URL,{method:"POST",signal:controller.signal,headers:{"Authorization":`Bearer ${openaiKey}`,"Content-Type":"application/json"},body:JSON.stringify({
-      model,store:false,include:["web_search_call.action.sources"],reasoning:{effort:"none"},
-      tools:[{type:"web_search",search_context_size:"low",user_location:{type:"approximate",city:retailMarket,country:"US"}}],
-      instructions:
-        "You are GrowthWise Vehicle Scout for a small independent dealership with an in-house repair shop. Search CURRENT public vehicle listings and surface plausible acquisition RESEARCH LEADS. This is a fast scouting pass, not final listing verification. Do not invent vehicles, prices, mileage, locations, VINs, title status, condition, accident history, repair needs or completed-sale prices. Use current public listing evidence only. Return a short list of the best research leads and conservative economics. A later separate verification step will confirm the exact direct listing page before a lead can be watched or treated as verified. If evidence is weak, return fewer leads. Return only the requested structured data.",
-      input:[{role:"user",content:[{type:"input_text",text:`Find up to ${maxResults} current vehicle research leads matching these criteria:\n\n${criteria}\n\nFor each lead, use visible public asking price and mileage when available. Estimate local retail conservatively, estimate fees/transport/recon/internal labor as allowances, and score 0-100 for likely fit. listing_url may be a candidate/detail URL if the search exposes one, but it is NOT considered verified until a later verification step.`}]}],
-      text:{verbosity:"low",format:{type:"json_schema",name:"growthwise_vehicle_scout_fast",strict:true,schema:{type:"object",additionalProperties:false,properties:{search_summary:{type:"string"},confidence:{type:"string",enum:["Low","Medium","High"]},opportunities:{type:"array",maxItems:5,items:{type:"object",additionalProperties:false,properties:{year:{type:"number"},make:{type:"string"},model:{type:"string"},trim:{type:"string"},source_type:{type:"string"},listing_url:{type:"string"},location:{type:"string"},asking_price:{type:"number"},mileage:{type:"number"},retail_low:{type:"number"},retail_mid:{type:"number"},retail_high:{type:"number"},estimated_fees:{type:"number"},estimated_transport:{type:"number"},estimated_recon:{type:"number"},estimated_labor:{type:"number"},score:{type:"number"},evidence_quality:{type:"string",enum:["Low","Medium","High"]},why_fit:{type:"string"},caveats:{type:"array",items:{type:"string"}}},required:["year","make","model","trim","source_type","listing_url","location","asking_price","mileage","retail_low","retail_mid","retail_high","estimated_fees","estimated_transport","estimated_recon","estimated_labor","score","evidence_quality","why_fit","caveats"]}}},required:["search_summary","confidence","opportunities"]}}}
-    })});
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok){const msg=data?.error?.message||data?.error||`OpenAI request failed (HTTP ${response.status}).`;return json(response.status,{error:String(msg)})}
-    const text=extractOutputText(data); if(!text) return json(502,{error:"AI returned no vehicle opportunities."});
-    let result; try{result=JSON.parse(text)}catch{return json(502,{error:"AI returned an unreadable opportunity search."})}
-    const sourceUrls=collectSourceUrls(data);
-    const opportunities=[];
-    for(const raw of Array.isArray(result.opportunities)?result.opportunities:[]){
-      const ask=Math.max(0,num(raw.asking_price));
-      const retailLow=Math.max(0,num(raw.retail_low));
-      const retailMid=Math.max(retailLow,num(raw.retail_mid));
-      const retailHigh=Math.max(retailMid,num(raw.retail_high));
-      const fees=Math.max(0,num(raw.estimated_fees));
-      const transport=Math.max(0,num(raw.estimated_transport));
-      const recon=Math.max(0,num(raw.estimated_recon));
-      const labor=Math.max(0,num(raw.estimated_labor));
-      const allIn=ask+fees+transport+recon+labor;
-      const projectedGross=retailMid-allIn;
-      const roi=allIn>0?(projectedGross/allIn)*100:0;
-      const maxBuy=Math.max(0,retailMid-fees-transport-recon-labor-targetGross);
-      let recommendation="WATCH";
-      if(ask>0&&projectedGross>=targetGross&&roi>=15&&ask<=maxPurchase) recommendation="STRONG LEAD";
-      else if(ask>maxPurchase||projectedGross<Math.max(1000,targetGross*.5)||roi<5) recommendation="PASS";
-      opportunities.push({
-        year:Math.round(num(raw.year)),make:clean(raw.make,80),model:clean(raw.model,100),trim:clean(raw.trim,100),source_type:clean(raw.source_type,80),
-        listing_url:"",discovery_url:normalizeUrl(raw.listing_url),verified:false,location:clean(raw.location,160),asking_price:Math.round(ask),mileage:Math.round(Math.max(0,num(raw.mileage))),
-        retail_low:Math.round(retailLow),retail_mid:Math.round(retailMid),retail_high:Math.round(retailHigh),estimated_fees:Math.round(fees),estimated_transport:Math.round(transport),estimated_recon:Math.round(recon),estimated_labor:Math.round(labor),
-        projected_all_in:Math.round(allIn),projected_gross:Math.round(projectedGross),projected_roi:Math.round(roi*10)/10,recommended_max_buy:Math.round(maxBuy),score:Math.max(0,Math.min(100,Math.round(num(raw.score)))),evidence_quality:clean(raw.evidence_quality,20)||"Low",recommendation,why_fit:clean(raw.why_fit,800),caveats:Array.isArray(raw.caveats)?raw.caveats.map(v=>clean(v,320)).filter(Boolean):[]
-      });
-    }
-    opportunities.sort((a,b)=>b.score-a.score||b.projected_gross-a.projected_gross);
-    return json(200,{ok:true,model,search_summary:`Fast research pass complete. Exact listing verification is intentionally deferred to a separate one-candidate step so Vehicle Scout stays responsive. ${clean(result.search_summary,1200)}`.trim(),confidence:clean(result.confidence,20)||"Low",criteria:{retail_market:retailMarket,search_radius:Math.round(searchRadius),max_purchase:Math.round(maxPurchase),target_gross:Math.round(targetGross),min_year:Math.round(minYear),max_year:Math.round(maxYear),max_mileage:Math.round(maxMileage),vehicle_types:vehicleTypes,preferred_makes:preferredMakes},opportunities,source_urls:sourceUrls,caution:"These are research leads, not verified listings. Auto City should tap Verify exact listing before opening, watching, bidding on or relying on a candidate."});
-  }catch(err){
-    if(err?.name==="AbortError") return json(200,{ok:true,search_summary:"Vehicle Scout reached the fast-search time limit before it could return reliable research leads. Try a narrower search or rerun it; GrowthWise did not fabricate results.",confidence:"Low",opportunities:[],source_urls:[],caution:"Search timed out safely; no unverified vehicle was presented as a current listing."});
-    return json(502,{error:"Vehicle Scout could not complete the public-listing research pass."});
-  }finally{clearTimeout(timer)}
+  const payload={
+    model,
+    background:true,
+    store:true,
+    include:["web_search_call.action.sources"],
+    reasoning:{effort:"none"},
+    tools:[{type:"web_search",search_context_size:"medium",user_location:{type:"approximate",city:retailMarket,country:"US"}}],
+    metadata:{
+      gw_kind:"vehicle_scout",
+      retail_market:retailMarket.slice(0,120),
+      search_radius:String(Math.round(searchRadius)),
+      max_purchase:String(Math.round(maxPurchase)),
+      target_gross:String(Math.round(targetGross)),
+      min_year:String(Math.round(minYear)),
+      max_year:String(Math.round(maxYear)),
+      max_mileage:String(Math.round(maxMileage)),
+      vehicle_types:vehicleTypes.slice(0,300),
+      preferred_makes:preferredMakes.slice(0,400)
+    },
+    instructions:
+      "You are GrowthWise Vehicle Scout for a small independent dealership with an in-house repair shop. Search CURRENT public vehicle listings and surface plausible acquisition RESEARCH LEADS. Do not invent vehicles, prices, mileage, locations, VINs, title status, condition, accident history, repair needs or completed-sale prices. Use current public listing evidence only. Return useful leads even when the exact listing page cannot yet be verified; a separate verification step handles that. Clearly lower evidence quality when details are incomplete. Return only the requested structured data.",
+    input:[{role:"user",content:[{type:"input_text",text:`Find up to ${maxResults} current vehicle research leads matching these criteria:\n\n${criteria}\n\nFor each lead, use visible public asking price and mileage when available. Estimate local retail conservatively, estimate fees/transport/recon/internal labor as allowances, and score 0-100 for likely fit. listing_url may be a candidate/detail URL if exposed by search, but exact verification happens separately.`}]}],
+    text:{verbosity:"low",format:{type:"json_schema",name:"growthwise_vehicle_scout_background",strict:true,schema:{type:"object",additionalProperties:false,properties:{search_summary:{type:"string"},confidence:{type:"string",enum:["Low","Medium","High"]},opportunities:{type:"array",maxItems:5,items:{type:"object",additionalProperties:false,properties:{year:{type:"number"},make:{type:"string"},model:{type:"string"},trim:{type:"string"},source_type:{type:"string"},listing_url:{type:"string"},location:{type:"string"},asking_price:{type:"number"},mileage:{type:"number"},retail_low:{type:"number"},retail_mid:{type:"number"},retail_high:{type:"number"},estimated_fees:{type:"number"},estimated_transport:{type:"number"},estimated_recon:{type:"number"},estimated_labor:{type:"number"},score:{type:"number"},evidence_quality:{type:"string",enum:["Low","Medium","High"]},why_fit:{type:"string"},caveats:{type:"array",items:{type:"string"}}},required:["year","make","model","trim","source_type","listing_url","location","asking_price","mileage","retail_low","retail_mid","retail_high","estimated_fees","estimated_transport","estimated_recon","estimated_labor","score","evidence_quality","why_fit","caveats"]}}},required:["search_summary","confidence","opportunities"]}}}
+  };
+
+  const response=await fetch(OPENAI_URL,{method:"POST",headers:{"Authorization":`Bearer ${openaiKey}`,"Content-Type":"application/json"},body:JSON.stringify(payload)});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok){const msg=data?.error?.message||data?.error||`OpenAI request failed (HTTP ${response.status}).`;return json(response.status,{error:String(msg)})}
+  if(!data?.id) return json(502,{error:"Vehicle Scout could not start the background search."});
+
+  return json(202,{
+    ok:true,
+    started:true,
+    response_id:data.id,
+    status:data.status||"queued",
+    message:"Vehicle Scout is researching current listings in the background. GrowthWise will keep checking until the results are ready."
+  });
 };
