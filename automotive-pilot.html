@@ -23,6 +23,131 @@
 
 
 .verification-row{display:flex;align-items:center;justify-content:space-between;gap:9px;margin:10px 0 2px}.verify-badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:950;letter-spacing:.02em}.verify-badge.verified{background:#e8f5ea;color:#285e32}.verify-badge.unverified{background:#fff8e7;color:#745b24}.verify-badge.review{background:#fff0ee;color:#963b31}.verification-note{font-size:11px;color:#6b7782;line-height:1.4}.scout-verify{border:0;border-radius:11px;padding:10px 12px;background:#eef4fb;color:#274f78;font-weight:900}.scout-research{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border-radius:11px;padding:10px 12px;background:#f4f6f8;color:#52616f;font-weight:850}.watch-verify{font-size:10px;font-weight:950;border-radius:999px;padding:5px 7px;background:#fff8e7;color:#745b24}.watch-verify.ok{background:#e8f5ea;color:#285e32}.scout-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.scout-actions>*{min-width:0}.scout-watch{grid-column:1/-1}.scout-safety strong{color:#17222e}.watch-card .verification-row{margin-top:8px}.watch-actions{display:flex;flex-wrap:wrap;gap:8px}.watch-actions>*{flex:1 1 auto;text-align:center}.watch-research{border:0;border-radius:10px;padding:9px 10px;background:#fff8e7;color:#745b24;font-weight:850}.watch-note strong{color:#334a60}
+
+/* ===== GrowthWise Automotive visual theme ===== */
+:root{
+  --gw-ink:#0a1118;
+  --gw-panel:#101a24;
+  --gw-panel-2:#172430;
+  --gw-steel:#9eabb7;
+  --gw-silver:#d7dde2;
+  --gw-accent:#d53333;
+  --gw-accent-dark:#a71f28;
+  --gw-card:#ffffff;
+  --gw-line:#dfe5ea;
+}
+html{background:#071018}
+body{
+  background:
+    radial-gradient(circle at 10% 8%,rgba(213,51,51,.16),transparent 28%),
+    radial-gradient(circle at 90% 22%,rgba(70,118,156,.18),transparent 32%),
+    repeating-linear-gradient(135deg,rgba(255,255,255,.025) 0 1px,transparent 1px 34px),
+    #071018;
+  color:#14202c;
+}
+.shell{
+  position:relative;
+  overflow:hidden;
+  background:
+    linear-gradient(180deg,rgba(10,17,24,.98) 0 162px,rgba(236,240,243,.98) 162px 100%),
+    #edf0f3;
+  box-shadow:0 0 70px rgba(0,0,0,.45);
+}
+.shell:before{
+  content:"";
+  position:absolute;
+  top:58px;left:0;right:0;height:190px;
+  pointer-events:none;
+  opacity:.22;
+  background:
+    linear-gradient(118deg,transparent 0 42%,rgba(255,255,255,.10) 42.2% 42.8%,transparent 43% 100%),
+    linear-gradient(62deg,transparent 0 56%,rgba(255,255,255,.07) 56.2% 56.7%,transparent 56.9% 100%);
+}
+.top{
+  background:rgba(8,15,22,.92);
+  color:#fff;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  box-shadow:0 10px 30px rgba(0,0,0,.16);
+}
+.top .back{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.13);color:#fff}
+.top .eyebrow{color:#e7a2a2}
+.top h1{color:#fff}
+.wrap{position:relative;z-index:1;padding-top:18px}
+.dash-hero{
+  position:relative;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 82% 12%,rgba(255,255,255,.13),transparent 22%),
+    linear-gradient(145deg,#0a1118 0%,#111f2c 52%,#1b2b39 100%);
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 18px 42px rgba(0,0,0,.28);
+}
+.dash-hero:before{
+  content:"";
+  position:absolute;inset:auto -25px -52px 38%;height:155px;
+  border:2px solid rgba(255,255,255,.11);
+  border-left:0;border-bottom:0;
+  border-radius:70% 20% 0 0;
+  transform:skewX(-18deg);
+}
+.dash-hero:after{
+  content:"";
+  position:absolute;right:-28px;bottom:21px;width:180px;height:3px;
+  background:linear-gradient(90deg,transparent,rgba(213,51,51,.85),transparent);
+  box-shadow:0 -34px 0 rgba(255,255,255,.04),0 -68px 0 rgba(255,255,255,.025);
+  transform:rotate(-8deg);
+}
+.dash-brand,.dash-hero p,.dash-pills{position:relative;z-index:1}
+.dash-logo{
+  background:linear-gradient(145deg,#fff,#cdd5dc);
+  color:#101a24;
+  border:2px solid rgba(213,51,51,.55);
+}
+.dash-pill{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08)}
+.dash-pill:last-child{background:rgba(213,51,51,.18);border-color:rgba(213,51,51,.35)}
+.card,.profile-card,.today-card,.access-card,.dash-action{
+  box-shadow:0 9px 24px rgba(19,34,48,.075);
+}
+.dash-action{position:relative;overflow:hidden}
+.dash-action:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#9ca9b5}
+.dash-action.primary-action:before{background:var(--gw-accent)}
+.dash-action.marketing-action:before{background:#3d7a9e}
+.dash-action.service-action:before{background:#5c7d63}
+.dash-action.buy-action:before{background:#8d7140}
+.dash-icon{background:linear-gradient(145deg,#edf2f5,#dce4e9);box-shadow:inset 0 0 0 1px #d8e0e5}
+.dash-cta,.primary,.access-btn{background:linear-gradient(145deg,#111f2c,#0a1118);box-shadow:0 8px 18px rgba(10,17,24,.16)}
+.dash-action.marketing-action .dash-cta{background:linear-gradient(145deg,#b8202a,#7f1720);color:#fff}
+.hero{
+  position:relative;overflow:hidden;
+  background:linear-gradient(145deg,#0a1118,#172736);
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 15px 34px rgba(7,16,24,.18);
+}
+.hero:after{content:"";position:absolute;right:-38px;bottom:-58px;width:180px;height:120px;border:2px solid rgba(255,255,255,.07);border-radius:50%}
+.hero .eyebrow,.hero .tag{color:#e3a0a5}
+.tag{color:#9a3037}
+.metric{background:linear-gradient(145deg,#111f2c,#091118);border:1px solid rgba(255,255,255,.04)}
+.bar span{background:linear-gradient(90deg,#8e1c24,#d53333)}
+.today-dot{background:#d53333;box-shadow:0 0 0 4px rgba(213,51,51,.11)}
+.section-anchor{scroll-margin-top:88px}
+
+/* Marketing / inventory turn engine */
+.marketing-engine{border-top:4px solid #a91f29}
+.marketing-hero-strip{
+  display:flex;gap:11px;align-items:flex-start;padding:13px;border-radius:15px;
+  background:linear-gradient(145deg,#101b25,#172a38);color:#fff;margin:12px 0;
+}
+.marketing-hero-strip span{font-size:26px}.marketing-hero-strip strong{display:block}.marketing-hero-strip small{display:block;color:rgba(255,255,255,.7);line-height:1.4;margin-top:3px}
+.marketing-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.marketing-result-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}
+.marketing-priority{font-size:10px;font-weight:950;padding:6px 9px;border-radius:999px;background:#eef1f3;color:#56636f;white-space:nowrap}
+.marketing-priority.high,.marketing-priority.urgent{background:#fff0ee;color:#963b31}.marketing-priority.medium{background:#fff8e7;color:#745b24}.marketing-priority.low{background:#e8f5ea;color:#285e32}
+.marketing-plan-box{background:#f6f8f9;border:1px solid #e4e9ed;border-radius:14px;padding:13px;margin-top:10px}
+.marketing-plan-box strong{display:block;margin-bottom:6px}.marketing-plan-box p{margin:0;color:#4f5f6d;font-size:13px;line-height:1.5}
+.marketing-list{margin:7px 0 0;padding-left:19px;color:#4f5f6d;font-size:13px;line-height:1.5}.marketing-list li+li{margin-top:5px}
+.marketing-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.marketing-kpi{background:#101b25;color:#fff;border-radius:13px;padding:11px}.marketing-kpi strong{display:block;font-size:16px}.marketing-kpi span{display:block;font-size:9px;letter-spacing:.05em;opacity:.7;margin-top:2px;text-transform:uppercase}
+@media(max-width:390px){.marketing-grid,.marketing-kpis{grid-template-columns:1fr}.dash-logo{width:48px;height:48px}}
+
 </style>
 </head>
 <body>
@@ -53,7 +178,7 @@
           <h3>Demo access</h3>
           <span class="access-ok hidden" id="accessBadge">AI READY</span>
         </div>
-        <p>Enter the GrowthWise demo access code once. It unlocks Sell, Buy and Service AI tools for this browser tab.</p>
+        <p>Enter the GrowthWise demo access code once. It unlocks Sell, Buy, Service and Marketing AI tools for this browser tab.</p>
         <div class="access-row">
           <input id="adminKey" type="password" autocomplete="off" placeholder="Enter demo access code" aria-label="GrowthWise demo access code" />
           <button class="access-btn" id="unlockAiBtn" type="button">Unlock AI</button>
@@ -84,6 +209,7 @@
         <div class="today-line"><span class="today-dot"></span><div><strong id="todayVehicleStatus">No vehicle in progress yet.</strong><small>Take a photo below to start a live vehicle workflow.</small></div></div>
         <div class="today-line"><span class="today-dot"></span><div><strong id="todayDealStatus">Deal Finder</strong><small>Live AI opportunity scouting can search current public listings and rank potential buys.</small></div></div>
         <div class="today-line"><span class="today-dot"></span><div><strong>Service Center</strong><small>AI customer follow-up, open-bay promotions and service-retention drafts are ready to demo.</small></div></div>
+        <div class="today-line"><span class="today-dot"></span><div><strong>Inventory Marketing</strong><small>Move This Vehicle turns aging inventory facts into a margin-conscious action plan and campaign drafts.</small></div></div>
       </div>
 
       <div class="dash-grid">
@@ -91,13 +217,17 @@
           <div class="dash-row"><div class="dash-icon">🚗</div><div class="dash-copy"><strong>Sell a Vehicle</strong><small>Photo → identify → confirm facts → listing → market research → promotion.</small></div><span class="dash-tag">WORKING</span></div>
           <button class="dash-cta" type="button" id="goSell">Start vehicle listing</button>
         </div>
-        <div class="dash-action">
+        <div class="dash-action buy-action">
           <div class="dash-row"><div class="dash-icon">🔎</div><div class="dash-copy"><strong>Find Vehicles to Buy</strong><small>Search current public listings, rank opportunities and estimate profit before Auto City spends money.</small></div><span class="dash-tag">LIVE AI</span></div>
           <button class="dash-cta secondary-cta" type="button" id="goBuy">Find profitable vehicles</button>
         </div>
-        <div class="dash-action">
+        <div class="dash-action service-action">
           <div class="dash-row"><div class="dash-icon">🔧</div><div class="dash-copy"><strong>Service Center</strong><small>Fill open appointments, follow up on declined work, promote specials and retain customers.</small></div><span class="dash-tag">LIVE AI</span></div>
           <button class="dash-cta secondary-cta" type="button" id="goService">Open Service Center</button>
+        </div>
+        <div class="dash-action marketing-action">
+          <div class="dash-row"><div class="dash-icon">📣</div><div class="dash-copy"><strong>Move This Vehicle</strong><small>Turn days-on-lot, pricing and engagement into a specific plan to move owned inventory faster while protecting margin.</small></div><span class="dash-tag">LIVE AI</span></div>
+          <button class="dash-cta" type="button" id="goMarketing">Open Marketing Engine</button>
         </div>
       </div>
     </section>
@@ -363,6 +493,62 @@
         <div class="note" id="serviceCaution"></div>
       </div>
       <div class="demo-ribbon">PILOT SAFETY · AI suggests → Auto City approves/modifies → message is drafted; nothing sends automatically</div>
+    </section>
+
+
+    <section class="card section-anchor marketing-engine" id="marketingEngine">
+      <div class="tag">MARKETING · INVENTORY TURN ENGINE</div>
+      <h3>Move This Vehicle</h3>
+      <p class="helper">Give GrowthWise the facts Auto City already knows about an owned vehicle. AI recommends the least margin-destructive next move, then drafts the campaign. It will not invent market data, vehicle facts, discounts or customer activity.</p>
+      <div class="marketing-hero-strip"><span>🏁</span><div><strong>Objective: turn inventory into cash faster</strong><small>Start with merchandising and promotion. Review price only when the evidence supports it.</small></div></div>
+
+      <div class="inline-actions">
+        <button class="secondary" id="marketingUseCurrent" type="button">Use current vehicle</button>
+        <button class="secondary" id="marketingDemoBtn" type="button">Load demo example</button>
+      </div>
+
+      <label class="field">Vehicle<input id="marketingVehicle" placeholder="e.g. 2018 Chevrolet Trax LT AWD" /></label>
+      <div class="marketing-grid">
+        <label class="field">Mileage<input id="marketingMileage" inputmode="numeric" placeholder="e.g. 82,500" /></label>
+        <label class="field">Current asking price<input id="marketingPrice" inputmode="decimal" placeholder="e.g. 13,995" /></label>
+        <label class="field">Days on lot<input id="marketingDays" type="number" min="0" step="1" placeholder="e.g. 47" /></label>
+        <label class="field">Listing views / engagement<input id="marketingViews" type="number" min="0" step="1" placeholder="optional" /></label>
+        <label class="field">Known leads / inquiries<input id="marketingLeads" type="number" min="0" step="1" placeholder="optional" /></label>
+        <label class="field">Campaign goal
+          <select id="marketingGoal">
+            <option value="move_inventory">Move inventory faster</option>
+            <option value="generate_leads">Generate more leads</option>
+            <option value="protect_margin">Protect margin while improving turn</option>
+            <option value="aging_inventory">Act on aging inventory</option>
+          </select>
+        </label>
+      </div>
+      <label class="field">Known pricing history<input id="marketingPriceHistory" placeholder="e.g. Listed at $14,495; reduced to $13,995 after 30 days" /></label>
+      <label class="field">Known vehicle + marketing facts<textarea id="marketingFacts" placeholder="Only facts you know: trim/features, condition notes, photos already taken, channels already posted, inquiries, recent service, etc."></textarea></label>
+      <button class="primary" id="marketingAnalyzeBtn" type="button" style="margin-top:14px">AI create Move This Vehicle plan</button>
+      <div id="marketingStatus" class="status hidden"></div>
+
+      <div id="marketingResult" class="result hidden">
+        <div class="marketing-result-head">
+          <div><strong style="font-size:16px">GrowthWise Turn Plan</strong><div class="field-note" id="marketingConfidence"></div></div>
+          <span class="marketing-priority medium" id="marketingPriority">MEDIUM PRIORITY</span>
+        </div>
+        <div class="marketing-kpis">
+          <div class="marketing-kpi"><strong id="marketingActionShort">—</strong><span>next action</span></div>
+          <div class="marketing-kpi"><strong id="marketingFollowupDays">—</strong><span>reassess in</span></div>
+          <div class="marketing-kpi"><strong id="marketingConfidenceKpi">—</strong><span>confidence</span></div>
+        </div>
+        <div class="marketing-plan-box"><strong id="marketingActionLabel">Recommended action</strong><p id="marketingReasoning"></p></div>
+        <div class="marketing-plan-box"><strong>Price strategy</strong><p id="marketingPriceStrategy"></p></div>
+        <div class="marketing-plan-box"><strong>Protect the margin</strong><p id="marketingMarginNote"></p></div>
+        <div class="marketing-plan-box"><strong>Photo / merchandising plan</strong><ul class="marketing-list" id="marketingPhotoPlan"></ul></div>
+        <label>Listing headline<input id="marketingHeadline" /></label>
+        <label>Facebook campaign<textarea id="marketingFacebook"></textarea></label>
+        <label>Instagram campaign<textarea id="marketingInstagram"></textarea></label>
+        <div class="marketing-plan-box"><strong>Staff next steps</strong><ul class="marketing-list" id="marketingStaffSteps"></ul></div>
+        <div class="marketing-plan-box hidden" id="marketingMissingBox"><strong>What would make this recommendation smarter</strong><ul class="marketing-list" id="marketingMissing"></ul></div>
+        <div class="note"><strong>Pilot safety:</strong> GrowthWise creates the plan and drafts. Auto City reviews pricing, offers, vehicle facts and customer-facing content before anything is published or sent.</div>
+      </div>
     </section>
 
     <section class="card">
@@ -1070,9 +1256,98 @@ $('scoutBtn')?.addEventListener('click',async()=>{
   }
 });
 
+
+function setMarketingStatus(kind,msg){setBoxStatus('marketingStatus',kind,msg);}
+function fillMarketingList(id,items){
+  const el=$(id); if(!el) return; el.replaceChildren();
+  for(const item of (Array.isArray(items)?items:[])){
+    const li=document.createElement('li');li.textContent=item;el.appendChild(li);
+  }
+}
+function currentVehicleLabel(){
+  const f=vehicleFacts();
+  return [f.year,f.make,f.model,f.trim].filter(Boolean).join(' ').trim();
+}
+function useCurrentVehicleForMarketing(){
+  const label=currentVehicleLabel();
+  if(label) $('marketingVehicle').value=label;
+  if($('mileage').value.trim()) $('marketingMileage').value=$('mileage').value.trim();
+  if($('price').value.trim()) $('marketingPrice').value=$('price').value.trim();
+  if(label) setMarketingStatus('ok','Current vehicle loaded. Add days-on-lot and any engagement facts Auto City knows.');
+  else setMarketingStatus('warn','No confirmed Sell vehicle is loaded yet. Enter a vehicle below or load the demo example.');
+}
+$('marketingUseCurrent')?.addEventListener('click',useCurrentVehicleForMarketing);
+$('marketingDemoBtn')?.addEventListener('click',()=>{
+  $('marketingVehicle').value='2018 Chevrolet Trax LT AWD';
+  $('marketingMileage').value='82,500';
+  $('marketingPrice').value='13,995';
+  $('marketingDays').value='47';
+  $('marketingViews').value='';
+  $('marketingLeads').value='2';
+  $('marketingGoal').value='aging_inventory';
+  $('marketingPriceHistory').value='Current asking price is $13,995. No verified local comp data entered yet.';
+  $('marketingFacts').value='Vehicle is owned inventory. Existing listing has been active for several weeks. Staff should verify exact features, condition, photo quality and channels already used before publishing any refreshed campaign.';
+  setMarketingStatus('ok','Demo vehicle loaded. GrowthWise will clearly label recommendations preliminary where supporting data is missing.');
+});
+$('marketingAnalyzeBtn')?.addEventListener('click',async()=>{
+  const key=sessionStorage.getItem('growthwise_admin_key')||'';
+  if(!key){setMarketingStatus('error','Unlock AI in Demo access first.');$('demoAccess')?.scrollIntoView({behavior:'smooth',block:'start'});return;}
+  const vehicle=$('marketingVehicle').value.trim();
+  if(!vehicle){setMarketingStatus('error','Enter the vehicle first.');return;}
+  const btn=$('marketingAnalyzeBtn'); btn.disabled=true; btn.textContent='GrowthWise is building the turn plan…';
+  setMarketingStatus('loading','Reviewing inventory age, pricing context, engagement and merchandising facts…');
+  try{
+    const response=await fetch('/.netlify/functions/marketing-assistant',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-GrowthWise-Key':key},
+      body:JSON.stringify({
+        business_name:$('businessName').value.trim()||'Auto City Sales',
+        business_phone:$('businessPhone').value.trim(),
+        business_website:$('businessWebsite').value.trim(),
+        retail_market:$('defaultMarket').value.trim()||'Buffalo, NY',
+        vehicle,
+        mileage:$('marketingMileage').value.trim(),
+        asking_price:$('marketingPrice').value.trim(),
+        days_on_lot:$('marketingDays').value.trim(),
+        views:$('marketingViews').value.trim(),
+        leads:$('marketingLeads').value.trim(),
+        price_changes:$('marketingPriceHistory').value.trim(),
+        known_facts:$('marketingFacts').value.trim(),
+        campaign_goal:$('marketingGoal').value
+      })
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error||`Marketing AI failed (HTTP ${response.status}).`);
+    const priority=String(data.priority||'medium').toLowerCase();
+    const badge=$('marketingPriority');badge.textContent=`${priority.toUpperCase()} PRIORITY`;badge.className=`marketing-priority ${priority}`;
+    $('marketingConfidence').textContent=`Confidence: ${data.confidence||'low'} · Based only on facts entered by Auto City.`;
+    $('marketingConfidenceKpi').textContent=String(data.confidence||'low').toUpperCase();
+    $('marketingActionShort').textContent=String(data.recommended_action||'plan').replaceAll('_',' ').toUpperCase();
+    $('marketingFollowupDays').textContent=`${Number(data.followup_window_days)||7} days`;
+    $('marketingActionLabel').textContent=data.action_label||'Recommended action';
+    $('marketingReasoning').textContent=data.reasoning||'';
+    $('marketingPriceStrategy').textContent=data.price_strategy||'';
+    $('marketingMarginNote').textContent=data.margin_protection_note||'';
+    fillMarketingList('marketingPhotoPlan',data.photo_plan);
+    $('marketingHeadline').value=data.listing_headline||'';
+    $('marketingFacebook').value=data.facebook_caption||'';
+    $('marketingInstagram').value=data.instagram_caption||'';
+    fillMarketingList('marketingStaffSteps',data.staff_next_steps);
+    const missing=Array.isArray(data.missing_data)?data.missing_data:[];
+    fillMarketingList('marketingMissing',missing);
+    $('marketingMissingBox').classList.toggle('hidden',missing.length===0);
+    $('marketingResult').classList.remove('hidden');
+    sessionStorage.setItem('growthwise_admin_key',key);
+    setMarketingStatus('ok','Move This Vehicle plan ready ✓ Auto City can edit the drafts before using them.');
+    $('marketingResult').scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(err){setMarketingStatus('error',err.message||'Could not create the marketing plan.');}
+  finally{btn.disabled=false;btn.textContent='AI create Move This Vehicle plan';}
+});
+
 $('goSell')?.addEventListener('click',()=>{$('sellStart')?.scrollIntoView({behavior:'smooth',block:'start'});});
 $('goBuy')?.addEventListener('click',()=>{$('opportunityScout')?.scrollIntoView({behavior:'smooth',block:'start'});});
 $('goService')?.addEventListener('click',()=>{$('servicePreview')?.scrollIntoView({behavior:'smooth',block:'start'});});
+$('goMarketing')?.addEventListener('click',()=>{$('marketingEngine')?.scrollIntoView({behavior:'smooth',block:'start'});});
 
 const profileDefaults={
   businessName:'Auto City Sales',
