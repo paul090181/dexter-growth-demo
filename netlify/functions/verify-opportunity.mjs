@@ -6,6 +6,46 @@ function extractOutputText(data){for(const item of data?.output||[]){if(item?.ty
 function collectSourceUrls(data){const out=[];for(const item of data?.output||[]){if(item?.type!=="web_search_call")continue;for(const s of item?.action?.sources||[]){if(s?.url&&!out.includes(s.url))out.push(s.url)}}return out}
 function normalizeUrl(url){const v=clean(url,1200);return /^https?:\/\//i.test(v)?v:""}
 function exactSourceMatch(url,sources){const raw=normalizeUrl(url);if(!raw)return "";if(sources.includes(raw))return raw;try{const u=new URL(raw);for(const s of sources){try{const su=new URL(s);if(u.hostname===su.hostname&&u.pathname===su.pathname&&u.search===su.search)return s}catch{}}}catch{}return ""}
+function isLikelySearchOrCollectionPage(url){
+  try{
+    const u=new URL(url);
+    const host=u.hostname.toLowerCase();
+    const path=(u.pathname||"").toLowerCase();
+    const q=(u.search||"").toLowerCase();
+    if(host.includes("cars.com")){
+      if(path.startsWith("/shopping/") || path.includes("/research/") || path==="/shopping") return true;
+      return !path.includes("/vehicledetail/");
+    }
+    if(host.includes("autotrader.com")){
+      if(path.includes("/cars-for-sale/") && !path.includes("vehicledetails")) return true;
+      return !(path.includes("vehicledetails") || q.includes("listingid="));
+    }
+    if(host.includes("truecar.com")){
+      if(path.includes("/used-cars-for-sale/") && !path.includes("/listing/")) return true;
+      return !path.includes("/listing/");
+    }
+    if(host.includes("cargurus.com")){
+      return !(path.includes("/cars/") && (q.includes("listingid=") || path.includes("inventorylisting")));
+    }
+    if(host.includes("craigslist.org")){
+      return !/\/\d+\.html$/.test(path);
+    }
+    if(host.includes("facebook.com")){
+      return !path.includes("/marketplace/item/");
+    }
+    // For unknown dealer sites, reject obvious search/inventory/category pages.
+    if(/\/(search|inventory|vehicles?|cars-for-sale|used-cars|preowned|pre-owned)(\/|$)/.test(path) && !/\d{5,}/.test(path+q)) return true;
+    if(q.includes("page=") || q.includes("sort=") || q.includes("price-") || q.includes("radius=")) return true;
+    // Unknown sites may still have direct detail URLs; require a reasonably specific path/query.
+    const specificity=(path.split("/").filter(Boolean).length>=2) || /vin=|stock=|listingid=|vehicleid=|id=/.test(q);
+    return !specificity;
+  }catch{return true}
+}
+function directListingSourceMatch(url,sources){
+  const exact=exactSourceMatch(url,sources);
+  if(!exact || isLikelySearchOrCollectionPage(exact)) return "";
+  return exact;
+}
 
 export default async(request)=>{
  if(request.method==="OPTIONS")return new Response(null,{status:204,headers:{"Access-Control-Allow-Methods":"POST, OPTIONS","Access-Control-Allow-Headers":"Content-Type, X-GrowthWise-Key"}});
@@ -26,8 +66,11 @@ export default async(request)=>{
   })});
   const data=await response.json().catch(()=>({}));if(!response.ok)return json(200,{ok:true,verified:false,message:"GrowthWise could not verify this lead right now. Treat it as research only."});
   const text=extractOutputText(data);let result=null;try{result=JSON.parse(text)}catch{}
-  const sources=collectSourceUrls(data);const exact=result?.matched?exactSourceMatch(result.listing_url,sources):"";
-  if(!exact)return json(200,{ok:true,verified:false,message:"No exact direct listing page could be verified. Keep this as a research lead only.",source_urls:sources.slice(0,10)});
+  const sources=collectSourceUrls(data);const exact=result?.matched?directListingSourceMatch(result.listing_url,sources):"";
+  if(!exact){
+    const sourceMatched=result?.matched && !!exactSourceMatch(result.listing_url,sources);
+    return json(200,{ok:true,verified:false,source_matched:sourceMatched,message:sourceMatched?"GrowthWise matched the lead details to a current search result, but not to a direct vehicle-detail page. Keep it flagged as a research lead until a direct listing is confirmed.":"No exact direct listing page could be verified. Keep this as a research lead only.",source_urls:sources.slice(0,10)});
+  }
   return json(200,{ok:true,verified:true,listing_url:exact,asking_price:Math.round(Math.max(0,num(result.asking_price,candidate.asking_price))),mileage:Math.round(Math.max(0,num(result.mileage,candidate.mileage))),location:clean(result.location,160)||candidate.location,evidence_note:clean(result.evidence_note,600),source_urls:sources.slice(0,10)});
  }catch(err){if(err?.name==="AbortError")return json(200,{ok:true,verified:false,message:"Exact-listing verification reached the demo time limit. GrowthWise left the lead unverified rather than guessing."});return json(200,{ok:true,verified:false,message:"Exact-listing verification was unavailable. Keep this lead as research only."})}finally{clearTimeout(timer)}
 };
