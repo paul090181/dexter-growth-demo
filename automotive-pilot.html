@@ -7,7 +7,7 @@
 <style>
 *{box-sizing:border-box}html,body{margin:0;background:#edf0f3;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#14202c}body{min-height:100vh}.shell{max-width:520px;margin:0 auto;min-height:100vh;background:#fff;padding-bottom:38px;box-shadow:0 0 50px rgba(0,0,0,.08)}.top{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.96);backdrop-filter:blur(14px);border-bottom:1px solid #e7eaed;padding:15px 18px;display:flex;align-items:center;gap:12px}.back{width:40px;height:40px;border:1px solid #e0e4e8;border-radius:13px;background:#fff;font-size:24px}.eyebrow,.tag{font-size:11px;letter-spacing:.12em;font-weight:900;color:#99742d}.top h1{font-size:19px;margin:2px 0 0}.wrap{padding:18px}.hero{background:#0e1b2b;color:#fff;border-radius:22px;padding:22px;margin-bottom:14px}.hero h2{font-size:27px;line-height:1.08;margin:7px 0 10px}.hero p{margin:0;opacity:.8;line-height:1.5}.card{border:1px solid #e3e7ea;border-radius:18px;padding:16px;margin-top:13px;background:#fff}.card h3{margin:5px 0 8px}.helper{color:#65717d;font-size:13px;line-height:1.45;margin:5px 0 14px}.photo-choice{display:grid;grid-template-columns:1fr 1fr;gap:9px}.photo-choice input{display:none}.photo-choice label,.secondary,.primary{border:0;border-radius:13px;padding:12px 13px;font-weight:850;text-align:center;cursor:pointer}.photo-choice label{background:#0e1b2b;color:#fff}.photo-choice label:last-child{background:#eef1f3;color:#17222e}.preview{display:none;margin-top:13px}.preview.show{display:block}.preview-frame{background:#f8f9fa;border:1px solid #e3e7ea;border-radius:15px;padding:10px;display:flex;align-items:center;justify-content:center;min-height:220px}.preview img{max-width:100%;max-height:360px;border-radius:10px;object-fit:contain}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}label.field{display:block;font-size:12px;font-weight:850;color:#596673;margin-top:11px}input,textarea,select{width:100%;margin-top:6px;border:1px solid #d8dde2;border-radius:12px;padding:12px;font:inherit;color:#17222e;background:#fff}textarea{min-height:105px;resize:vertical}.primary{width:100%;background:#0e1b2b;color:#fff;font-size:15px}.secondary{width:100%;background:#eef1f3;color:#17222e}.status{margin-top:10px;border-radius:12px;padding:11px 12px;font-size:13px;font-weight:750}.status.loading{background:#eef4fb;color:#335b84}.status.ok{background:#e8f5ea;color:#285e32}.status.error{background:#fff0ee;color:#963b31}.status.warn{background:#fff8e7;color:#745b24}.hidden{display:none!important}.result{margin-top:12px;border-top:1px solid #e8ebee;padding-top:12px}.result label{display:block;font-size:12px;font-weight:850;color:#596673;margin-top:11px}.mini{padding:11px 12px;border-radius:12px;background:#f6f8f9;font-size:12px;line-height:1.45;color:#596673;margin-top:10px}.math{display:grid;grid-template-columns:1fr 1fr;gap:9px}.metric{background:#0e1b2b;color:#fff;border-radius:15px;padding:14px}.metric strong{display:block;font-size:23px}.metric span{font-size:11px;opacity:.75}.dest{display:grid;gap:9px;margin-top:10px}.dest label{border:1px solid #e1e5e8;border-radius:14px;padding:12px;display:flex;align-items:center;gap:10px;font-weight:800}.dest input{width:auto;margin:0;transform:scale(1.25)}.dest small{display:block;color:#7a858f;font-weight:600;margin-top:3px}.badge{margin-left:auto;font-size:10px;padding:5px 7px;border-radius:999px;background:#eef1f3;color:#68747f}.note{background:#fff8e7;border:1px solid #f0dfb4;border-radius:14px;padding:12px;color:#745b24;font-size:12px;line-height:1.45;margin-top:12px}.deal-summary{background:#f6f8f9;border-radius:14px;padding:13px;margin-top:12px;font-size:13px;line-height:1.5}.deal-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.decision{font-size:12px;font-weight:900;padding:7px 10px;border-radius:999px;background:#eef1f3}.decision.buy{background:#e8f5ea;color:#285e32}.decision.maybe{background:#fff8e7;color:#745b24}.decision.pass{background:#fff0ee;color:#963b31}.source-links{margin-top:10px;font-size:12px;line-height:1.55}.source-links a{color:#245b91;word-break:break-all}.smart-actions{display:grid;grid-template-columns:1fr;gap:9px;margin-top:12px}.identify-card{margin-top:12px;padding:13px;border:1px solid #dfe5ea;border-radius:14px;background:#f7f9fa}.identify-card strong{display:block;font-size:15px}.confidence{font-size:12px;color:#65717d;margin-top:4px}.alt-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.alt-chip{border:1px solid #d8dde2;background:#fff;border-radius:999px;padding:8px 10px;font-weight:750;font-size:12px}.inline-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px}.readiness{margin-top:12px;padding:12px;border-radius:14px;background:#f6f8f9}.readiness-top{display:flex;justify-content:space-between;gap:10px;font-size:12px;font-weight:850}.bar{height:8px;background:#e2e7eb;border-radius:999px;overflow:hidden;margin-top:8px}.bar span{display:block;height:100%;background:#0e1b2b;width:0}.readiness small{display:block;color:#65717d;margin-top:7px;line-height:1.4}.subhead{margin:17px 0 4px;font-size:14px}.divider{height:1px;background:#e8ebee;margin:16px 0}.field-note{font-size:11px;color:#7a858f;margin-top:5px;line-height:1.35}@media(max-width:390px){.grid2,.math{grid-template-columns:1fr}.photo-choice{grid-template-columns:1fr 1fr}.inline-actions{grid-template-columns:1fr}}
 
-.auto-dashboard{margin-bottom:16px}.dash-hero{background:linear-gradient(145deg,#0e1b2b,#182c42);color:#fff;border-radius:22px;padding:21px;box-shadow:0 14px 35px rgba(14,27,43,.18)}.dash-brand{display:flex;align-items:center;justify-content:space-between;gap:14px}.dash-logo{width:54px;height:54px;border-radius:17px;background:#fff;color:#0e1b2b;display:grid;place-items:center;font-size:27px;font-weight:950;box-shadow:inset 0 0 0 1px rgba(14,27,43,.08)}.dash-hero h2{font-size:27px;line-height:1.05;margin:14px 0 9px}.dash-hero p{margin:0;color:rgba(255,255,255,.78);line-height:1.45}.dash-pills{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}.dash-pill{font-size:10px;font-weight:900;letter-spacing:.04em;border-radius:999px;padding:6px 8px;background:rgba(255,255,255,.1);color:#fff}.dash-grid{display:grid;gap:10px;margin-top:11px}.dash-action{border:1px solid #e1e5e8;border-radius:17px;padding:15px;background:#fff;box-shadow:0 6px 18px rgba(16,31,47,.05)}.dash-action.primary-action{border-color:#cdd9e4;background:#f9fbfd}.dash-row{display:flex;align-items:flex-start;gap:12px}.dash-icon{width:45px;height:45px;border-radius:14px;background:#eef3f7;display:grid;place-items:center;font-size:22px;flex:0 0 auto}.dash-copy{min-width:0;flex:1}.dash-copy strong{display:block;font-size:16px}.dash-copy small{display:block;color:#68747f;line-height:1.4;margin-top:3px}.dash-cta{margin-top:12px;width:100%;border:0;border-radius:12px;padding:11px 12px;font-weight:900;background:#0e1b2b;color:#fff}.dash-cta.secondary-cta{background:#eef1f3;color:#17222e}.dash-tag{font-size:9px;font-weight:950;border-radius:999px;padding:5px 7px;background:#e8f5ea;color:#285e32;white-space:nowrap}.dash-tag.next{background:#fff8e7;color:#745b24}.today-card{margin-top:11px;border:1px solid #e3e7ea;border-radius:17px;padding:14px;background:#fff}.today-card h3{margin:0 0 9px;font-size:15px}.today-line{display:flex;align-items:center;gap:9px;padding:9px 0;border-top:1px solid #eef1f3}.today-line:first-of-type{border-top:0}.today-dot{width:10px;height:10px;border-radius:999px;background:#0e1b2b;flex:0 0 auto}.today-line strong{display:block;margin-bottom:2px}.today-line small{display:block;color:#68747f;line-height:1.35}.service-preview-grid{display:grid;gap:9px}.service-preview-item{border:1px solid #e2e6ea;border-radius:14px;padding:13px;background:#f9fafb}.service-preview-item strong{display:block}.service-preview-item small{display:block;color:#68747f;line-height:1.4;margin-top:4px}.demo-ribbon{display:inline-flex;align-items:center;gap:6px;margin-top:9px;border-radius:999px;padding:6px 9px;background:#fff8e7;color:#745b24;font-size:10px;font-weight:900}.access-card{margin-top:11px;border:1px solid #d9e2ea;border-radius:17px;padding:14px;background:#f9fbfd}.access-top{display:flex;align-items:center;justify-content:space-between;gap:12px}.access-card h3{margin:0;font-size:15px}.access-card p{margin:5px 0 10px;color:#68747f;font-size:12px;line-height:1.4}.access-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}.access-row input{margin-top:0}.access-btn{border:0;border-radius:12px;padding:12px 14px;background:#0e1b2b;color:#fff;font-weight:900;white-space:nowrap}.access-ok{font-size:10px;font-weight:900;border-radius:999px;padding:5px 8px;background:#e8f5ea;color:#285e32}.section-anchor{scroll-margin-top:82px}@media(max-width:390px){.access-row{grid-template-columns:1fr}}
+.auto-dashboard{margin-bottom:16px}.dash-hero{background:linear-gradient(145deg,#0e1b2b,#182c42);color:#fff;border-radius:22px;padding:21px;box-shadow:0 14px 35px rgba(14,27,43,.18)}.dash-brand{display:flex;align-items:center;justify-content:space-between;gap:14px}.dash-logo{width:54px;height:54px;border-radius:17px;background:#fff;color:#0e1b2b;display:grid;place-items:center;font-size:27px;font-weight:950;box-shadow:inset 0 0 0 1px rgba(14,27,43,.08)}.dash-hero h2{font-size:27px;line-height:1.05;margin:14px 0 9px}.dash-hero p{margin:0;color:rgba(255,255,255,.78);line-height:1.45}.dash-pills{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}.dash-pill{font-size:10px;font-weight:900;letter-spacing:.04em;border-radius:999px;padding:6px 8px;background:rgba(255,255,255,.1);color:#fff}.dash-grid{display:grid;gap:10px;margin-top:11px}.dash-action{border:1px solid #e1e5e8;border-radius:17px;padding:15px;background:#fff;box-shadow:0 6px 18px rgba(16,31,47,.05)}.dash-action.primary-action{border-color:#cdd9e4;background:#f9fbfd}.dash-row{display:flex;align-items:flex-start;gap:12px}.dash-icon{width:45px;height:45px;border-radius:14px;background:#eef3f7;display:grid;place-items:center;font-size:22px;flex:0 0 auto}.dash-copy{min-width:0;flex:1}.dash-copy strong{display:block;font-size:16px}.dash-copy small{display:block;color:#68747f;line-height:1.4;margin-top:3px}.dash-cta{margin-top:12px;width:100%;border:0;border-radius:12px;padding:11px 12px;font-weight:900;background:#0e1b2b;color:#fff}.dash-cta.secondary-cta{background:#eef1f3;color:#17222e}.dash-tag{font-size:9px;font-weight:950;border-radius:999px;padding:5px 7px;background:#e8f5ea;color:#285e32;white-space:nowrap}.dash-tag.next{background:#fff8e7;color:#745b24}.today-card{margin-top:11px;border:1px solid #e3e7ea;border-radius:17px;padding:14px;background:#fff}.today-card h3{margin:0 0 9px;font-size:15px}.today-line{display:flex;align-items:center;gap:9px;padding:9px 0;border-top:1px solid #eef1f3}.today-line:first-of-type{border-top:0}.today-dot{width:10px;height:10px;border-radius:999px;background:#0e1b2b;flex:0 0 auto}.today-line strong{display:block;margin-bottom:2px}.today-line small{display:block;color:#68747f;line-height:1.35}.service-preview-grid{display:grid;gap:9px}.service-preview-item{border:1px solid #e2e6ea;border-radius:14px;padding:13px;background:#f9fafb}.service-preview-item strong{display:block}.service-preview-item small{display:block;color:#68747f;line-height:1.4;margin-top:4px}.demo-ribbon{display:inline-flex;align-items:center;gap:6px;margin-top:9px;border-radius:999px;padding:6px 9px;background:#fff8e7;color:#745b24;font-size:10px;font-weight:900}.access-card{margin-top:11px;border:1px solid #d9e2ea;border-radius:17px;padding:14px;background:#f9fbfd}.access-top{display:flex;align-items:center;justify-content:space-between;gap:12px}.access-card h3{margin:0;font-size:15px}.access-card p{margin:5px 0 10px;color:#68747f;font-size:12px;line-height:1.4}.access-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}.access-row input{margin-top:0}.access-btn{border:0;border-radius:12px;padding:12px 14px;background:#0e1b2b;color:#fff;font-weight:900;white-space:nowrap}.access-ok{font-size:10px;font-weight:900;border-radius:999px;padding:5px 8px;background:#e8f5ea;color:#285e32}.section-anchor{scroll-margin-top:82px}.profile-card{margin-top:11px;border:1px solid #d9e2ea;border-radius:17px;padding:14px;background:#fff}.profile-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.profile-card h3{margin:0;font-size:16px}.profile-sub{margin:5px 0 10px;color:#68747f;font-size:12px;line-height:1.4}.profile-chip{font-size:9px;font-weight:950;border-radius:999px;padding:5px 8px;background:#eef3f7;color:#334a60;white-space:nowrap}.service-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}.service-chip{font-size:10px;font-weight:800;padding:6px 8px;border-radius:999px;background:#f1f4f6;color:#4f5f6d}.offer-box{margin-top:12px;padding:13px;border:1px solid #e2e6ea;border-radius:14px;background:#f9fafb}.offer-box h4{margin:0 0 4px;font-size:14px}.offer-box p{margin:0 0 8px;color:#68747f;font-size:11px;line-height:1.4}.offer-reco{margin-top:10px;padding:11px 12px;border-radius:12px;background:#eef4fb;color:#335b84;font-size:12px;line-height:1.45}.profile-saved{font-size:10px;color:#285e32;font-weight:850;margin-top:7px}@media(max-width:390px){.access-row{grid-template-columns:1fr}.profile-head{display:block}.profile-chip{display:inline-block;margin-top:7px}}
 </style>
 </head>
 <body>
@@ -22,7 +22,7 @@
       <div class="dash-hero">
         <div class="dash-brand">
           <div>
-            <div class="eyebrow">GROWTHWISE AUTOMOTIVE</div>
+            <div class="eyebrow" id="autoBrandEyebrow">GROWTHWISE AUTOMOTIVE · AUTO CITY SALES PILOT</div>
             <h2>Sell smarter. Buy better. Keep the bays full.</h2>
           </div>
           <div class="dash-logo" aria-hidden="true">GW</div>
@@ -45,6 +45,24 @@
         </div>
         <div id="accessStatus" class="status hidden"></div>
       </div>
+
+      <section class="profile-card" id="businessProfile">
+        <div class="profile-head">
+          <div><h3>Business profile</h3><div class="profile-sub">GrowthWise uses this once across vehicle listings, deal research, service messages and promotions.</div></div>
+          <span class="profile-chip">AUTO CITY SALES</span>
+        </div>
+        <div class="grid2">
+          <label class="field">Business name<input id="businessName" value="Auto City Sales" /></label>
+          <label class="field">Default retail market<input id="defaultMarket" value="Buffalo, NY" /></label>
+          <label class="field">Phone<input id="businessPhone" value="(716) 406-7555" /></label>
+          <label class="field">Website<input id="businessWebsite" value="https://autocitysales.net" /></label>
+        </div>
+        <label class="field">Address<input id="businessAddress" value="427 Hertel Ave, Buffalo, NY 14207" /></label>
+        <div class="service-tags" aria-label="Services currently listed by Auto City Sales">
+          <span class="service-chip">Oil changes</span><span class="service-chip">Detailing</span><span class="service-chip">Brake services</span><span class="service-chip">Wiper replacement</span>
+        </div>
+        <div class="profile-saved" id="profileSaved">Profile ready for tomorrow's demo.</div>
+      </section>
 
       <div class="today-card">
         <h3>Today</h3>
@@ -95,7 +113,6 @@
       <h3>Identify it, then confirm the facts</h3>
       <p class="helper">Use the photo, VIN, or smart Year → Make → Model selectors. GrowthWise suggestions are always confirmed by the dealer before market research or publishing.</p>
 
-      <label class="field">Dealership / business name<input id="businessName" placeholder="e.g. Main Street Auto Sales" /></label>
       <button class="secondary" id="identifyBtn" type="button" style="margin-top:10px">AI identify vehicle from photo</button>
       <div id="identifyStatus" class="status hidden"></div>
       <div id="identifyCard" class="identify-card hidden">
@@ -214,7 +231,28 @@
         <label class="field">Vehicle (optional)<input id="serviceVehicle" placeholder="e.g. 2018 Honda CR-V" /></label>
       </div>
       <label class="field">Technician / service notes<textarea id="serviceNotes" placeholder="e.g. Front brake pads measured low. Customer declined replacement today. No other facts should be added."></textarea></label>
-      <label class="field">Offer / service details (optional)<textarea id="serviceOffer" placeholder="e.g. $20 off brake service this week, or oil change + tire rotation special"></textarea></label>
+
+      <div class="offer-box">
+        <h4>Smart incentive strategy</h4>
+        <p>GrowthWise can recommend whether an offer is useful, but it never invents a discount. Any monetary offer included in a customer message must be approved here first.</p>
+        <div class="grid2">
+          <label class="field">Offer strategy
+            <select id="serviceOfferStrategy">
+              <option value="ai_recommend">AI recommend whether to use an offer</option>
+              <option value="none">No incentive</option>
+              <option value="dollar">Dollar discount</option>
+              <option value="percent">Percentage discount</option>
+              <option value="free_addon">Free add-on</option>
+              <option value="custom">Custom approved offer</option>
+            </select>
+          </label>
+          <label class="field">Approved value / add-on<input id="serviceOfferValue" placeholder="e.g. 25, 10%, or free tire rotation" /></label>
+          <label class="field">Offer expires<input id="serviceOfferExpiry" type="date" /></label>
+          <label class="field">Minimum spend (optional)<input id="serviceMinSpend" inputmode="decimal" placeholder="e.g. 150" /></label>
+          <label class="field">Maximum discount (optional)<input id="serviceMaxDiscount" inputmode="decimal" placeholder="e.g. 50" /></label>
+        </div>
+        <label class="field">Offer / service details (optional)<textarea id="serviceOffer" placeholder="e.g. Brake service promotion, oil change + tire rotation special, or other approved terms"></textarea></label>
+      </div>
       <label class="field">Open appointments / timing (optional)<input id="serviceAvailability" placeholder="e.g. Thursday 1–4 PM, three openings" /></label>
 
       <div class="inline-actions">
@@ -229,6 +267,7 @@
         <label>Email subject<input id="serviceEmailSubject" /></label>
         <label>Email body<textarea id="serviceEmailBody"></textarea></label>
         <label>Social / service promotion<textarea id="serviceSocial"></textarea></label>
+        <div class="offer-reco"><strong>AI incentive recommendation</strong><div id="serviceOfferRecommendation" style="margin-top:5px"></div></div>
         <div class="mini"><strong>Recommended staff action</strong><div id="serviceStaffAction" style="margin-top:5px"></div></div>
         <div class="mini"><strong>Suggested follow-up</strong><div id="serviceFollowup" style="margin-top:5px"></div></div>
         <div class="note" id="serviceCaution"></div>
@@ -557,7 +596,12 @@ $('serviceDemoDeclined')?.addEventListener('click',()=>{
   $('serviceCustomer').value='Maria';
   $('serviceVehicle').value='2018 Honda CR-V';
   $('serviceNotes').value='Front brake pads measured low during inspection. Customer declined replacement today. Do not add any diagnosis, price, or safety claim beyond these notes.';
-  $('serviceOffer').value='';
+  $('serviceOfferStrategy').value='dollar';
+  $('serviceOfferValue').value='25';
+  $('serviceOfferExpiry').value='';
+  $('serviceMinSpend').value='';
+  $('serviceMaxDiscount').value='25';
+  $('serviceOffer').value='Demo-only approved incentive: $25 off the declined brake service. Confirm the expiration date with the shop before sending.';
   $('serviceAvailability').value='';
   setServiceStatus('ok','Demo loaded. Tap the AI button to turn rough shop notes into customer-ready communication.');
 });
@@ -566,7 +610,12 @@ $('serviceDemoBays')?.addEventListener('click',()=>{
   $('serviceCustomer').value='';
   $('serviceVehicle').value='';
   $('serviceNotes').value='The shop wants to fill open service appointments without sounding desperate or spammy.';
-  $('serviceOffer').value='Oil change + tire rotation special. Do not invent a price or discount.';
+  $('serviceOfferStrategy').value='ai_recommend';
+  $('serviceOfferValue').value='';
+  $('serviceOfferExpiry').value='';
+  $('serviceMinSpend').value='';
+  $('serviceMaxDiscount').value='';
+  $('serviceOffer').value='Oil change + tire rotation special. Recommend whether an incentive would help fill the bays, but do not invent a dollar or percentage discount.';
   $('serviceAvailability').value='Thursday from 1 PM to 4 PM, three openings.';
   setServiceStatus('ok','Open-bays demo loaded. Tap the AI button to build the campaign.');
 });
@@ -578,14 +627,23 @@ $('serviceAiBtn')?.addEventListener('click', async()=>{
   const btn=$('serviceAiBtn');btn.disabled=true;btn.textContent='Creating service package…';setServiceStatus('loading','GrowthWise is turning the shop facts into customer-ready follow-up and marketing…');
   try{
     const response=await fetch('/.netlify/functions/service-assistant',{method:'POST',headers:{'Content-Type':'application/json','X-GrowthWise-Key':key},body:JSON.stringify({
-      business_name:$('businessName').value.trim()||'Automotive Pilot Service Center',
+      business_name:$('businessName').value.trim()||'Auto City Sales',
+      business_address:$('businessAddress').value.trim(),
+      business_phone:$('businessPhone').value.trim(),
+      business_website:$('businessWebsite').value.trim(),
       mode:$('serviceMode').value,
       customer_name:$('serviceCustomer').value.trim(),
       vehicle:$('serviceVehicle').value.trim(),
-      notes,offer,availability
+      notes,offer,availability,
+      offer_strategy:$('serviceOfferStrategy').value,
+      offer_value:$('serviceOfferValue').value.trim(),
+      offer_expiry:$('serviceOfferExpiry').value,
+      minimum_spend:$('serviceMinSpend').value.trim(),
+      maximum_discount:$('serviceMaxDiscount').value.trim()
     })});
     const data=await response.json().catch(()=>({}));if(!response.ok) throw new Error(data.error||`Service AI failed (HTTP ${response.status}).`);
     $('serviceSms').value=data.customer_sms||'';$('serviceEmailSubject').value=data.email_subject||'';$('serviceEmailBody').value=data.email_body||'';$('serviceSocial').value=data.social_caption||'';
+    $('serviceOfferRecommendation').textContent=data.offer_recommendation||'No additional incentive recommendation.';
     $('serviceStaffAction').textContent=data.staff_action||'Review the drafts and choose the appropriate customer action.';
     $('serviceFollowup').textContent=data.suggested_followup||'Set follow-up timing based on the shop workflow.';
     $('serviceCaution').textContent=data.caution_note||'Review every draft before sending.';
@@ -601,8 +659,25 @@ $('goSell')?.addEventListener('click',()=>{$('sellStart')?.scrollIntoView({behav
 $('goBuy')?.addEventListener('click',()=>{$('dealAnalysis')?.scrollIntoView({behavior:'smooth',block:'start'});});
 $('goService')?.addEventListener('click',()=>{$('servicePreview')?.scrollIntoView({behavior:'smooth',block:'start'});});
 
-$('businessName').value=localStorage.getItem('growthwise_auto_business_name')||'';
-$('businessName').addEventListener('input',()=>{localStorage.setItem('growthwise_auto_business_name',$('businessName').value.trim());markOutputsStale();});
+const profileDefaults={
+  businessName:'Auto City Sales',
+  businessAddress:'427 Hertel Ave, Buffalo, NY 14207',
+  businessPhone:'(716) 406-7555',
+  businessWebsite:'https://autocitysales.net',
+  defaultMarket:'Buffalo, NY'
+};
+for(const [id,def] of Object.entries(profileDefaults)){
+  const el=$(id); if(!el) continue;
+  const stored=localStorage.getItem(`growthwise_auto_${id}`);
+  el.value=stored||def;
+  el.addEventListener('input',()=>{
+    localStorage.setItem(`growthwise_auto_${id}`,el.value.trim());
+    if(id==='businessName') markOutputsStale();
+    if(id==='defaultMarket' && !$('marketLocation').value.trim()) $('marketLocation').value=el.value.trim();
+    $('profileSaved').textContent='Profile saved on this device for the demo.';
+  });
+}
+if(!$('marketLocation').value.trim()) $('marketLocation').value=$('defaultMarket').value.trim();
 populateYears();loadMakes();updateReadiness();refreshAccessUi();
 </script>
 </body>
