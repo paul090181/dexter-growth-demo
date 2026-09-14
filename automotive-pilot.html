@@ -2210,13 +2210,21 @@ function normalizeImportedInventory(rows){
 function previewImport(data){
   pendingDataImport=data;
   const inv=data.inventory||[];
+  const buying=data.buying||[],selling=data.selling||[],service=data.service||[];
   let matches=0;
   for(const r of inv){
     if(inventoryRecords.some(x=>(r.vin&&x.vin&&r.vin===x.vin)||(r.stock&&x.stock&&r.stock.toLowerCase()===x.stock.toLowerCase())))matches++;
   }
   const newCount=inv.length-matches,mappedFields=Object.keys(data.mapping||{}).length;
-  $('dataImportPreview').innerHTML=`<strong>${data.fileName}</strong><br>${inv.length} inventory rows ready · ${newCount} new · ${matches} matching VIN/stock records · ${data.invalid||0} rows need attention.<br>${mappedFields?`${mappedFields} inventory fields mapped automatically.`:'GrowthWise workbook sheets detected.'}${data.buying?.length?` · ${data.buying.length} buying rows`:''}${data.selling?.length?` · ${data.selling.length} selling rows`:''}${data.service?.length?` · ${data.service.length} service rows`:''}`;
-  $('confirmDataImport').disabled=!(inv.length||data.buying?.length||data.selling?.length||data.service?.length);
+  const importable=inv.length+buying.length+selling.length+service.length;
+  if(!importable && !(data.invalid||0)){
+    $('dataImportPreview').innerHTML=`<strong>${data.fileName}</strong><br>Blank GrowthWise template recognized · 0 inventory rows · 0 buying rows · 0 selling rows · 0 service rows.<br>Add dealership data to the workbook, save it, then choose the file again.`;
+    $('confirmDataImport').disabled=true;
+    setDataExcelStatus('ok','Template recognized correctly. There is nothing to import yet, so no data has been changed.');
+    return;
+  }
+  $('dataImportPreview').innerHTML=`<strong>${data.fileName}</strong><br>${inv.length} inventory rows ready · ${newCount} new · ${matches} matching VIN/stock records · ${data.invalid||0} rows need attention.<br>${mappedFields?`${mappedFields} inventory fields mapped automatically.`:'GrowthWise workbook sheets detected.'}${buying.length?` · ${buying.length} buying rows`:''}${selling.length?` · ${selling.length} selling rows`:''}${service.length?` · ${service.length} service rows`:''}`;
+  $('confirmDataImport').disabled=!importable;
   setDataExcelStatus('warn','Review the counts above, then choose Import reviewed data. Nothing has been changed yet.');
 }
 async function parseDataImportFile(file){
@@ -2226,9 +2234,14 @@ async function parseDataImportFile(file){
     if(!window.XLSX){setDataExcelStatus('error','Excel import needs the spreadsheet library. Please retry when online.');return;}
     const wb=XLSX.read(buf,{type:'array',cellDates:false});
     const get=name=>wb.Sheets[name]?excelRowsToObjects(wb.Sheets[name]):[];
-    let rawInventory=get('Inventory');
+    const hasInventorySheet=!!wb.Sheets['Inventory'];
+    let rawInventory=hasInventorySheet?get('Inventory'):[];
     const buying=get('Buying Pipeline'),selling=get('Selling & Marketing'),service=get('Service');
-    if(!rawInventory.length){
+    // Only fall back to the first worksheet for generic dealer spreadsheets that do NOT
+    // contain a GrowthWise Inventory sheet. A blank GrowthWise template intentionally
+    // has an empty Inventory sheet; falling back to Instructions would misread the
+    // instruction rows as invalid inventory records.
+    if(!hasInventorySheet){
       const first=wb.SheetNames[0];
       rawInventory=first?excelRowsToObjects(wb.Sheets[first]):[];
     }
