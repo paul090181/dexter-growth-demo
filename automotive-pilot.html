@@ -316,7 +316,7 @@ body{
           <button class="dash-cta secondary-cta" type="button" id="goService">I want to work with Service</button>
         </div>
         <div class="dash-action marketing-action">
-          <div class="dash-row"><div class="dash-icon">📋</div><div class="dash-copy"><strong>Inventory Manager</strong><small>Track owned vehicles from purchase through recon, listing, aging inventory and final sale.</small></div><span class="dash-tag next">THIS DEVICE</span></div>
+          <div class="dash-row"><div class="dash-icon">📋</div><div class="dash-copy"><strong>Inventory Manager</strong><small>Track owned vehicles from purchase through recon, listing, aging inventory and final sale.</small></div><span class="dash-tag next">LOCAL STORAGE</span></div>
           <button class="dash-cta secondary-cta" type="button" id="goInventory">Open inventory</button>
         </div>
       </div>
@@ -328,9 +328,9 @@ body{
         <div>
           <div class="tag">INVENTORY · SOURCE OF TRUTH</div>
           <h3>GrowthWise Inventory Manager</h3>
-          <p class="helper">Track every owned vehicle from purchase → recon → photos/listing → aging inventory → sold. Inventory is currently saved on this device; a dealership database or DMS connection can make it shared across staff.</p>
+          <p class="helper">Track every owned vehicle from purchase → recon → photos/listing → aging inventory → sold. Inventory is currently saved locally on this device; a dealership database or DMS connection can make it shared across staff.</p>
         </div>
-        <span class="inventory-mode">THIS DEVICE</span>
+        <span class="inventory-mode">LOCAL STORAGE</span>
       </div>
 
       <div class="inventory-kpis">
@@ -542,14 +542,14 @@ body{
           <span class="source-hub-count">1 LIVE</span>
         </div>
         <div class="source-hub-list">
-          <div class="source-hub-row"><div class="source-hub-icon">🌐</div><div class="source-hub-copy"><strong>Public Listings</strong><small>Public web research · active in today's scout; exact listings can be verified individually</small></div><span class="source-hub-status live">LIVE</span></div>
+          <div class="source-hub-row"><div class="source-hub-icon">🌐</div><div class="source-hub-copy"><strong>Public Listings</strong><small>Public web research · available now; exact listings can be verified individually</small></div><span class="source-hub-status live">LIVE</span></div>
           <div class="source-hub-row"><div class="source-hub-icon">🏷️</div><div class="source-hub-copy"><strong>Wholesale Auctions</strong><small>Manheim / OVE, ACV, OPENLANE and other dealer accounts</small></div><span class="source-hub-status connect">CONNECT</span></div>
           <div class="source-hub-row"><div class="source-hub-icon">🤝</div><div class="source-hub-copy"><strong>Dealer-to-Dealer</strong><small>Wholesalers, dealer networks and direct inventory feeds</small></div><span class="source-hub-status connect">CONNECT</span></div>
-          <div class="source-hub-row"><div class="source-hub-icon">👤</div><div class="source-hub-copy"><strong>Private Party</strong><small>Seller marketplaces and other permitted public sources</small></div><span class="source-hub-status">PLANNED</span></div>
-          <div class="source-hub-row"><div class="source-hub-icon">🔁</div><div class="source-hub-copy"><strong>Trade-ins + Service Customers</strong><small>Turn customer trade or high-repair-cost opportunities into acquisition leads</small></div><span class="source-hub-status">PLANNED</span></div>
+          <div class="source-hub-row"><div class="source-hub-icon">👤</div><div class="source-hub-copy"><strong>Private Party</strong><small>Seller marketplaces and other permitted public sources</small></div><span class="source-hub-status">COMING SOON</span></div>
+          <div class="source-hub-row"><div class="source-hub-icon">🔁</div><div class="source-hub-copy"><strong>Trade-ins + Service Customers</strong><small>Turn customer trade or high-repair-cost opportunities into acquisition leads</small></div><span class="source-hub-status">COMING SOON</span></div>
           <div class="source-hub-row"><div class="source-hub-icon">📎</div><div class="source-hub-copy"><strong>Manual / Saved Leads</strong><small>Paste a listing URL into Candidate Deal Analysis for an immediate deep-dive</small></div><span class="source-hub-status ready">READY</span></div>
         </div>
-        <div class="source-hub-note"><strong>Setup question:</strong> “Where do you get most of your cars today, and which source do you open first?” The answer helps prioritize the first private source connection.</div>
+        <div class="source-hub-note"><strong>Sourcing preference:</strong> Tell GrowthWise where Auto City gets most vehicles today and which source staff opens first. This helps prioritize the first private-source connection.</div>
       </div>
       <div class="scout-grid">
         <label class="field">Retail market<input id="scoutMarket" placeholder="e.g. Buffalo, NY" /></label>
@@ -657,8 +657,8 @@ body{
       <label class="field">Open appointments / timing (optional)<input id="serviceAvailability" placeholder="e.g. Thursday 1–4 PM, three openings" /></label>
 
       <div class="inline-actions">
-        <button class="secondary" id="serviceDemoDeclined" type="button">Load sample declined-work</button>
-        <button class="secondary" id="serviceDemoBays" type="button">Load sample open-bays</button>
+        <button class="secondary" id="serviceDemoDeclined" type="button">Try declined-work example</button>
+        <button class="secondary" id="serviceDemoBays" type="button">Try open-bays example</button>
       </div>
 
       <div class="offer-box">
@@ -729,7 +729,7 @@ body{
       </label>
       <div class="inline-actions">
         <button class="secondary" id="marketingUseCurrent" type="button">Use current vehicle</button>
-        <button class="secondary" id="marketingDemoBtn" type="button">Load sample vehicle</button>
+        <button class="secondary" id="marketingDemoBtn" type="button">Try example vehicle</button>
       </div>
 
       <label class="field">Vehicle<input id="marketingVehicle" placeholder="e.g. 2018 Chevrolet Trax LT AWD" /></label>
@@ -809,7 +809,7 @@ body{
           <div class="copy-action-row"><button class="copy-draft-btn" id="copyMarketingFacebook" type="button">Copy Facebook</button></div>
           <div class="fb-publish-card">
             <div class="fb-publish-head">
-              <div><strong>Full Facebook campaign</strong><div class="field-note">Current connection: publishing is limited to the GrowthWise Test Page. The Facebook token stays server-side in Netlify.</div></div>
+              <div><strong>Full Facebook campaign</strong><div class="field-note">Preview publishing is available through GrowthWise. Connect Auto City’s Facebook Page to publish directly there.</div></div>
               <span class="fb-page-badge" id="marketingFbBadge">NOT CHECKED</span>
             </div>
             <div id="marketingFbPageName" class="field-note" style="margin-top:7px">Check the connection before publishing.</div>
@@ -819,7 +819,7 @@ body{
             </div>
             <div class="fb-publish-actions">
               <button class="fb-preview-btn" id="marketingFbPreviewBtn" type="button">Preview full post</button>
-              <button class="fb-live-btn" id="marketingFbPublishBtn" type="button" disabled>Publish to Test Page</button>
+              <button class="fb-live-btn" id="marketingFbPublishBtn" type="button" disabled>Publish preview</button>
             </div>
             <div id="marketingFbStatus" class="status hidden"></div>
           </div>
@@ -839,14 +839,14 @@ body{
       <h3>Where should GrowthWise send it?</h3>
       <p class="helper">Choose where GrowthWise should publish. Each destination becomes available after Auto City connects and authorizes its account.</p>
       <div class="dest">
-        <label><input type="checkbox" checked /> Facebook <span class="badge">TEST PAGE CONNECTED</span></label>
+        <label><input type="checkbox" checked /> Facebook <span class="badge">PREVIEW CONNECTION</span></label>
         <label class="disabled-destination"><input type="checkbox" disabled /> Instagram <span class="badge">not connected</span></label>
         <label class="disabled-destination"><input type="checkbox" disabled /> Dealership website <span class="badge">not connected</span></label>
         <label class="disabled-destination"><input type="checkbox" disabled /> Google Business Profile <span class="badge">not connected</span></label>
         <label class="disabled-destination"><input type="checkbox" disabled /> Dealer marketplace <span class="badge">not connected</span></label>
         <label><input type="checkbox" /> Other / request a destination <span class="badge">request</span></label>
       </div>
-      <div class="note"><strong>Connection status:</strong> Facebook publishing is currently connected only to the GrowthWise Test Page. Auto City’s real Facebook, Instagram, website and marketplace accounts remain unconnected until the dealership explicitly authorizes them.</div>
+      <div class="note"><strong>Connection status:</strong> Facebook preview publishing is available through GrowthWise. Auto City’s Facebook, Instagram, website and marketplace accounts are not connected yet. Connect and authorize each destination before live publishing.</div>
     </section>
   </main>
 </div>
@@ -857,7 +857,7 @@ body{
       <div><strong id="campaignPreviewTitle">Facebook campaign preview</strong><div class="field-note">Review before anything is published.</div></div>
       <button id="campaignPreviewClose" class="campaign-preview-close" type="button" aria-label="Close preview">×</button>
     </div>
-    <div class="campaign-preview-page">Destination: GrowthWise Test Page</div>
+    <div class="campaign-preview-page">Destination: GrowthWise Facebook Preview</div>
     <div id="campaignPreviewImages" class="campaign-preview-grid"></div>
     <div id="campaignPreviewCopy" class="campaign-preview-copy"></div>
     <div id="campaignPreviewNote" class="campaign-preview-note"></div>
@@ -1240,7 +1240,7 @@ $('serviceDemoDeclined')?.addEventListener('click',()=>{
   $('serviceNotes').value='Front brake pads measured low during inspection. Customer declined replacement today. Do not add any diagnosis, price, or safety claim beyond these notes.';
   $('serviceAvailability').value='';
   clearServiceResult();
-  setServiceStatus('ok','Sample declined-work scenario loaded. Next, ask GrowthWise to recommend an incentive.');
+  setServiceStatus('ok','Example declined-work scenario loaded. Next, ask GrowthWise to recommend an incentive.');
 });
 $('serviceDemoBays')?.addEventListener('click',()=>{
   $('serviceMode').value='open_bays';
@@ -1249,7 +1249,7 @@ $('serviceDemoBays')?.addEventListener('click',()=>{
   $('serviceNotes').value='The shop wants to fill open service appointments without sounding desperate or spammy.';
   $('serviceAvailability').value='Thursday from 1 PM to 4 PM, three openings.';
   clearServiceResult();
-  setServiceStatus('ok','Sample open-bays scenario loaded. Next, ask GrowthWise to recommend an incentive.');
+  setServiceStatus('ok','Example open-bays scenario loaded. Next, ask GrowthWise to recommend an incentive.');
 });
 
 $('serviceSuggestOfferBtn')?.addEventListener('click', async()=>{
@@ -1799,10 +1799,10 @@ async function checkMarketingFacebookConnection(showStatus=true){
     marketingFacebookPageName=String(d.page_name||'Connected Facebook Page');
     const isTest=marketingFacebookPageName.trim().toLowerCase()===GROWTHWISE_TEST_FACEBOOK_PAGE.toLowerCase();
     marketingFacebookConnected=!!d.connected&&isTest;
-    badge.textContent=isTest?'TEST PAGE CONNECTED':'WRONG PAGE';badge.className=`fb-page-badge ${isTest?'ok':'error'}`;
-    $('marketingFbPageName').textContent=isTest?`Connected safely to ${marketingFacebookPageName}.`:`Connected Page is “${marketingFacebookPageName}”. Publishing is limited to ${GROWTHWISE_TEST_FACEBOOK_PAGE} until Auto City authorizes its own Facebook Page.`;
+    badge.textContent=isTest?'PREVIEW READY':'CONNECTION ISSUE';badge.className=`fb-page-badge ${isTest?'ok':'error'}`;
+    $('marketingFbPageName').textContent=isTest?'GrowthWise preview publishing connection is ready.':`Connected Page is “${marketingFacebookPageName}”. Auto City’s Facebook Page is not connected yet.`;
     $('marketingFbPublishBtn').disabled=!marketingFacebookConnected;
-    if(showStatus)setMarketingFbStatus(isTest?'ok':'error',isTest?'GrowthWise Test Page is ready for a real test post.':'Publishing blocked to protect the wrong Facebook Page.');
+    if(showStatus)setMarketingFbStatus(isTest?'ok':'error',isTest?'Facebook preview connection is ready.':'Publishing is blocked because the connected preview page does not match the expected GrowthWise preview connection.');
     return marketingFacebookConnected;
   }catch(err){marketingFacebookConnected=false;badge.textContent='NOT CONNECTED';badge.className='fb-page-badge error';$('marketingFbPublishBtn').disabled=true;if(showStatus)setMarketingFbStatus('error',err.message||'Could not verify Facebook.');return false;}
 }
@@ -1812,13 +1812,13 @@ $('marketingFbPublishBtn')?.addEventListener('click',async()=>{
   if(!marketingCampaignImages.length){setMarketingFbStatus('error','Select at least one public vehicle photo for the Facebook campaign.');return;}
   const message=$('marketingFacebook').value.trim();if(!message){setMarketingFbStatus('error','Facebook campaign copy is empty.');return;}
   if(!marketingFacebookConnected && !(await checkMarketingFacebookConnection(true)))return;
-  const btn=$('marketingFbPublishBtn');btn.disabled=true;const old=btn.textContent;btn.textContent='Publishing test…';setMarketingFbStatus('loading',`Publishing the approved campaign to ${marketingFacebookPageName}…`);
+  const btn=$('marketingFbPublishBtn');btn.disabled=true;const old=btn.textContent;btn.textContent='Publishing…';setMarketingFbStatus('loading',`Publishing the approved campaign to ${marketingFacebookPageName}…`);
   try{
     const r=await fetch('/.netlify/functions/facebook-post',{method:'POST',headers:{'Content-Type':'application/json','X-GrowthWise-Key':key},body:JSON.stringify({message,image_data_urls:marketingCampaignImages.slice(0,4),expected_page_name:GROWTHWISE_TEST_FACEBOOK_PAGE})});
     const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Facebook publish failed (HTTP ${r.status}).`);
-    setMarketingFbStatus('ok',`TEST post published ✓ ${d.photo_count||marketingCampaignImages.length} photo${(d.photo_count||marketingCampaignImages.length)===1?'':'s'} + campaign copy sent to ${d.page_name||marketingFacebookPageName}.`);
+    setMarketingFbStatus('ok',`Preview published ✓ ${d.photo_count||marketingCampaignImages.length} photo${(d.photo_count||marketingCampaignImages.length)===1?'':'s'} + campaign copy sent successfully.`);
     btn.textContent='Published ✓';setTimeout(()=>{btn.textContent=old;btn.disabled=!marketingFacebookConnected;},2600);
-  }catch(err){setMarketingFbStatus('error',err.message||'Could not publish the test campaign.');btn.textContent=old;btn.disabled=!marketingFacebookConnected;}
+  }catch(err){setMarketingFbStatus('error',err.message||'Could not publish the preview campaign.');btn.textContent=old;btn.disabled=!marketingFacebookConnected;}
 });
 
 function setPhotoAiStatus(kind,msg){const el=$('marketingPhotoAiStatus');if(!el)return;el.className=`status ${kind}`;el.textContent=msg;}
@@ -1891,7 +1891,7 @@ function useCurrentVehicleForMarketing(){
   if($('mileage').value.trim()) $('marketingMileage').value=$('mileage').value.trim();
   if($('price').value.trim()) $('marketingPrice').value=$('price').value.trim();
   if(label) setMarketingStatus('ok','Current vehicle loaded. Add days-on-lot and any engagement facts Auto City knows.');
-  else setMarketingStatus('warn','No confirmed Sell vehicle is loaded yet. Enter a vehicle below or load the sample vehicle.');
+  else setMarketingStatus('warn','No confirmed Sell vehicle is loaded yet. Enter a vehicle below or try the example vehicle.');
 }
 $('marketingUseCurrent')?.addEventListener('click',useCurrentVehicleForMarketing);
 $('marketingDemoBtn')?.addEventListener('click',()=>{
@@ -1904,7 +1904,7 @@ $('marketingDemoBtn')?.addEventListener('click',()=>{
   $('marketingGoal').value='aging_inventory';
   $('marketingPriceHistory').value='Current asking price is $13,995. No verified local comp data entered yet.';
   $('marketingFacts').value='Vehicle is owned inventory. Existing listing has been active for several weeks. Staff should verify exact features, condition, photo quality and channels already used before publishing any refreshed campaign.';
-  setMarketingStatus('ok','Sample vehicle loaded. GrowthWise will clearly label recommendations preliminary where supporting data is missing.');
+  setMarketingStatus('ok','Example vehicle loaded. GrowthWise will clearly label recommendations preliminary where supporting data is missing.');
 });
 $('marketingAnalyzeBtn')?.addEventListener('click',async()=>{
   const key=sessionStorage.getItem('growthwise_admin_key')||'';
@@ -1956,7 +1956,7 @@ $('marketingAnalyzeBtn')?.addEventListener('click',async()=>{
     $('marketingResult').classList.remove('hidden');
     recordSellingPlan(data);
     sessionStorage.setItem('growthwise_admin_key',key);
-    setMarketingStatus('ok','Sell This Vehicle plan ready ✓ Auto City can edit the drafts, preview the full campaign, and publish a test to the GrowthWise Test Page.');
+    setMarketingStatus('ok','Sell This Vehicle plan ready ✓ Auto City can edit the drafts and preview the full campaign. Connect a dealership destination when ready to publish.');
     const invId=$('marketingInventorySelect')?.value;if(invId){const rec=inventoryRecords.find(r=>r.id===invId);if(rec){rec.asking=Number(String($('marketingPrice').value||'').replace(/[^0-9.]/g,''))||rec.asking;rec.mileage=String($('marketingMileage').value||rec.mileage||'').replace(/[^0-9]/g,'');rec.views=Number($('marketingViews').value)||rec.views||0;rec.leads=Number($('marketingLeads').value)||rec.leads||0;rec.notes=$('marketingFacts').value.trim()||rec.notes;rec.updatedAt=new Date().toISOString();if(rec.status==='Ready for photos'||rec.status==='Purchased / Awaiting Recon'||rec.status==='Recon in progress')rec.status='For sale';persistInventory();}}
     renderMarketingFacebookPreview(false);
     checkMarketingFacebookConnection(false);
