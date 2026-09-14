@@ -2042,15 +2042,21 @@ function serviceExportRows(includeNames=false){
     return x;
   });
 }
-function setSheetWidths(ws,rows){
-  if(!rows?.length)return;
-  const headers=Object.keys(rows[0]);
-  ws['!cols']=headers.map(h=>({wch:Math.min(42,Math.max(12,h.length+2))}));
+const DATA_EXPORT_HEADERS={
+  buying:['Record Type','Timestamp','Vehicle','Year','Make','Model','Trim','Mileage','VIN','Source','SourceLocation','SourceURL','CurrentAsk','TargetGross','Decision','Confidence','RetailLow','RetailHigh','EstimatedRetail','RecommendedMaxBuy','Acquisition','Fees','Transport','Recon','Labor','AllIn','ProjectedGross','ProjectedROI','Assumptions'],
+  inventory:['Stock #','Status','Year','Make','Model','Trim','Vehicle','VIN','Mileage','Acquisition Source','Acquired Date','Listed Date','Days in Inventory','Purchase Price','Buyer/Auction Fees','Transport','Recon Parts','Internal Labor','All-in Cost','Current Asking Price','Views/Engagement','Leads/Inquiries','Sold Date','Final Sale Price','Gross Profit','ROI %','Notes','Source URL'],
+  selling:['Timestamp','InventoryID','Vehicle','Mileage','AskingPrice','DaysOnLot','Views','Leads','Goal','Priority','Confidence','RecommendedAction','PriceStrategy','MarginNote','FollowupDays','Headline','Facebook','Instagram','KnownFacts'],
+  service:['Timestamp','Mode','Customer','Vehicle','InventoryID','Notes','Availability','OfferApproved','OfferType','OfferValue','OfferExpiry','MinimumSpend','MaximumDiscount','OfferDetails','SMS','EmailSubject','EmailBody','Social','StaffAction','SuggestedFollowup','Caution']
+};
+function setSheetWidths(ws,headers){
+  if(!headers?.length)return;
+  ws['!cols']=headers.map(h=>({wch:Math.min(42,Math.max(12,String(h).length+2))}));
 }
-function addJsonSheet(wb,name,rows){
-  const safeRows=rows?.length?rows:[{'No data yet':''}];
-  const ws=XLSX.utils.json_to_sheet(safeRows);
-  setSheetWidths(ws,safeRows);
+function addJsonSheet(wb,name,rows,headers=[]){
+  const hasRows=Array.isArray(rows)&&rows.length>0;
+  const cols=headers?.length?headers:(hasRows?Object.keys(rows[0]):[]);
+  const ws=hasRows?XLSX.utils.json_to_sheet(rows,{header:cols.length?cols:undefined}):XLSX.utils.aoa_to_sheet([cols]);
+  setSheetWidths(ws,cols);
   XLSX.utils.book_append_sheet(wb,ws,name);
   return ws;
 }
@@ -2089,12 +2095,12 @@ function exportMasterWorkbook(){
   if(!window.XLSX){setDataExcelStatus('error','Excel library is unavailable. Use the individual export buttons for CSV fallback.');return;}
   try{
     const wb=XLSX.utils.book_new();
-    addJsonSheet(wb,'Dashboard',dashboardRows());
-    addJsonSheet(wb,'Buying Pipeline',buyingExportRows());
-    addJsonSheet(wb,'Inventory',inventoryExportRows(inventoryRecords));
-    addJsonSheet(wb,'Selling & Marketing',sellingExportRows());
-    addJsonSheet(wb,'Service',serviceExportRows($('serviceExportNames')?.checked));
-    addJsonSheet(wb,'Sold History',inventoryExportRows(inventoryRecords.filter(r=>r.status==='Sold')));
+    addJsonSheet(wb,'Dashboard',dashboardRows(),['Metric','Value']);
+    addJsonSheet(wb,'Buying Pipeline',buyingExportRows(),DATA_EXPORT_HEADERS.buying);
+    addJsonSheet(wb,'Inventory',inventoryExportRows(inventoryRecords),DATA_EXPORT_HEADERS.inventory);
+    addJsonSheet(wb,'Selling & Marketing',sellingExportRows(),DATA_EXPORT_HEADERS.selling);
+    addJsonSheet(wb,'Service',serviceExportRows($('serviceExportNames')?.checked),DATA_EXPORT_HEADERS.service);
+    addJsonSheet(wb,'Sold History',inventoryExportRows(inventoryRecords.filter(r=>r.status==='Sold')),DATA_EXPORT_HEADERS.inventory);
     XLSX.writeFile(wb,`GrowthWise_AutoCity_Master_${isoToday()}.xlsx`);
     setDataExcelStatus('ok','Master dealership workbook exported with Buying, Inventory, Selling, Service and Sold History.');
   }catch(err){
@@ -2105,22 +2111,26 @@ function exportBuyingWorkbook(){exportRowsWorkbook(buyingExportRows(),'Buying Pi
 function exportSellingWorkbook(){exportRowsWorkbook(sellingExportRows(),'Selling & Marketing',`GrowthWise_AutoCity_Selling_${isoToday()}.xlsx`);}
 function exportServiceWorkbook(){exportRowsWorkbook(serviceExportRows($('serviceExportNames')?.checked),'Service',`GrowthWise_AutoCity_Service_${isoToday()}.xlsx`);}
 function downloadDataImportTemplate(){
-  const headers=[{
-    'Stock #':'GW-001','Status':'For sale','Year':2020,'Make':'Example','Model':'Vehicle','Trim':'',
-    'Vehicle':'2020 Example Vehicle','VIN':'','Mileage':50000,'Acquisition Source':'Auction',
-    'Acquired Date':isoToday(),'Listed Date':isoToday(),'Purchase Price':9000,'Buyer/Auction Fees':400,
-    'Transport':300,'Recon Parts':600,'Internal Labor':250,'Current Asking Price':13995,
-    'Views/Engagement':0,'Leads/Inquiries':0,'Sold Date':'','Final Sale Price':0,
-    'Notes':'Replace this example row with real dealership data.','Source URL':''
-  }];
-  if(!window.XLSX){downloadCsvRows(headers,`GrowthWise_Import_Template_${isoToday()}.csv`);return;}
+  if(!window.XLSX){
+    const blank=Object.fromEntries(DATA_EXPORT_HEADERS.inventory.map(h=>[h,'']));
+    downloadCsvRows([blank],`GrowthWise_Import_Template_${isoToday()}.csv`);return;
+  }
   const wb=XLSX.utils.book_new();
-  addJsonSheet(wb,'Inventory',headers);
-  addJsonSheet(wb,'Buying Pipeline',[{'Record Type':'Deal Analysis','Timestamp':'','Vehicle':'','CurrentAsk':0,'Decision':'','ProjectedGross':0,'ProjectedROI':0}]);
-  addJsonSheet(wb,'Selling & Marketing',[{'Timestamp':'','Vehicle':'','AskingPrice':0,'DaysOnLot':0,'RecommendedAction':'','Headline':''}]);
-  addJsonSheet(wb,'Service',[{'Timestamp':'','Mode':'','Customer':'','Vehicle':'','Notes':'','OfferApproved':false,'StaffAction':''}]);
+  const instructions=[
+    ['GrowthWise Automotive Excel Import Template'],
+    ['How to use','Add real dealership rows beneath the headers on the appropriate sheet. Do not rename the standard columns unless necessary.'],
+    ['Inventory matching','GrowthWise matches existing records by VIN first, then Stock #.'],
+    ['Safety','Import always shows a preview before records are changed. Skip matching records is the safest default.'],
+    ['Photos','Excel import does not replace the local GrowthWise vehicle photo library.'],
+    ['Tip','You can also import many dealer spreadsheets with common headings such as ACV, Retail, Odometer, Stock # and VIN.']
+  ];
+  const wsInfo=XLSX.utils.aoa_to_sheet(instructions);wsInfo['!cols']=[{wch:22},{wch:90}];XLSX.utils.book_append_sheet(wb,wsInfo,'Instructions');
+  addJsonSheet(wb,'Inventory',[],DATA_EXPORT_HEADERS.inventory);
+  addJsonSheet(wb,'Buying Pipeline',[],DATA_EXPORT_HEADERS.buying);
+  addJsonSheet(wb,'Selling & Marketing',[],DATA_EXPORT_HEADERS.selling);
+  addJsonSheet(wb,'Service',[],DATA_EXPORT_HEADERS.service);
   XLSX.writeFile(wb,`GrowthWise_Import_Template_${isoToday()}.xlsx`);
-  setDataExcelStatus('ok','GrowthWise Excel import template downloaded.');
+  setDataExcelStatus('ok','GrowthWise Excel import template downloaded with blank headers and instructions.');
 }
 
 function normalizeHeader(v){return String(v||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();}
@@ -2190,6 +2200,8 @@ function normalizeImportedInventory(rows){
   const headers=Object.keys(rows[0]||{}),map=aliasLookup(headers);
   let invalid=0;
   const mapped=rows.map(r=>mapInventoryRow(r,map)).filter(r=>{
+    const isOldTemplateExample=(r.stock==='GW-001'&&String(r.make).toLowerCase()==='example'&&String(r.model).toLowerCase()==='vehicle'&&String(r.notes).toLowerCase().includes('replace this example row'));
+    if(isOldTemplateExample)return false;
     if(!r.vehicle&&!r.vin&&!r.stock){invalid++;return false;}
     return true;
   });
@@ -2233,6 +2245,8 @@ function importLogRows(key,rows){
   const sig=new Set(existing.map(r=>JSON.stringify([r.Timestamp||'',r.Vehicle||'',r.Mode||'',r.RecommendedAction||'',r.Decision||'',r['Record Type']||''])));
   let added=0;
   for(const r of rows){
+    const meaningful=Object.values(r||{}).some(v=>v!==''&&v!=null&&v!==0&&v!==false);
+    if(!meaningful)continue;
     const s=JSON.stringify([r.Timestamp||'',r.Vehicle||'',r.Mode||'',r.RecommendedAction||'',r.Decision||'',r['Record Type']||'']);
     if(sig.has(s))continue;
     existing.push(r);sig.add(s);added++;
@@ -2354,7 +2368,7 @@ function loadInventoryIntoService(id){const r=inventoryRecords.find(x=>x.id===id
 function loadInventoryIntoMarketing(id){const r=inventoryRecords.find(x=>x.id===id);if(!r)return;$('marketingVehicle').value=inventoryRecordLabel(r);$('marketingMileage').value=r.mileage||'';$('marketingPrice').value=r.asking||'';$('marketingDays').value=inventoryDays(r);$('marketingViews').value=r.views||'';$('marketingLeads').value=r.leads||'';$('marketingFacts').value=r.notes||'';photoAutoAnalysisTriggered=false;loadMarketingPhotoSet(false);}
 function deleteInventoryCurrent(){const id=$('invId').value;if(!id)return;const r=inventoryRecords.find(x=>x.id===id);if(!r)return;if(!confirm(`Delete ${inventoryRecordLabel(r)} from GrowthWise Inventory on this device?`))return;inventoryRecords=inventoryRecords.filter(x=>x.id!==id);persistInventory();$('inventoryEditor').classList.add('hidden');setInventoryStatus('warn','Inventory record deleted from this device.');}
 function inventoryExportRows(records){return records.map(r=>({
-  'Stock #':r.stock||'', 'Status':r.status||'', 'Vehicle':inventoryRecordLabel(r), 'VIN':r.vin||'', 'Mileage':Number(r.mileage)||'', 'Acquisition Source':r.source||'', 'Acquired Date':r.acquiredDate||'', 'Listed Date':r.listedDate||'', 'Days in Inventory':inventoryDays(r), 'Purchase Price':Number(r.purchase)||0, 'Buyer/Auction Fees':Number(r.fees)||0, 'Transport':Number(r.transport)||0, 'Recon Parts':Number(r.recon)||0, 'Internal Labor':Number(r.labor)||0, 'All-in Cost':inventoryAllIn(r), 'Current Asking Price':Number(r.asking)||0, 'Views/Engagement':Number(r.views)||0, 'Leads/Inquiries':Number(r.leads)||0, 'Sold Date':r.soldDate||'', 'Final Sale Price':Number(r.salePrice)||0, 'Gross Profit':inventoryGross(r), 'ROI %':Number(inventoryRoi(r).toFixed(1)), 'Notes':r.notes||'', 'Source URL':r.sourceUrl||''
+  'Stock #':r.stock||'', 'Status':r.status||'', 'Year':r.year||'', 'Make':r.make||'', 'Model':r.model||'', 'Trim':r.trim||'', 'Vehicle':inventoryRecordLabel(r), 'VIN':r.vin||'', 'Mileage':Number(r.mileage)||'', 'Acquisition Source':r.source||'', 'Acquired Date':r.acquiredDate||'', 'Listed Date':r.listedDate||'', 'Days in Inventory':inventoryDays(r), 'Purchase Price':Number(r.purchase)||0, 'Buyer/Auction Fees':Number(r.fees)||0, 'Transport':Number(r.transport)||0, 'Recon Parts':Number(r.recon)||0, 'Internal Labor':Number(r.labor)||0, 'All-in Cost':inventoryAllIn(r), 'Current Asking Price':Number(r.asking)||0, 'Views/Engagement':Number(r.views)||0, 'Leads/Inquiries':Number(r.leads)||0, 'Sold Date':r.soldDate||'', 'Final Sale Price':Number(r.salePrice)||0, 'Gross Profit':inventoryGross(r), 'ROI %':Number(inventoryRoi(r).toFixed(1)), 'Notes':r.notes||'', 'Source URL':r.sourceUrl||''
 }));}
 function fallbackInventoryCsv(){const rows=inventoryExportRows(inventoryRecords);if(!rows.length){setInventoryStatus('warn','Add at least one inventory vehicle before exporting.');return;}const headers=Object.keys(rows[0]);const esc=v=>`"${String(v??'').replace(/"/g,'""')}"`;const csv=[headers.map(esc).join(','),...rows.map(r=>headers.map(h=>esc(r[h])).join(','))].join('\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`GrowthWise_AutoCity_Inventory_${isoToday()}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500);setInventoryStatus('warn','Excel library was unavailable, so GrowthWise exported an Excel-compatible CSV instead.');}
 function exportInventoryExcel(){
