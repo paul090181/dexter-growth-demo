@@ -234,6 +234,29 @@ body{
 #opportunityScout,#sellStart,#servicePreview,#inventoryManager,#dataExcelCenter,#marketingEngine{scroll-margin-top:72px}
 
 
+
+/* GrowthWise feature request / feedback */
+.feature-request-launch{
+  position:fixed;right:max(14px,env(safe-area-inset-right,14px));bottom:max(18px,env(safe-area-inset-bottom,18px));z-index:1200;
+  border:0;border-radius:999px;padding:11px 14px;background:#0f2230;color:#fff;font-weight:950;font-size:11px;
+  box-shadow:0 10px 28px rgba(6,20,30,.26);cursor:pointer;display:flex;align-items:center;gap:7px;
+}
+.feature-request-launch:active{transform:translateY(1px)}
+.feature-request-launch span{font-size:15px}
+.feature-request-modal{position:fixed;inset:0;z-index:1600;background:rgba(5,13,20,.62);display:flex;align-items:flex-end;justify-content:center;padding:18px 12px max(18px,env(safe-area-inset-bottom,18px));backdrop-filter:blur(5px)}
+.feature-request-modal.hidden{display:none}
+.feature-request-sheet{width:min(520px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:22px;padding:18px;box-shadow:0 22px 70px rgba(0,0,0,.32)}
+.feature-request-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;border-bottom:1px solid #e3e8ec;padding-bottom:12px;margin-bottom:12px}
+.feature-request-head strong{display:block;font-size:20px;color:#172733}.feature-request-head p{margin:4px 0 0;color:#687783;font-size:11px;line-height:1.45}
+.feature-request-close{border:0;width:38px;height:38px;border-radius:999px;background:#edf2f5;color:#284051;font-size:22px;font-weight:900;cursor:pointer;flex:0 0 auto}
+.feature-request-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.feature-request-grid .full{grid-column:1/-1}
+.feature-request-grid label{font-size:10px;font-weight:900;color:#5b6974}.feature-request-grid input,.feature-request-grid select,.feature-request-grid textarea{margin-top:5px}
+.feature-request-grid textarea{min-height:120px;resize:vertical}
+.feature-request-submit{width:100%;border:0;border-radius:12px;padding:12px 14px;margin-top:12px;background:#b31f2b;color:#fff;font-weight:950;cursor:pointer;box-shadow:0 7px 18px rgba(179,31,43,.18)}
+.feature-request-note{margin-top:10px;padding:10px 11px;border-radius:11px;background:#eef4fb;color:#3b5c79;font-size:10px;line-height:1.45}
+.feature-request-status{margin-top:10px;padding:10px 11px;border-radius:11px;font-size:11px;line-height:1.45;display:none}.feature-request-status.ok{display:block;background:#e8f5ea;color:#285e32}.feature-request-status.error{display:block;background:#fff0ee;color:#963b31}
+@media(max-width:420px){.feature-request-grid{grid-template-columns:1fr}.feature-request-grid .full{grid-column:auto}.feature-request-launch{right:12px;bottom:12px;padding:10px 12px}.feature-request-launch .feature-request-label{display:none}}
+
 </style>
 </head>
 <body>
@@ -874,6 +897,68 @@ body{
     </div>
   </div>
 </div>
+
+<button id="featureRequestLaunch" class="feature-request-launch" type="button" aria-label="Request a feature or give feedback"><span>💡</span><span class="feature-request-label">Request feature</span></button>
+
+<div id="featureRequestModal" class="feature-request-modal hidden" role="dialog" aria-modal="true" aria-labelledby="featureRequestTitle">
+  <div class="feature-request-sheet">
+    <div class="feature-request-head">
+      <div>
+        <strong id="featureRequestTitle">Request a feature / Give feedback</strong>
+        <p>Tell GrowthWise what would make the app more useful for Auto City. Requests are reviewed before anything is changed.</p>
+      </div>
+      <button id="featureRequestClose" class="feature-request-close" type="button" aria-label="Close feedback form">×</button>
+    </div>
+    <form id="growthwiseFeatureRequestForm" name="growthwise-feature-request" method="POST" data-netlify="true" netlify-honeypot="bot-field">
+      <input type="hidden" name="form-name" value="growthwise-feature-request" />
+      <input type="hidden" id="featureRequestBusiness" name="business" value="Auto City Sales" />
+      <input type="hidden" id="featureRequestPage" name="page" value="" />
+      <p hidden><label>Do not fill this out: <input name="bot-field" /></label></p>
+      <div class="feature-request-grid">
+        <label>Request type
+          <select id="featureRequestType" name="request_type" required>
+            <option value="Feature request">Feature request</option>
+            <option value="Improvement">Improvement</option>
+            <option value="Problem / bug">Problem / bug</option>
+            <option value="Integration request">Integration request</option>
+            <option value="Other feedback">Other feedback</option>
+          </select>
+        </label>
+        <label>Area
+          <select id="featureRequestArea" name="area" required>
+            <option value="Buying">Buying</option>
+            <option value="Selling & Marketing">Selling & Marketing</option>
+            <option value="Service">Service</option>
+            <option value="Inventory">Inventory</option>
+            <option value="Data & Excel">Data & Excel</option>
+            <option value="Integrations">Integrations</option>
+            <option value="General">General</option>
+          </select>
+        </label>
+        <label>Importance
+          <select id="featureRequestPriority" name="priority" required>
+            <option value="Nice to have">Nice to have</option>
+            <option value="Important">Important</option>
+            <option value="Blocking my work">Blocking my work</option>
+          </select>
+        </label>
+        <label>Your name (optional)
+          <input id="featureRequestName" name="name" type="text" placeholder="e.g. Muqdad" autocomplete="name" />
+        </label>
+        <label class="full">What would you like GrowthWise to do?
+          <textarea id="featureRequestText" name="request" required placeholder="Describe the feature, problem or workflow you want improved. Example: Add a way to print a window sticker from an inventory vehicle."></textarea>
+        </label>
+        <label class="full">Best way to follow up (optional)
+          <input id="featureRequestContact" name="contact" type="text" placeholder="Email or phone number" />
+        </label>
+      </div>
+      <button id="featureRequestSubmit" class="feature-request-submit" type="submit">Send request to GrowthWise</button>
+      <div class="feature-request-note">Please do not include customer medical, payment or other sensitive information. A short description of the workflow is enough.</div>
+      <div id="featureRequestStatus" class="feature-request-status" role="status" aria-live="polite"></div>
+    </form>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 let imageDataUrl = '';
@@ -2478,6 +2563,58 @@ if('IntersectionObserver' in window){
   },{rootMargin:'-135px 0px -55% 0px',threshold:[0,.08,.2,.4]});
   Object.values(workflowTargets).forEach(id=>{const el=$(id);if(el)sectionObserver.observe(el);});
 }
+
+
+// Feature requests are submitted through Netlify Forms and also kept in a small local outbox for recovery.
+function openFeatureRequest(area=''){
+  const modal=$('featureRequestModal');
+  if(!modal)return;
+  const business=$('businessName')?.value.trim()||'Auto City Sales';
+  $('featureRequestBusiness').value=business;
+  $('featureRequestPage').value=location.href;
+  if(area && [...$('featureRequestArea').options].some(o=>o.value===area)) $('featureRequestArea').value=area;
+  $('featureRequestStatus').className='feature-request-status';
+  $('featureRequestStatus').textContent='';
+  modal.classList.remove('hidden');
+  setTimeout(()=>$('featureRequestText')?.focus(),80);
+}
+function closeFeatureRequest(){$('featureRequestModal')?.classList.add('hidden');}
+function saveFeatureRequestLocal(data,status='pending'){
+  try{
+    const key='growthwise_feature_request_outbox';
+    const items=JSON.parse(localStorage.getItem(key)||'[]');
+    items.push({...data,status,savedAt:new Date().toISOString()});
+    localStorage.setItem(key,JSON.stringify(items.slice(-50)));
+  }catch(e){console.warn('Could not save feature request locally',e);}
+}
+$('featureRequestLaunch')?.addEventListener('click',()=>openFeatureRequest());
+$('featureRequestClose')?.addEventListener('click',closeFeatureRequest);
+$('featureRequestModal')?.addEventListener('click',e=>{if(e.target===$('featureRequestModal'))closeFeatureRequest();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape' && !$('featureRequestModal')?.classList.contains('hidden'))closeFeatureRequest();});
+$('growthwiseFeatureRequestForm')?.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const form=e.currentTarget,btn=$('featureRequestSubmit'),status=$('featureRequestStatus');
+  const business=$('businessName')?.value.trim()||'Auto City Sales';
+  $('featureRequestBusiness').value=business;$('featureRequestPage').value=location.href;
+  const fd=new FormData(form);
+  const payload=Object.fromEntries(fd.entries());
+  btn.disabled=true;btn.textContent='Sending…';status.className='feature-request-status';status.textContent='';
+  try{
+    const body=new URLSearchParams();
+    for(const [k,v] of fd.entries()) body.append(k,String(v));
+    const res=await fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body.toString()});
+    if(!res.ok) throw new Error(`Request failed (${res.status})`);
+    saveFeatureRequestLocal(payload,'submitted');
+    status.className='feature-request-status ok';
+    status.textContent='Request sent ✓ GrowthWise can review it and follow up.';
+    form.reset();$('featureRequestBusiness').value=business;$('featureRequestPage').value=location.href;
+    setTimeout(closeFeatureRequest,1400);
+  }catch(err){
+    console.error(err);saveFeatureRequestLocal(payload,'pending');
+    status.className='feature-request-status error';
+    status.textContent='The request could not be sent right now. It was saved on this device so it is not lost.';
+  }finally{btn.disabled=false;btn.textContent='Send request to GrowthWise';}
+});
 
 const profileDefaults={
   businessName:'Auto City Sales',
