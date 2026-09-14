@@ -105,6 +105,10 @@ body{
 }
 .dash-pill{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08)}
 .dash-pill:last-child{background:rgba(213,51,51,.18);border-color:rgba(213,51,51,.35)}
+.dash-pill-action{font-family:inherit;line-height:1;cursor:pointer;appearance:none;-webkit-appearance:none;transition:transform .15s ease,background .15s ease,border-color .15s ease,box-shadow .15s ease}
+.dash-pill-action:hover,.dash-pill-action:focus-visible{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.28);box-shadow:0 4px 12px rgba(0,0,0,.16);outline:none}
+.dash-pill-action:active{transform:translateY(1px)}
+.dash-pill-action.active{background:#b31f2b;border-color:#d35a63;box-shadow:0 4px 12px rgba(179,31,43,.28)}
 .card,.profile-card,.today-card,.access-card,.dash-action{
   box-shadow:0 9px 24px rgba(19,34,48,.075);
 }
@@ -258,8 +262,11 @@ body{
           <div class="dash-logo" aria-hidden="true">GW</div>
         </div>
         <p>Choose what you want to do. GrowthWise guides the buyer, seller, service team and inventory manager through the next steps.</p>
-        <div class="dash-pills">
-          <span class="dash-pill">BUY</span><span class="dash-pill">SELL</span><span class="dash-pill">SERVICE</span><span class="dash-pill">INVENTORY</span>
+        <div class="dash-pills" aria-label="Quick links to GrowthWise Automotive sections">
+          <button class="dash-pill dash-pill-action" id="heroBuy" type="button" aria-label="Go to Buyer Assistant">BUY</button>
+          <button class="dash-pill dash-pill-action" id="heroSell" type="button" aria-label="Go to Seller Assistant">SELL</button>
+          <button class="dash-pill dash-pill-action" id="heroService" type="button" aria-label="Go to Service Assistant">SERVICE</button>
+          <button class="dash-pill dash-pill-action" id="heroInventory" type="button" aria-label="Go to Inventory Manager">INVENTORY</button>
         </div>
       </div>
 
@@ -2434,7 +2441,11 @@ loadInventoryRecords();renderInventory();refreshInventorySelectors();
 
 const workflowTargets={buy:'opportunityScout',sell:'sellStart',service:'servicePreview',inventory:'inventoryManager'};
 function setWorkflowNavActive(mode){
-  for(const m of Object.keys(workflowTargets)){$(`quick${m[0].toUpperCase()+m.slice(1)}`)?.classList.toggle('active',m===mode);}
+  for(const m of Object.keys(workflowTargets)){
+    const cap=m[0].toUpperCase()+m.slice(1);
+    $(`quick${cap}`)?.classList.toggle('active',m===mode);
+    $(`hero${cap}`)?.classList.toggle('active',m===mode);
+  }
 }
 function goWorkflow(mode){
   const id=workflowTargets[mode];
@@ -2446,6 +2457,10 @@ $('quickBuy')?.addEventListener('click',()=>goWorkflow('buy'));
 $('quickSell')?.addEventListener('click',()=>goWorkflow('sell'));
 $('quickService')?.addEventListener('click',()=>goWorkflow('service'));
 $('quickInventory')?.addEventListener('click',()=>goWorkflow('inventory'));
+$('heroBuy')?.addEventListener('click',()=>goWorkflow('buy'));
+$('heroSell')?.addEventListener('click',()=>goWorkflow('sell'));
+$('heroService')?.addEventListener('click',()=>goWorkflow('service'));
+$('heroInventory')?.addEventListener('click',()=>goWorkflow('inventory'));
 $('goSell')?.addEventListener('click',()=>goWorkflow('sell'));
 $('goBuy')?.addEventListener('click',()=>goWorkflow('buy'));
 $('goService')?.addEventListener('click',()=>goWorkflow('service'));
