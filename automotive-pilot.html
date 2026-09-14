@@ -214,6 +214,21 @@ body{
 .quick-nav button:focus-visible{outline:3px solid rgba(179,31,43,.22);outline-offset:2px}
 .section-anchor{scroll-margin-top:136px}
 @media(max-width:360px){.quick-nav-shell{padding-left:8px;padding-right:8px}.quick-nav{gap:4px}.quick-nav button{padding:9px 3px;font-size:9px}}
+/* GrowthWise persistent workflow bar — fixed so it remains visible during deep scrolling */
+.top{position:relative;top:auto;z-index:1}
+.shell{padding-top:calc(58px + env(safe-area-inset-top, 0px))}
+.quick-nav-shell{
+  position:fixed!important;
+  top:0!important;
+  left:50%;
+  transform:translateX(-50%);
+  width:min(520px,100%);
+  z-index:1000;
+  padding-top:calc(8px + env(safe-area-inset-top, 0px));
+  box-shadow:0 6px 18px rgba(14,27,43,.10);
+}
+#opportunityScout,#sellStart,#servicePreview,#inventoryManager,#dataExcelCenter,#marketingEngine{scroll-margin-top:72px}
+
 
 </style>
 </head>
