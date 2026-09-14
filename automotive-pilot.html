@@ -905,15 +905,13 @@ body{
     <div class="feature-request-head">
       <div>
         <strong id="featureRequestTitle">Request a feature / Give feedback</strong>
-        <p>Tell GrowthWise what would make the app more useful for Auto City. Requests are reviewed before anything is changed.</p>
+        <p>Tell GrowthWise what would make the app more useful for Auto City. Tapping send opens an email draft with the request already filled in; nothing is sent until you approve the email.</p>
       </div>
       <button id="featureRequestClose" class="feature-request-close" type="button" aria-label="Close feedback form">×</button>
     </div>
-    <form id="growthwiseFeatureRequestForm" name="growthwise-feature-request" method="POST" data-netlify="true" netlify-honeypot="bot-field">
-      <input type="hidden" name="form-name" value="growthwise-feature-request" />
+    <form id="growthwiseFeatureRequestForm">
       <input type="hidden" id="featureRequestBusiness" name="business" value="Auto City Sales" />
       <input type="hidden" id="featureRequestPage" name="page" value="" />
-      <p hidden><label>Do not fill this out: <input name="bot-field" /></label></p>
       <div class="feature-request-grid">
         <label>Request type
           <select id="featureRequestType" name="request_type" required>
@@ -952,7 +950,7 @@ body{
           <input id="featureRequestContact" name="contact" type="text" placeholder="Email or phone number" />
         </label>
       </div>
-      <button id="featureRequestSubmit" class="feature-request-submit" type="submit">Send request to GrowthWise</button>
+      <button id="featureRequestSubmit" class="feature-request-submit" type="submit">Email request to GrowthWise</button>
       <div class="feature-request-note">Please do not include customer medical, payment or other sensitive information. A short description of the workflow is enough.</div>
       <div id="featureRequestStatus" class="feature-request-status" role="status" aria-live="polite"></div>
     </form>
@@ -2565,7 +2563,9 @@ if('IntersectionObserver' in window){
 }
 
 
-// Feature requests are submitted through Netlify Forms and also kept in a small local outbox for recovery.
+// Feature requests open a prefilled email draft and are also kept in a small local outbox for recovery.
+// A recipient can be added later without changing the request flow. For now the user's email app opens with To left blank.
+const GROWTHWISE_FEEDBACK_EMAIL='engineerbit57@gmail.com';
 function openFeatureRequest(area=''){
   const modal=$('featureRequestModal');
   if(!modal)return;
@@ -2591,30 +2591,41 @@ $('featureRequestLaunch')?.addEventListener('click',()=>openFeatureRequest());
 $('featureRequestClose')?.addEventListener('click',closeFeatureRequest);
 $('featureRequestModal')?.addEventListener('click',e=>{if(e.target===$('featureRequestModal'))closeFeatureRequest();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape' && !$('featureRequestModal')?.classList.contains('hidden'))closeFeatureRequest();});
-$('growthwiseFeatureRequestForm')?.addEventListener('submit',async e=>{
+$('growthwiseFeatureRequestForm')?.addEventListener('submit',e=>{
   e.preventDefault();
   const form=e.currentTarget,btn=$('featureRequestSubmit'),status=$('featureRequestStatus');
   const business=$('businessName')?.value.trim()||'Auto City Sales';
   $('featureRequestBusiness').value=business;$('featureRequestPage').value=location.href;
+  if(!form.reportValidity()) return;
   const fd=new FormData(form);
   const payload=Object.fromEntries(fd.entries());
-  btn.disabled=true;btn.textContent='Sending…';status.className='feature-request-status';status.textContent='';
-  try{
-    const body=new URLSearchParams();
-    for(const [k,v] of fd.entries()) body.append(k,String(v));
-    const res=await fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body.toString()});
-    if(!res.ok) throw new Error(`Request failed (${res.status})`);
-    saveFeatureRequestLocal(payload,'submitted');
-    status.className='feature-request-status ok';
-    status.textContent='Request sent ✓ GrowthWise can review it and follow up.';
-    form.reset();$('featureRequestBusiness').value=business;$('featureRequestPage').value=location.href;
-    setTimeout(closeFeatureRequest,1400);
-  }catch(err){
-    console.error(err);saveFeatureRequestLocal(payload,'pending');
-    status.className='feature-request-status error';
-    status.textContent='The request could not be sent right now. It was saved on this device so it is not lost.';
-  }finally{btn.disabled=false;btn.textContent='Send request to GrowthWise';}
+  const submittedAt=new Date().toLocaleString();
+  const subject=`GrowthWise ${payload.request_type||'request'} — ${payload.area||'General'} — ${business}`;
+  const lines=[
+    'GrowthWise request / feedback',
+    '',
+    `Business: ${business}`,
+    `Request type: ${payload.request_type||''}`,
+    `Area: ${payload.area||''}`,
+    `Importance: ${payload.priority||''}`,
+    `Submitted by: ${payload.name||'Not provided'}`,
+    `Follow-up: ${payload.contact||'Not provided'}`,
+    '',
+    'Request:',
+    payload.request||'',
+    '',
+    `Page: ${location.href}`,
+    `Created: ${submittedAt}`
+  ];
+  saveFeatureRequestLocal(payload,'email-draft-opened');
+  btn.disabled=true;btn.textContent='Opening email…';
+  status.className='feature-request-status ok';
+  status.textContent='Opening your email app with the request already written and addressed to GrowthWise. Review it, then tap Send.';
+  const mailto=`mailto:${encodeURIComponent(GROWTHWISE_FEEDBACK_EMAIL)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join('\n'))}`;
+  setTimeout(()=>{window.location.href=mailto;},80);
+  setTimeout(()=>{btn.disabled=false;btn.textContent='Email request to GrowthWise';},900);
 });
+
 
 const profileDefaults={
   businessName:'Auto City Sales',
