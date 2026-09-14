@@ -206,6 +206,14 @@ body{
 .data-import{margin-top:13px;border:1px solid #d7e1e7;background:#fff;border-radius:14px;padding:13px}.data-import-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.data-import input,.data-import select{margin-top:0}.data-preview{margin-top:10px;border-radius:11px;background:#f4f7f9;padding:10px 11px;font-size:11px;line-height:1.45;color:#52616c}.data-preview strong{color:#243c4d}.data-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.data-actions button{border:0;border-radius:10px;padding:10px 11px;font-weight:900;cursor:pointer}.data-actions .import{background:#0f2230;color:#fff}.data-actions .import:disabled{background:#e9eef2;color:#8b98a3;opacity:1;cursor:not-allowed;box-shadow:none}.data-actions .template{background:#eef4fb;color:#325a7e}.data-note{margin-top:10px;padding:10px 11px;border-radius:11px;background:#fff8e7;color:#70551c;font-size:10px;line-height:1.45}
 @media(max-width:520px){.data-grid,.data-import-grid,.data-actions{grid-template-columns:1fr}}
 
+/* Persistent workflow navigation */
+.quick-nav-shell{position:sticky;top:71px;z-index:9;padding:8px 12px;background:rgba(237,240,243,.96);backdrop-filter:blur(14px);border-bottom:1px solid rgba(207,216,224,.95)}
+.quick-nav{max-width:496px;margin:0 auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.quick-nav button{min-width:0;border:1px solid #d8e0e6;background:#fff;color:#334554;border-radius:11px;padding:9px 5px;font-size:10px;font-weight:950;letter-spacing:.02em;cursor:pointer;box-shadow:0 2px 8px rgba(14,27,43,.05)}
+.quick-nav button.active{background:#b31f2b;color:#fff;border-color:#971a24;box-shadow:0 5px 15px rgba(179,31,43,.22)}
+.quick-nav button:focus-visible{outline:3px solid rgba(179,31,43,.22);outline-offset:2px}
+.section-anchor{scroll-margin-top:136px}
+@media(max-width:360px){.quick-nav-shell{padding-left:8px;padding-right:8px}.quick-nav{gap:4px}.quick-nav button{padding:9px 3px;font-size:9px}}
 
 </style>
 </head>
@@ -215,6 +223,14 @@ body{
     <button class="back" type="button" onclick="location.href='/'">‹</button>
     <div><div class="eyebrow">GROWTHWISE</div><h1>Automotive Pilot</h1></div>
   </header>
+  <nav class="quick-nav-shell" aria-label="GrowthWise Automotive sections">
+    <div class="quick-nav">
+      <button id="quickBuy" type="button">BUY</button>
+      <button id="quickSell" type="button">SELL</button>
+      <button id="quickService" type="button">SERVICE</button>
+      <button id="quickInventory" type="button">INVENTORY</button>
+    </div>
+  </nav>
   <main class="wrap">
 
     <section class="auto-dashboard" id="autoHome">
@@ -423,7 +439,7 @@ body{
     <section class="card">
       <div class="tag">1 · VEHICLE PHOTO</div>
       <h3>Take or choose the lead photo</h3>
-      <p class="helper">For this first pilot GrowthWise analyzes one lead photo. Multi-photo listing support comes next.</p>
+      <p class="helper">Take or choose vehicle photos. GrowthWise guides the recommended photo set, analyzes the vehicle, prepares marketing photos and builds the campaign.</p>
       <div class="photo-choice">
         <input id="cameraInput" type="file" accept="image/*" capture="environment" />
         <input id="galleryInput" type="file" accept="image/*" />
@@ -2376,8 +2392,8 @@ function saveInventoryEditor(){
 function currentSellerInventoryRecord(){const f=vehicleFacts(),vehicle=[f.year,f.make,f.model,f.trim].filter(Boolean).join(' ').trim()||$('marketingVehicle')?.value.trim();if(!vehicle)return null;return {vehicle,year:f.year,make:f.make,model:f.model,trim:f.trim,mileage:String($('mileage').value||$('marketingMileage')?.value||'').replace(/[^0-9]/g,''),vin:$('vin').value.trim().toUpperCase(),asking:Number($('price').value||$('marketingPrice')?.value)||0,status:'For sale',listedDate:isoToday(),views:Number($('marketingViews')?.value)||0,leads:Number($('marketingLeads')?.value)||0,notes:$('notes').value.trim()||$('marketingFacts')?.value.trim()||'',photoKey:safeVehiclePhotoKey()};}
 function addOrUpdateCurrentSeller(){const base=currentSellerInventoryRecord();if(!base){setInventoryStatus('error','Confirm a Seller vehicle first, then save it to Inventory.');return;}let match=inventoryRecords.find(r=>(base.vin&&r.vin===base.vin)||(!base.vin&&inventoryRecordLabel(r).toLowerCase()===base.vehicle.toLowerCase()&&r.status!=='Sold'));const rec={...(match||{}),...base,id:match?.id||`inv-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,stock:match?.stock||inventoryNextStock(),source:match?.source||'Seller Assistant',purchase:Number(match?.purchase)||0,fees:Number(match?.fees)||0,transport:Number(match?.transport)||0,recon:Number(match?.recon)||0,labor:Number(match?.labor)||0,acquiredDate:match?.acquiredDate||'',createdAt:match?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};inventoryRecords=inventoryRecords.filter(r=>r.id!==rec.id);inventoryRecords.push(rec);persistInventory();setInventoryStatus('ok',`${base.vehicle} saved/updated in Inventory.`);return rec;}
 function markCurrentBuyPurchased(){const f=vehicleFacts(),vehicle=[f.year,f.make,f.model,f.trim].filter(Boolean).join(' ').trim();if(!vehicle||$('dealResult').classList.contains('hidden')){setInventoryStatus('error','Run a Buy deal analysis first, then mark the vehicle purchased.');return;}const vin=$('vin').value.trim().toUpperCase();let match=inventoryRecords.find(r=>(vin&&r.vin===vin)||(!vin&&inventoryRecordLabel(r).toLowerCase()===vehicle.toLowerCase()&&r.status!=='Sold'));const rec={...(match||{}),id:match?.id||`inv-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,stock:match?.stock||inventoryNextStock(),status:'Purchased / Awaiting Recon',vehicle,year:f.year,make:f.make,model:f.model,trim:f.trim,mileage:String($('mileage').value||'').replace(/[^0-9]/g,''),vin,source:$('sourceType').value+( $('sourceLocation').value.trim()?` · ${$('sourceLocation').value.trim()}`:''),sourceUrl:$('sourceUrl').value.trim(),purchase:num('acquisition'),fees:num('fees'),transport:num('transport'),recon:num('recon'),labor:num('labor'),asking:num('salePrice')||num('price'),acquiredDate:match?.acquiredDate||isoToday(),listedDate:match?.listedDate||'',views:match?.views||0,leads:match?.leads||0,notes:$('dealAssumptions').textContent.trim(),photoKey:match?.photoKey||safeVehiclePhotoKey(),createdAt:match?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};inventoryRecords=inventoryRecords.filter(r=>r.id!==rec.id);inventoryRecords.push(rec);persistInventory();setInventoryStatus('ok',`${vehicle} marked purchased and added to Inventory.`);$('inventoryManager').scrollIntoView({behavior:'smooth',block:'start'});return rec;}
-async function loadInventoryIntoSeller(id){const r=inventoryRecords.find(x=>x.id===id);if(!r)return;const parts=String(r.vehicle||'').match(/^(\d{4})\s+([^\s]+)\s+(.+?)(?:\s+([^\s]+))?$/);await applyVehicleSelection({year:r.year||parts?.[1]||'',make:r.make||parts?.[2]||'',model:r.model||'',trim:r.trim||''});$('mileage').value=r.mileage||'';$('vin').value=r.vin||'';$('price').value=r.asking||'';$('notes').value=r.notes||'';$('marketingVehicle').value=inventoryRecordLabel(r);$('marketingMileage').value=r.mileage||'';$('marketingPrice').value=r.asking||'';$('marketingDays').value=inventoryDays(r);$('marketingViews').value=r.views||'';$('marketingLeads').value=r.leads||'';$('marketingFacts').value=r.notes||'';$('marketingInventorySelect').value=r.id;updateReadiness();$('sellStart').scrollIntoView({behavior:'smooth',block:'start'});setInventoryStatus('ok',`${inventoryRecordLabel(r)} loaded into Seller Assistant.`);}
-function loadInventoryIntoService(id){const r=inventoryRecords.find(x=>x.id===id);if(!r)return;$('serviceInventorySelect').value=r.id;$('serviceVehicle').value=inventoryRecordLabel(r);$('servicePreview').scrollIntoView({behavior:'smooth',block:'start'});}
+async function loadInventoryIntoSeller(id){const r=inventoryRecords.find(x=>x.id===id);if(!r)return;const parts=String(r.vehicle||'').match(/^(\d{4})\s+([^\s]+)\s+(.+?)(?:\s+([^\s]+))?$/);await applyVehicleSelection({year:r.year||parts?.[1]||'',make:r.make||parts?.[2]||'',model:r.model||'',trim:r.trim||''});$('mileage').value=r.mileage||'';$('vin').value=r.vin||'';$('price').value=r.asking||'';$('notes').value=r.notes||'';$('marketingVehicle').value=inventoryRecordLabel(r);$('marketingMileage').value=r.mileage||'';$('marketingPrice').value=r.asking||'';$('marketingDays').value=inventoryDays(r);$('marketingViews').value=r.views||'';$('marketingLeads').value=r.leads||'';$('marketingFacts').value=r.notes||'';$('marketingInventorySelect').value=r.id;updateReadiness();setWorkflowNavActive('sell');$('sellStart').scrollIntoView({behavior:'smooth',block:'start'});setInventoryStatus('ok',`${inventoryRecordLabel(r)} loaded into Seller Assistant.`);}
+function loadInventoryIntoService(id){const r=inventoryRecords.find(x=>x.id===id);if(!r)return;$('serviceInventorySelect').value=r.id;$('serviceVehicle').value=inventoryRecordLabel(r);setWorkflowNavActive('service');$('servicePreview').scrollIntoView({behavior:'smooth',block:'start'});}
 function loadInventoryIntoMarketing(id){const r=inventoryRecords.find(x=>x.id===id);if(!r)return;$('marketingVehicle').value=inventoryRecordLabel(r);$('marketingMileage').value=r.mileage||'';$('marketingPrice').value=r.asking||'';$('marketingDays').value=inventoryDays(r);$('marketingViews').value=r.views||'';$('marketingLeads').value=r.leads||'';$('marketingFacts').value=r.notes||'';photoAutoAnalysisTriggered=false;loadMarketingPhotoSet(false);}
 function deleteInventoryCurrent(){const id=$('invId').value;if(!id)return;const r=inventoryRecords.find(x=>x.id===id);if(!r)return;if(!confirm(`Delete ${inventoryRecordLabel(r)} from GrowthWise Inventory on this device?`))return;inventoryRecords=inventoryRecords.filter(x=>x.id!==id);persistInventory();$('inventoryEditor').classList.add('hidden');setInventoryStatus('warn','Inventory record deleted from this device.');}
 function inventoryExportRows(records){return records.map(r=>({
@@ -2401,12 +2417,37 @@ $('inventoryAddBuy')?.addEventListener('click',markCurrentBuyPurchased);$('inven
 $('marketingInventorySelect')?.addEventListener('change',e=>{if(e.target.value)loadInventoryIntoMarketing(e.target.value);});$('serviceInventorySelect')?.addEventListener('change',e=>{const r=inventoryRecords.find(x=>x.id===e.target.value);if(r)$('serviceVehicle').value=inventoryRecordLabel(r);});
 loadInventoryRecords();renderInventory();refreshInventorySelectors();
 
-$('goSell')?.addEventListener('click',()=>{$('sellStart')?.scrollIntoView({behavior:'smooth',block:'start'});});
-$('goBuy')?.addEventListener('click',()=>{$('opportunityScout')?.scrollIntoView({behavior:'smooth',block:'start'});});
-$('goService')?.addEventListener('click',()=>{$('servicePreview')?.scrollIntoView({behavior:'smooth',block:'start'});});
-$('goInventory')?.addEventListener('click',()=>{$('inventoryManager')?.scrollIntoView({behavior:'smooth',block:'start'});});
+const workflowTargets={buy:'opportunityScout',sell:'sellStart',service:'servicePreview',inventory:'inventoryManager'};
+function setWorkflowNavActive(mode){
+  for(const m of Object.keys(workflowTargets)){$(`quick${m[0].toUpperCase()+m.slice(1)}`)?.classList.toggle('active',m===mode);}
+}
+function goWorkflow(mode){
+  const id=workflowTargets[mode];
+  if(!id)return;
+  setWorkflowNavActive(mode);
+  $(id)?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+$('quickBuy')?.addEventListener('click',()=>goWorkflow('buy'));
+$('quickSell')?.addEventListener('click',()=>goWorkflow('sell'));
+$('quickService')?.addEventListener('click',()=>goWorkflow('service'));
+$('quickInventory')?.addEventListener('click',()=>goWorkflow('inventory'));
+$('goSell')?.addEventListener('click',()=>goWorkflow('sell'));
+$('goBuy')?.addEventListener('click',()=>goWorkflow('buy'));
+$('goService')?.addEventListener('click',()=>goWorkflow('service'));
+$('goInventory')?.addEventListener('click',()=>goWorkflow('inventory'));
 $('goDataExcel')?.addEventListener('click',()=>{$('dataExcelCenter')?.scrollIntoView({behavior:'smooth',block:'start'});});
-$('goMarketing')?.addEventListener('click',()=>{$('marketingEngine')?.scrollIntoView({behavior:'smooth',block:'start'});});
+$('goMarketing')?.addEventListener('click',()=>{setWorkflowNavActive('sell');$('marketingEngine')?.scrollIntoView({behavior:'smooth',block:'start'});});
+
+// Keep the highlighted workflow in sync when staff scrolls between major sections.
+if('IntersectionObserver' in window){
+  const sectionObserver=new IntersectionObserver(entries=>{
+    const visible=entries.filter(e=>e.isIntersecting).sort((a,b)=>b.intersectionRatio-a.intersectionRatio)[0];
+    if(!visible)return;
+    const mode=Object.entries(workflowTargets).find(([,id])=>id===visible.target.id)?.[0];
+    if(mode)setWorkflowNavActive(mode);
+  },{rootMargin:'-135px 0px -55% 0px',threshold:[0,.08,.2,.4]});
+  Object.values(workflowTargets).forEach(id=>{const el=$(id);if(el)sectionObserver.observe(el);});
+}
 
 const profileDefaults={
   businessName:'Auto City Sales',
