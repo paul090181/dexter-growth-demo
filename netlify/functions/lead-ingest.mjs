@@ -8,6 +8,7 @@ import {
   normalizeVehicle,
   saveLead,
 } from "./_lead-store.mjs";
+import { matchInventoryVehicle } from "./_inventory-store.mjs";
 
 function decodeXml(value = "") {
   return String(value)
@@ -32,35 +33,59 @@ function attr(xml, tagName, attrName) {
   return decodeXml(String(xml || "").match(re)?.[1] || "");
 }
 
+function block(xml, name) {
+  return String(xml || "").match(new RegExp(`<${name}\\b[^>]*>([\\s\\S]*?)<\\/${name}>`, "i"))?.[1] || "";
+}
+
 function parseAdf(xml) {
-  const prospect = String(xml || "");
-  const customerBlock = prospect.match(/<customer\b[^>]*>([\s\S]*?)<\/customer>/i)?.[1] || prospect;
-  const vehicleBlock = prospect.match(/<vehicle\b[^>]*>([\s\S]*?)<\/vehicle>/i)?.[1] || "";
-  const vendorBlock = prospect.match(/<vendor\b[^>]*>([\s\S]*?)<\/vendor>/i)?.[1] || "";
-  const fullName = tag(customerBlock, "name", `part=["']full["']`) || tag(customerBlock, "name");
-  const firstName = tag(customerBlock, "name", `part=["']first["']`);
-  const lastName = tag(customerBlock, "name", `part=["']last["']`);
+  const prospect = block(xml, "prospect") || String(xml || "");
+  const customerBlock = block(prospect, "customer") || prospect;
+  const contactBlock = block(customerBlock, "contact") || customerBlock;
+  const vehicleBlock = block(prospect, "vehicle");
+  const vendorBlock = block(prospect, "vendor");
+  const providerBlock = block(prospect, "provider");
+
+  const fullName = tag(contactBlock, "name", `part=["']full["']`) || tag(contactBlock, "name", `part=["']full-name["']`);
+  const firstName = tag(contactBlock, "name", `part=["']first["']`);
+  const lastName = tag(contactBlock, "name", `part=["']last["']`);
   const asking = tag(vehicleBlock, "price", `type=["']asking["']`) || tag(vehicleBlock, "price");
-  const source = tag(vendorBlock, "vendorname") || tag(vendorBlock, "name") || tag(prospect, "provider") || "ADF/XML lead";
-  const externalId = attr(prospect, "prospect", "id") || tag(prospect, "id") || tag(prospect, "requestdate");
-  const year = tag(vehicleBlock, "year"), make = tag(vehicleBlock, "make"), model = tag(vehicleBlock, "model"), trim = tag(vehicleBlock, "trim");
+  const source =
+    tag(providerBlock, "name", `part=["']full["']`) ||
+    tag(providerBlock, "name") ||
+    attr(prospect, "id", "source") ||
+    tag(vendorBlock, "vendorname") ||
+    tag(vendorBlock, "name") ||
+    "ADF/XML lead";
+  const externalId = tag(prospect, "id") || tag(prospect, "requestdate") || attr(prospect, "id", "source");
+  const year = tag(vehicleBlock, "year");
+  const make = tag(vehicleBlock, "make");
+  const model = tag(vehicleBlock, "model");
+  const trim = tag(vehicleBlock, "trim");
+  const stock = tag(vehicleBlock, "stock") || tag(vehicleBlock, "stocknumber") || tag(vehicleBlock, "id");
+
   return {
     external_id: externalId,
     source,
     customer_name: fullName || [firstName, lastName].filter(Boolean).join(" "),
-    customer_email: tag(customerBlock, "email"),
-    customer_phone: tag(customerBlock, "phone"),
+    customer_email: tag(contactBlock, "email") || tag(customerBlock, "email"),
+    customer_phone: tag(contactBlock, "phone") || tag(customerBlock, "phone"),
     message: tag(prospect, "comments") || tag(prospect, "comment") || "Customer submitted an online vehicle inquiry.",
     vehicle: normalizeVehicle({
       vehicle: [year, make, model, trim].filter(Boolean).join(" "),
-      year, make, model, trim,
+      year,
+      make,
+      model,
+      trim,
       vin: tag(vehicleBlock, "vin"),
-      stock: tag(vehicleBlock, "stock"),
+      stock,
       mileage: tag(vehicleBlock, "odometer") || tag(vehicleBlock, "mileage"),
       asking,
-      status: "For Sale",
+      status: "",
     }),
-    business: normalizeBusiness(null),
+    business: normalizeBusiness({
+      name: tag(vendorBlock, "vendorname") || tag(vendorBlock, "name") || "Auto City Sales",
+    }),
+    adf: true,
   };
 }
 
@@ -86,6 +111,7 @@ async function parseIncoming(request) {
     vehicle: normalizeVehicle(body.vehicle),
     business: normalizeBusiness(body.business),
     test: Boolean(body.test),
+    adf: false,
   };
 }
 
@@ -149,6 +175,19 @@ export default async (request) => {
   catch (err) { return json(400, { error: err?.message || "Could not parse incoming lead." }); }
   if (!incoming.message) return json(400, { error: "Incoming lead message/comments are required." });
 
+  const sourceVehicle = incoming.vehicle;
+  let vehicleMatch = { record: null, match_type: "none", confidence: "none", synced_at: "" };
+  try { vehicleMatch = await matchInventoryVehicle(sourceVehicle || {}); }
+  catch (err) {
+    vehicleMatch = { record: null, match_type: "inventory_lookup_error", confidence: "none", synced_at: "", error: clean(err?.message || err, 400) };
+  }
+
+  // External ADF/lead-key traffic is never allowed to declare availability or price by itself.
+  // Those facts come from a matched cloud inventory record. Internal JSON tests may still supply
+  // a trusted test vehicle so the original v5 gateway test continues to work.
+  const trustedInternalTestVehicle = auth.via === "admin" && incoming.test === true && !incoming.adf ? sourceVehicle : null;
+  incoming.vehicle = vehicleMatch.record || trustedInternalTestVehicle || null;
+
   const key = leadKey({ source: incoming.source, externalId: incoming.external_id });
   const existing = await getLead(key);
   if (existing) return json(200, { ok: true, duplicate: true, id: existing.id, lead: existing });
@@ -168,10 +207,21 @@ export default async (request) => {
     message: incoming.message,
     history: incoming.history || "",
     vehicle: incoming.vehicle,
+    source_vehicle: sourceVehicle,
+    vehicle_match: {
+      matched: Boolean(vehicleMatch.record),
+      type: vehicleMatch.match_type || "none",
+      confidence: vehicleMatch.confidence || "none",
+      inventory_synced_at: vehicleMatch.synced_at || "",
+    },
     business: incoming.business,
     test: Boolean(incoming.test || auth.via === "admin"),
+    adf: Boolean(incoming.adf),
     status: "processing",
-    events: [{ at: createdAt, type: "received", detail: `Lead received through ${auth.via === "admin" ? "internal gateway test" : "external lead gateway"}.` }],
+    events: [
+      { at: createdAt, type: "received", detail: `Lead received through ${auth.via === "admin" ? "internal gateway test" : "external lead gateway"}.` },
+      { at: createdAt, type: "inventory_match", detail: vehicleMatch.record ? `Matched cloud inventory by ${vehicleMatch.match_type}.` : "No trusted cloud inventory match was found." },
+    ],
   };
 
   try {
@@ -196,9 +246,12 @@ export default async (request) => {
       duplicate: false,
       id,
       status: record.status,
+      source: incoming.source,
+      adf: Boolean(incoming.adf),
+      vehicle_match: record.vehicle_match,
       analysis,
       delivery: record.delivery,
-      message: "Lead received, stored in the cloud inbox, and processed automatically. No real customer message was sent in v5 test-delivery mode.",
+      message: "Lead received, matched against trusted cloud inventory when possible, stored in the cloud inbox, and processed automatically. No real customer message was sent in v6 test-delivery mode.",
     });
   } catch (err) {
     const failedAt = new Date().toISOString();
