@@ -269,6 +269,8 @@ body{
 .lead-result{margin-top:12px;border:1px solid #dce5ea;border-radius:14px;background:#fff;padding:13px}.lead-result-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.lead-decision{font-size:9px;font-weight:950;padding:6px 8px;border-radius:999px}.lead-decision.auto{background:#e8f5ea;color:#285e32}.lead-decision.handling{background:#fff8e7;color:#745b24}.lead-decision.urgent{background:#fff0ee;color:#963b31}.lead-decision.review{background:#eef1f3;color:#4f5d67}.lead-intent{font-size:10px;color:#65737e;margin-top:5px}.lead-reason{margin-top:9px;padding:9px 10px;border-radius:10px;background:#f4f7f9;color:#596873;font-size:10px;line-height:1.45}.lead-result textarea{min-height:105px}.lead-result-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.lead-result-actions button{border:0;border-radius:10px;padding:10px;font-weight:900;cursor:pointer}.lead-copy{background:#0f2230;color:#fff}.lead-save{background:#eef1f3;color:#263c4c}.lead-inbox{margin-top:12px}.lead-inbox-card{border:1px solid #dfe6eb;background:#fff;border-radius:12px;padding:10px;margin-top:7px}.lead-inbox-card-top{display:flex;justify-content:space-between;gap:8px}.lead-inbox-card strong{font-size:11px}.lead-inbox-card small{color:#71808a;font-size:9px}.lead-inbox-message{font-size:10px;line-height:1.4;color:#566570;margin-top:6px}.lead-inbox-empty{padding:12px;text-align:center;border:1px dashed #d4dce2;border-radius:12px;color:#71808a;font-size:10px;background:#fff}.lead-note{margin-top:10px;padding:10px 11px;border-radius:11px;background:#eef4fb;color:#3b5c79;font-size:10px;line-height:1.45}
 .quick-nav{grid-template-columns:repeat(5,minmax(0,1fr))}.quick-nav button{font-size:9px;padding:9px 3px}
 #leadCenter{scroll-margin-top:72px}
+
+.cloud-lead-panel{margin-top:12px;border:1px solid #cfdce5;background:linear-gradient(180deg,#f7fbff,#eef5fa);border-radius:14px;padding:13px}.cloud-lead-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.cloud-lead-top h4{margin:0}.cloud-lead-badge{font-size:8px;font-weight:950;padding:5px 7px;border-radius:999px;background:#e8f5ea;color:#285e32;white-space:nowrap}.cloud-lead-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.cloud-lead-actions button{border:0;border-radius:10px;padding:10px;font-weight:900;cursor:pointer}.cloud-lead-send{background:#b31f2b;color:#fff}.cloud-lead-refresh{background:#0f2230;color:#fff}.cloud-lead-status{margin-top:9px;font-size:10px;line-height:1.45;color:#586975}.cloud-inbox{margin-top:10px}.cloud-lead-card{border:1px solid #dbe5eb;background:#fff;border-radius:12px;padding:11px;margin-top:8px}.cloud-lead-card-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.cloud-lead-card-top strong{font-size:11px}.cloud-lead-card-top small{font-size:9px;color:#71808a}.cloud-lead-chip{display:inline-block;margin-top:6px;font-size:8px;font-weight:950;padding:4px 6px;border-radius:999px}.cloud-lead-chip.auto{background:#e8f5ea;color:#285e32}.cloud-lead-chip.handling{background:#fff8e7;color:#745b24}.cloud-lead-chip.urgent{background:#fff0ee;color:#963b31}.cloud-lead-message,.cloud-lead-reply{font-size:10px;line-height:1.45;color:#566570;margin-top:7px}.cloud-lead-reply{padding:8px 9px;border-radius:9px;background:#f4f7f9}.cloud-lead-empty{padding:12px;text-align:center;border:1px dashed #c9d4dc;border-radius:12px;background:#fff;color:#71808a;font-size:10px}.cloud-lead-meta{margin-top:7px;font-size:9px;color:#7a8790}.cloud-lead-warning{margin-top:9px;padding:9px 10px;border-radius:10px;background:#fff8e7;color:#745b24;font-size:10px;line-height:1.45}
 @media(max-width:420px){.lead-source-grid,.lead-rule-grid,.lead-actions,.lead-result-actions{grid-template-columns:1fr}.lead-mode-row{grid-template-columns:1fr 1fr 1fr}.lead-kpis{grid-template-columns:repeat(3,1fr)}.quick-nav{gap:4px}.quick-nav button{font-size:8px;padding-left:2px;padding-right:2px}}
 
 </style>
@@ -692,7 +694,7 @@ body{
           <h3>GrowthWise Lead Center</h3>
           <p class="helper">The goal is zero copy/paste for Mo: connected lead sources will flow into GrowthWise automatically, the AI will use current vehicle and dealership facts, and routine questions can be handled without interrupting him. For financing, trades, appointments, history questions and complaints, GrowthWise can acknowledge the customer or collect the needed details first, then involve a person only when an actual decision or verification is required.</p>
         </div>
-        <span class="lead-mode" id="leadConnectionBadge">ENGINE READY</span>
+        <span class="lead-mode" id="leadConnectionBadge">GATEWAY V1</span>
       </div>
 
       <div class="lead-kpis">
@@ -701,13 +703,28 @@ body{
         <div class="lead-kpi"><strong id="leadReviewCount">0</strong><span>human now</span></div>
       </div>
 
-      <div class="lead-note"><strong>Live connection status:</strong> the AI reply engine is being built now. Auto City's DealerCenter, CarGurus, email/SMS and Facebook channels are not connected to GrowthWise yet, so nothing can send to a real customer from this build. This test area lets us prove the decision logic before wiring those live sources.</div>
+      <div class="lead-note"><strong>Live connection status:</strong> the cloud Lead Gateway is now available for secure test ingestion and server-side AI processing. Auto City's DealerCenter, CarGurus, email/SMS and Facebook channels are still not connected, and v5 does not send a real customer message yet. The next connection step is attaching an authorized source and outbound sender to this gateway.</div>
 
       <div class="lead-source-grid" aria-label="Lead source connection plan">
         <div class="lead-source"><div class="lead-source-top"><strong>DealerCenter</strong><span class="lead-source-status target">PRIMARY TARGET</span></div><small>Preferred hub if Auto City's incoming leads can be securely routed or integrated.</small></div>
         <div class="lead-source"><div class="lead-source-top"><strong>CarGurus</strong><span class="lead-source-status next">VIA CRM</span></div><small>Goal: let the existing CRM route identify vehicle + customer context automatically.</small></div>
         <div class="lead-source"><div class="lead-source-top"><strong>Facebook Marketplace</strong><span class="lead-source-status next">VERIFY ROUTE</span></div><small>Use a supported connection or existing DealerCenter path; do not rely on disguised browser automation.</small></div>
         <div class="lead-source"><div class="lead-source-top"><strong>Email / SMS / Website</strong><span class="lead-source-status next">CONNECT NEXT</span></div><small>These channels can feed the same GrowthWise reply engine once Auto City authorizes a route.</small></div>
+      </div>
+
+      <div class="cloud-lead-panel" id="cloudLeadPanel">
+        <div class="cloud-lead-top">
+          <div><h4>Cloud Lead Gateway</h4><p class="helper" style="margin:4px 0 0">This is the first no-copy/paste layer. Incoming leads can hit a secure server endpoint, get analyzed immediately by the same v4 safety engine, and appear here even if Mo never opened the app.</p></div>
+          <span class="cloud-lead-badge" id="cloudLeadBadge">SERVER READY</span>
+        </div>
+        <div class="cloud-lead-warning"><strong>v5 delivery mode:</strong> GrowthWise processes and stores the lead in the cloud, but does not send a real customer message yet. It records exactly what would be auto-sent so we can prove the full server workflow before connecting Auto City's live email/SMS/CRM sender.</div>
+        <div class="cloud-lead-actions">
+          <button class="cloud-lead-send" id="cloudLeadTestBtn" type="button">Send test lead to gateway</button>
+          <button class="cloud-lead-refresh" id="cloudLeadRefreshBtn" type="button">Refresh cloud inbox</button>
+        </div>
+        <div id="cloudLeadStatus" class="status hidden"></div>
+        <div class="cloud-lead-status">Gateway endpoint: <strong>/.netlify/functions/lead-ingest</strong> · accepts JSON now and basic ADF/XML for future dealership lead feeds.</div>
+        <div class="cloud-inbox" id="cloudLeadInbox"><div class="cloud-lead-empty">No cloud leads loaded yet. Use the test button after unlocking AI access.</div></div>
       </div>
 
       <div class="lead-automation-box">
@@ -2840,6 +2857,80 @@ $('leadLoadSample')?.addEventListener('click',loadLeadSample);$('leadLoadOfferSa
 $('leadCopyReply')?.addEventListener('click',async()=>{const v=$('leadReply')?.value||'';if(!v)return;try{await navigator.clipboard.writeText(v);setLeadStatus('ok','Reply copied. In the live pilot, connected low-risk leads will not require this copy step.');}catch{setLeadStatus('warn','Select the reply text and copy it manually.');}});
 leadLoadSettings();renderLeadInbox();setTimeout(refreshLeadVehicleOptions,50);
 
+
+
+function cloudLeadKey(){return $('adminKey')?.value||sessionStorage.getItem('growthwise_admin_key')||''}
+function setCloudLeadStatus(kind,msg){setBoxStatus('cloudLeadStatus',kind,msg)}
+function cloudLeadClass(decision,intent){
+  if(decision==='auto_reply')return 'auto';
+  if(decision==='auto_reply_then_review'&&intent==='complaint')return 'urgent';
+  if(decision==='auto_reply_then_review')return 'handling';
+  return 'urgent';
+}
+function cloudLeadLabel(row){
+  const d=row?.analysis?.decision||row?.decision||'review_required';
+  const i=row?.analysis?.intent||row?.intent||'other';
+  if(d==='auto_reply')return 'AI AUTO-HANDLES';
+  if(d==='auto_reply_then_review'&&i==='trade')return 'AI COLLECTING DETAILS';
+  if(d==='auto_reply_then_review'&&i==='financing')return 'AI ACKNOWLEDGES · SALES FOLLOW-UP';
+  if(d==='auto_reply_then_review'&&i==='appointment')return 'AI ACKNOWLEDGES · AVAILABILITY CHECK';
+  if(d==='auto_reply_then_review'&&i==='vehicle_history')return 'AI ACKNOWLEDGES · VERIFICATION NEEDED';
+  if(d==='auto_reply_then_review'&&i==='complaint')return 'AI ACKNOWLEDGES · PRIORITY FOLLOW-UP';
+  if(d==='auto_reply_then_review'&&i==='negotiation')return 'AI ACKNOWLEDGES · MO DECIDES';
+  if(d==='auto_reply_then_review')return 'AI RESPONDS · HUMAN FOLLOW-UP';
+  return 'HUMAN REVIEW NOW';
+}
+function cloudLeadDeliveryText(row){
+  const delivery=row?.delivery||{};
+  if(delivery.mode==='test_log'&&delivery.would_send)return 'TEST ADAPTER · would auto-send this reply';
+  if(delivery.mode==='test_log'&&delivery.would_acknowledge)return 'TEST ADAPTER · would send acknowledgement, then alert staff';
+  if(delivery.mode==='test_log')return 'TEST ADAPTER · would hold for human review';
+  return delivery.status||'Delivery not connected';
+}
+function renderCloudLeadInbox(rows){
+  const box=$('cloudLeadInbox');if(!box)return;box.innerHTML='';
+  if(!Array.isArray(rows)||!rows.length){box.innerHTML='<div class="cloud-lead-empty">Cloud inbox is empty. Send a gateway test lead to prove server-side ingestion.</div>';return;}
+  rows.slice(0,20).forEach(row=>{
+    const a=row.analysis||{};const card=document.createElement('div');card.className='cloud-lead-card';
+    const when=row.created_at?new Date(row.created_at).toLocaleString():'';
+    const vehicle=row.vehicle?.vehicle||[row.vehicle?.year,row.vehicle?.make,row.vehicle?.model,row.vehicle?.trim].filter(Boolean).join(' ')||'Vehicle not matched';
+    const chip=cloudLeadClass(a.decision,a.intent);const label=cloudLeadLabel(row);
+    card.innerHTML=`<div class="cloud-lead-card-top"><div><strong>${leadEscape(row.source||'Lead')} · ${leadEscape(row.customer_name||'Customer')}</strong><div class="cloud-lead-meta">${leadEscape(vehicle)}${when?` · ${leadEscape(when)}`:''}</div></div><span class="cloud-lead-chip ${chip}">${leadEscape(label)}</span></div><div class="cloud-lead-message"><strong>Customer:</strong> ${leadEscape(row.message||'')}</div>${a.reply?`<div class="cloud-lead-reply"><strong>GrowthWise reply:</strong> ${leadEscape(a.reply)}</div>`:''}<div class="cloud-lead-meta">${leadEscape(cloudLeadDeliveryText(row))}${a.follow_up_action?` · ${leadEscape(a.follow_up_action)}`:''}</div>`;
+    box.appendChild(card);
+  });
+}
+async function refreshCloudLeadInbox({quiet=false}={}){
+  const key=cloudLeadKey();
+  if(!key){if(!quiet)setCloudLeadStatus('warn','Unlock AI access first so GrowthWise can securely load the cloud inbox.');return;}
+  const btn=$('cloudLeadRefreshBtn');if(btn&&!quiet){btn.disabled=true;btn.textContent='Refreshing…';}
+  try{
+    const r=await fetch('/.netlify/functions/lead-inbox',{headers:{'X-GrowthWise-Key':key},cache:'no-store'});
+    const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Cloud inbox failed (HTTP ${r.status}).`);
+    renderCloudLeadInbox(d.leads||[]);$('cloudLeadBadge').textContent='CLOUD ACTIVE';
+    if(!quiet)setCloudLeadStatus('ok',`Cloud inbox loaded · ${(d.leads||[]).length} lead${(d.leads||[]).length===1?'':'s'} stored.`);
+  }catch(err){if(!quiet)setCloudLeadStatus('error',err.message||'Could not load cloud inbox.');}
+  finally{if(btn&&!quiet){btn.disabled=false;btn.textContent='Refresh cloud inbox';}}
+}
+async function sendCloudGatewayTest(){
+  const key=cloudLeadKey();if(!key){setCloudLeadStatus('warn','Unlock AI access first. The gateway test uses your existing GrowthWise access only for this internal test.');return;}
+  const sale=inventoryRows().find(r=>/for sale|ready|active/i.test(String(r.status||'')))||inventoryRows()[0]||null;
+  const vehicle=sale?{vehicle:inventoryRecordLabel(sale),stock:sale.stock||'',vin:sale.vin||'',year:sale.year||'',make:sale.make||'',model:sale.model||'',trim:sale.trim||'',mileage:sale.mileage||'',asking:sale.asking||'',status:sale.status||'For Sale',notes:sale.notes||'',days_on_lot:sale.days_on_lot||''}:{vehicle:'2018 Honda Odyssey',year:'2018',make:'Honda',model:'Odyssey',mileage:'82500',asking:'14295',status:'For Sale',notes:'Gateway test-only vehicle payload.'};
+  const payload={external_id:`gw-test-${Date.now()}`,source:'GrowthWise Gateway Test',customer_name:'Jordan',customer_email:'jordan@example.test',message:`Is the ${vehicle.vehicle||'vehicle'} still available? I would like to come see it tomorrow.`,vehicle,business:{name:'Auto City Sales',address:'427 Hertel Ave, Buffalo, NY 14207',phone:'(716) 406-7555',website:'https://autocitysales.net',market:'Buffalo, NY'},test:true};
+  const btn=$('cloudLeadTestBtn');btn.disabled=true;btn.textContent='Sending to gateway…';setCloudLeadStatus('loading','Sending a lead directly to the server. No copy/paste and no Run AI button will be used.');
+  try{
+    const r=await fetch('/.netlify/functions/lead-ingest',{method:'POST',headers:{'Content-Type':'application/json','X-GrowthWise-Key':key},body:JSON.stringify(payload)});
+    const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Gateway failed (HTTP ${r.status}).`);
+    setCloudLeadStatus('ok',`Gateway test passed ✓ Lead ${d.id||''} was stored and processed automatically. No real customer message was sent.`);sessionStorage.setItem('growthwise_admin_key',key);$('adminKey').value='';
+    await refreshCloudLeadInbox({quiet:true});
+  }catch(err){setCloudLeadStatus('error',err.message||'Gateway test failed.');}
+  finally{btn.disabled=false;btn.textContent='Send test lead to gateway';}
+}
+$('cloudLeadTestBtn')?.addEventListener('click',sendCloudGatewayTest);
+$('cloudLeadRefreshBtn')?.addEventListener('click',()=>refreshCloudLeadInbox());
+let cloudLeadPollTimer=null;
+function startCloudLeadPolling(){if(cloudLeadPollTimer)clearInterval(cloudLeadPollTimer);cloudLeadPollTimer=setInterval(()=>{if(!document.hidden&&sessionStorage.getItem('growthwise_admin_key'))refreshCloudLeadInbox({quiet:true});},30000)}
+startCloudLeadPolling();
+setTimeout(()=>{if(sessionStorage.getItem('growthwise_admin_key'))refreshCloudLeadInbox({quiet:true});},1200);
 
 const workflowTargets={buy:'opportunityScout',sell:'sellStart',leads:'leadCenter',inventory:'inventoryManager',service:'servicePreview'};
 function setWorkflowNavActive(mode){
