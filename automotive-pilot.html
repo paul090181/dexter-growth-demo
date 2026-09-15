@@ -270,7 +270,7 @@ body{
 .quick-nav{grid-template-columns:repeat(5,minmax(0,1fr))}.quick-nav button{font-size:9px;padding:9px 3px}
 #leadCenter{scroll-margin-top:72px}
 
-.cloud-lead-panel{margin-top:12px;border:1px solid #cfdce5;background:linear-gradient(180deg,#f7fbff,#eef5fa);border-radius:14px;padding:13px}.cloud-lead-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.cloud-lead-top h4{margin:0}.cloud-lead-badge{font-size:8px;font-weight:950;padding:5px 7px;border-radius:999px;background:#e8f5ea;color:#285e32;white-space:nowrap}.cloud-lead-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.cloud-lead-actions button{border:0;border-radius:10px;padding:10px;font-weight:900;cursor:pointer;touch-action:manipulation}.cloud-lead-actions button:active{transform:translateY(1px);filter:brightness(.94)}.cloud-lead-send{background:#b31f2b;color:#fff}.cloud-lead-refresh{background:#0f2230;color:#fff}.cloud-lead-status{margin-top:9px;font-size:10px;line-height:1.45;color:#586975}.cloud-inbox{margin-top:10px}.cloud-lead-card{border:1px solid #dbe5eb;background:#fff;border-radius:12px;padding:11px;margin-top:8px}.cloud-lead-card-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.cloud-lead-card-top strong{font-size:11px}.cloud-lead-card-top small{font-size:9px;color:#71808a}.cloud-lead-chip{display:inline-block;margin-top:6px;font-size:8px;font-weight:950;padding:4px 6px;border-radius:999px}.cloud-lead-chip.auto{background:#e8f5ea;color:#285e32}.cloud-lead-chip.handling{background:#fff8e7;color:#745b24}.cloud-lead-chip.urgent{background:#fff0ee;color:#963b31}.cloud-lead-message,.cloud-lead-reply{font-size:10px;line-height:1.45;color:#566570;margin-top:7px}.cloud-lead-reply{padding:8px 9px;border-radius:9px;background:#f4f7f9}.cloud-lead-empty{padding:12px;text-align:center;border:1px dashed #c9d4dc;border-radius:12px;background:#fff;color:#71808a;font-size:10px}.cloud-lead-meta{margin-top:7px;font-size:9px;color:#7a8790}.cloud-lead-warning{margin-top:9px;padding:9px 10px;border-radius:10px;background:#fff8e7;color:#745b24;font-size:10px;line-height:1.45}
+.cloud-lead-panel{margin-top:12px;border:1px solid #cfdce5;background:linear-gradient(180deg,#f7fbff,#eef5fa);border-radius:14px;padding:13px}.cloud-lead-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.cloud-lead-top h4{margin:0}.cloud-lead-badge{font-size:8px;font-weight:950;padding:5px 7px;border-radius:999px;background:#e8f5ea;color:#285e32;white-space:nowrap}.cloud-lead-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.cloud-lead-actions button{border:0;border-radius:10px;padding:10px;font-weight:900;cursor:pointer;touch-action:manipulation}.cloud-lead-actions button:active{transform:translateY(1px);filter:brightness(.94)}.cloud-lead-send{background:#b31f2b;color:#fff}.cloud-lead-refresh{background:#0f2230;color:#fff}.cloud-lead-sync{background:#e8eef2;color:#21384a}.cloud-lead-adf{background:#6f4c8d;color:#fff}.cloud-lead-status{margin-top:9px;font-size:10px;line-height:1.45;color:#586975}.cloud-inbox{margin-top:10px}.cloud-lead-card{border:1px solid #dbe5eb;background:#fff;border-radius:12px;padding:11px;margin-top:8px}.cloud-lead-card-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.cloud-lead-card-top strong{font-size:11px}.cloud-lead-card-top small{font-size:9px;color:#71808a}.cloud-lead-chip{display:inline-block;margin-top:6px;font-size:8px;font-weight:950;padding:4px 6px;border-radius:999px}.cloud-lead-chip.auto{background:#e8f5ea;color:#285e32}.cloud-lead-chip.handling{background:#fff8e7;color:#745b24}.cloud-lead-chip.urgent{background:#fff0ee;color:#963b31}.cloud-lead-message,.cloud-lead-reply{font-size:10px;line-height:1.45;color:#566570;margin-top:7px}.cloud-lead-reply{padding:8px 9px;border-radius:9px;background:#f4f7f9}.cloud-lead-empty{padding:12px;text-align:center;border:1px dashed #c9d4dc;border-radius:12px;background:#fff;color:#71808a;font-size:10px}.cloud-lead-meta{margin-top:7px;font-size:9px;color:#7a8790}.cloud-lead-warning{margin-top:9px;padding:9px 10px;border-radius:10px;background:#fff8e7;color:#745b24;font-size:10px;line-height:1.45}
 @media(max-width:420px){.lead-source-grid,.lead-rule-grid,.lead-actions,.lead-result-actions{grid-template-columns:1fr}.lead-mode-row{grid-template-columns:1fr 1fr 1fr}.lead-kpis{grid-template-columns:repeat(3,1fr)}.quick-nav{gap:4px}.quick-nav button{font-size:8px;padding-left:2px;padding-right:2px}}
 
 </style>
@@ -703,7 +703,7 @@ body{
         <div class="lead-kpi"><strong id="leadReviewCount">0</strong><span>human now</span></div>
       </div>
 
-      <div class="lead-note"><strong>Live connection status:</strong> the cloud Lead Gateway is now available for secure test ingestion and server-side AI processing. Auto City's DealerCenter, CarGurus, email/SMS and Facebook channels are still not connected, and v5 does not send a real customer message yet. The next connection step is attaching an authorized source and outbound sender to this gateway.</div>
+      <div class="lead-note"><strong>Live connection status:</strong> the cloud Lead Gateway now accepts JSON and ADF/XML, can match an incoming vehicle against a trusted cloud inventory snapshot, and can run the lead through the server-side AI safety engine. Auto City's real DealerCenter, CarGurus, email/SMS and Facebook channels are still not connected, and v6 does not send a real customer message yet.</div>
 
       <div class="lead-source-grid" aria-label="Lead source connection plan">
         <div class="lead-source"><div class="lead-source-top"><strong>DealerCenter</strong><span class="lead-source-status target">PRIMARY TARGET</span></div><small>Preferred hub if Auto City's incoming leads can be securely routed or integrated.</small></div>
@@ -714,17 +714,19 @@ body{
 
       <div class="cloud-lead-panel" id="cloudLeadPanel">
         <div class="cloud-lead-top">
-          <div><h4>Cloud Lead Gateway</h4><p class="helper" style="margin:4px 0 0">This is the first no-copy/paste layer. Incoming leads can hit a secure server endpoint, get analyzed immediately by the same v4 safety engine, and appear here even if Mo never opened the app.</p></div>
+          <div><h4>Cloud Lead Gateway</h4><p class="helper" style="margin:4px 0 0">Incoming leads can now arrive as JSON or dealership-style ADF/XML, match against trusted cloud inventory, get analyzed server-side, and appear here even if Mo never opened the app.</p></div>
           <span class="cloud-lead-badge" id="cloudLeadBadge">SERVER READY</span>
         </div>
-        <div class="cloud-lead-warning"><strong>v5 delivery mode:</strong> GrowthWise processes and stores the lead in the cloud, but does not send a real customer message yet. It records exactly what would be auto-sent so we can prove the full server workflow before connecting Auto City's live email/SMS/CRM sender.</div>
+        <div class="cloud-lead-warning"><strong>v6 connection test:</strong> GrowthWise can now test the same ADF/XML format commonly used by automotive lead providers. It still does not send a real customer message. The ADF test first syncs this device's current inventory snapshot so availability/price come from dealership data rather than the lead itself.</div>
         <div class="cloud-lead-actions">
-          <button class="cloud-lead-send" id="cloudLeadTestBtn" type="button" onclick="sendCloudGatewayTest()">Send test lead to gateway</button>
+          <button class="cloud-lead-sync" id="cloudInventorySyncBtn" type="button" onclick="syncCloudInventory()">Sync inventory to cloud</button>
+          <button class="cloud-lead-adf" id="cloudLeadAdfTestBtn" type="button" onclick="sendCloudAdfTest()">Send CarGurus ADF test</button>
+          <button class="cloud-lead-send" id="cloudLeadTestBtn" type="button" onclick="sendCloudGatewayTest()">Send JSON test lead</button>
           <button class="cloud-lead-refresh" id="cloudLeadRefreshBtn" type="button" onclick="refreshCloudLeadInbox()">Refresh cloud inbox</button>
         </div>
         <div id="cloudLeadStatus" class="status hidden"></div>
-        <div class="cloud-lead-status">Gateway endpoint: <strong>/.netlify/functions/lead-ingest</strong> · accepts JSON now and basic ADF/XML for future dealership lead feeds.</div>
-        <div class="cloud-inbox" id="cloudLeadInbox"><div class="cloud-lead-empty">No cloud leads loaded yet. Use the test button after unlocking AI access.</div></div>
+        <div class="cloud-lead-status">Lead endpoint: <strong>/.netlify/functions/lead-ingest</strong> · inventory sync: <strong>/.netlify/functions/inventory-sync</strong> · external production feeds will use a separate lead-ingest credential.</div>
+        <div class="cloud-inbox" id="cloudLeadInbox"><div class="cloud-lead-empty">No cloud leads loaded yet. Sync inventory and send the CarGurus ADF test to prove vehicle matching + server-side ingestion.</div></div>
       </div>
 
       <div class="lead-automation-box">
@@ -2889,13 +2891,16 @@ function cloudLeadDeliveryText(row){
 }
 function renderCloudLeadInbox(rows){
   const box=$('cloudLeadInbox');if(!box)return;box.innerHTML='';
-  if(!Array.isArray(rows)||!rows.length){box.innerHTML='<div class="cloud-lead-empty">Cloud inbox is empty. Send a gateway test lead to prove server-side ingestion.</div>';return;}
+  if(!Array.isArray(rows)||!rows.length){box.innerHTML='<div class="cloud-lead-empty">Cloud inbox is empty. Sync inventory and send an ADF test lead to prove server-side ingestion.</div>';return;}
   rows.slice(0,20).forEach(row=>{
     const a=row.analysis||{};const card=document.createElement('div');card.className='cloud-lead-card';
     const when=row.created_at?new Date(row.created_at).toLocaleString():'';
-    const vehicle=row.vehicle?.vehicle||[row.vehicle?.year,row.vehicle?.make,row.vehicle?.model,row.vehicle?.trim].filter(Boolean).join(' ')||'Vehicle not matched';
+    const vehicle=row.vehicle?.vehicle||[row.vehicle?.year,row.vehicle?.make,row.vehicle?.model,row.vehicle?.trim].filter(Boolean).join(' ')||row.source_vehicle?.vehicle||[row.source_vehicle?.year,row.source_vehicle?.make,row.source_vehicle?.model].filter(Boolean).join(' ')||'Vehicle not matched';
     const chip=cloudLeadClass(a.decision,a.intent);const label=cloudLeadLabel(row);
-    card.innerHTML=`<div class="cloud-lead-card-top"><div><strong>${leadEscape(row.source||'Lead')} · ${leadEscape(row.customer_name||'Customer')}</strong><div class="cloud-lead-meta">${leadEscape(vehicle)}${when?` · ${leadEscape(when)}`:''}</div></div><span class="cloud-lead-chip ${chip}">${leadEscape(label)}</span></div><div class="cloud-lead-message"><strong>Customer:</strong> ${leadEscape(row.message||'')}</div>${a.reply?`<div class="cloud-lead-reply"><strong>GrowthWise reply:</strong> ${leadEscape(a.reply)}</div>`:''}<div class="cloud-lead-meta">${leadEscape(cloudLeadDeliveryText(row))}${a.follow_up_action?` · ${leadEscape(a.follow_up_action)}`:''}</div>`;
+    const vm=row.vehicle_match||{};
+    const matchText=vm.matched?` · inventory match: ${vm.type||'matched'}`:(row.adf?' · no trusted inventory match':'');
+    const adfText=row.adf?' · ADF/XML':'';
+    card.innerHTML=`<div class="cloud-lead-card-top"><div><strong>${leadEscape(row.source||'Lead')} · ${leadEscape(row.customer_name||'Customer')}</strong><div class="cloud-lead-meta">${leadEscape(vehicle)}${when?` · ${leadEscape(when)}`:''}${leadEscape(adfText)}${leadEscape(matchText)}</div></div><span class="cloud-lead-chip ${chip}">${leadEscape(label)}</span></div><div class="cloud-lead-message"><strong>Customer:</strong> ${leadEscape(row.message||'')}</div>${a.reply?`<div class="cloud-lead-reply"><strong>GrowthWise reply:</strong> ${leadEscape(a.reply)}</div>`:''}<div class="cloud-lead-meta">${leadEscape(cloudLeadDeliveryText(row))}${a.follow_up_action?` · ${leadEscape(a.follow_up_action)}`:''}</div>`;
     box.appendChild(card);
   });
 }
@@ -2910,6 +2915,54 @@ async function refreshCloudLeadInbox({quiet=false}={}){
     if(!quiet)setCloudLeadStatus('ok',`Cloud inbox loaded · ${(d.leads||[]).length} lead${(d.leads||[]).length===1?'':'s'} stored.`);
   }catch(err){if(!quiet)setCloudLeadStatus('error',err.message||'Could not load cloud inbox.');}
   finally{if(btn&&!quiet){btn.disabled=false;btn.textContent='Refresh cloud inbox';}}
+}
+function cloudBusinessPayload(){
+  return {name:$('businessName')?.value.trim()||'Auto City Sales',address:$('businessAddress')?.value.trim()||'427 Hertel Ave, Buffalo, NY 14207',phone:$('businessPhone')?.value.trim()||'(716) 406-7555',website:$('businessWebsite')?.value.trim()||'https://autocitysales.net',market:$('defaultMarket')?.value.trim()||'Buffalo, NY'};
+}
+function cloudInventoryRows(){
+  const rows=Array.isArray(inventoryRecords)?inventoryRecords:[];
+  return rows.map(r=>({id:r.id||'',stock:r.stock||'',vin:r.vin||'',vehicle:inventoryRecordLabel(r),year:r.year||'',make:r.make||'',model:r.model||'',trim:r.trim||'',mileage:r.mileage||'',asking:r.asking||'',status:r.status||'',notes:r.notes||'',days_on_lot:inventoryDays(r)}));
+}
+async function syncCloudInventory({quiet=false}={}){
+  const key=cloudLeadKey();
+  if(!key){if(!quiet)setCloudLeadStatus('warn','Unlock AI access first so GrowthWise can securely sync inventory.');return null;}
+  const btn=$('cloudInventorySyncBtn');if(btn&&!quiet){btn.disabled=true;btn.textContent='Syncing inventory…';}
+  try{
+    const rows=cloudInventoryRows();
+    const r=await fetch('/.netlify/functions/inventory-sync',{method:'POST',headers:{'Content-Type':'application/json','X-GrowthWise-Key':key},body:JSON.stringify({records:rows,business:cloudBusinessPayload()})});
+    const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Inventory sync failed (HTTP ${r.status}).`);
+    sessionStorage.setItem('growthwise_admin_key',key);if($('adminKey'))$('adminKey').value='';
+    if(!quiet)setCloudLeadStatus('ok',`Cloud inventory synced ✓ ${d.count||0} record${Number(d.count)===1?'':'s'} available for trusted lead matching.`);
+    return d;
+  }catch(err){if(!quiet)setCloudLeadStatus('error',`Inventory sync failed: ${err?.message||'Unknown error.'}`);return null;}
+  finally{if(btn&&!quiet){btn.disabled=false;btn.textContent='Sync inventory to cloud';}}
+}
+function xmlEscape(value){return String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')}
+function activeInventoryForAdfTest(){
+  const rows=Array.isArray(inventoryRecords)?inventoryRecords:[];
+  return rows.find(r=>/for sale|ready|active|aging inventory/i.test(String(r.status||''))&&!/sold|unavailable/i.test(String(r.status||'')))||rows.find(r=>!/sold|unavailable/i.test(String(r.status||'')))||null;
+}
+async function sendCloudAdfTest(){
+  const key=cloudLeadKey();
+  if(!key){setCloudLeadStatus('warn','Unlock AI access first.');return;}
+  const sale=activeInventoryForAdfTest();
+  if(!sale){setCloudLeadStatus('warn','Add at least one real inventory vehicle on this device before running the ADF match test.');return;}
+  const btn=$('cloudLeadAdfTestBtn');if(btn){btn.disabled=true;btn.textContent='Sending ADF test…';}
+  setCloudLeadStatus('loading','Syncing trusted inventory, then sending a realistic CarGurus ADF/XML lead into the server gateway…');
+  try{
+    const sync=await syncCloudInventory({quiet:true});if(!sync)throw new Error('Cloud inventory sync did not complete.');
+    const label=inventoryRecordLabel(sale);
+    const externalId=`cargurus-adf-test-${Date.now()}`;
+    const xml=`<?xml version="1.0" encoding="UTF-8"?>\n<adf>\n  <prospect>\n    <id sequence="1" source="CarGurus">${xmlEscape(externalId)}</id>\n    <requestdate>${new Date().toISOString()}</requestdate>\n    <vehicle interest="buy" status="used">\n      <year>${xmlEscape(sale.year||'')}</year>\n      <make>${xmlEscape(sale.make||'')}</make>\n      <model>${xmlEscape(sale.model||'')}</model>\n      <trim>${xmlEscape(sale.trim||'')}</trim>\n      <vin>${xmlEscape(sale.vin||'')}</vin>\n      <stock>${xmlEscape(sale.stock||'')}</stock>\n    </vehicle>\n    <customer>\n      <contact>\n        <name part="first">Jordan</name>\n        <name part="last">ADF Test</name>\n        <email>jordan.adf@example.test</email>\n        <phone type="voice">7165550101</phone>\n        <comments>Is the ${xmlEscape(label)} still available? I would like to come see it tomorrow.</comments>\n      </contact>\n    </customer>\n    <vendor><vendorname>Auto City Sales</vendorname></vendor>\n    <provider><name part="full">CarGurus</name></provider>\n  </prospect>\n</adf>`;
+    const r=await fetch('/.netlify/functions/lead-ingest',{method:'POST',headers:{'Content-Type':'application/xml','X-GrowthWise-Key':key},body:xml});
+    const text=await r.text();let d={};try{d=text?JSON.parse(text):{};}catch{}
+    if(!r.ok)throw new Error(d.error||text||`ADF gateway failed (HTTP ${r.status}).`);
+    const match=d.vehicle_match?.matched?`matched by ${String(d.vehicle_match.type||'inventory').replaceAll('_',' ')}`:'NO trusted inventory match';
+    setCloudLeadStatus(d.vehicle_match?.matched?'ok':'warn',`CarGurus ADF test processed ✓ ${match}. Lead ${d.id||''} ran through the AI engine. No real customer message was sent.`);
+    sessionStorage.setItem('growthwise_admin_key',key);if($('adminKey'))$('adminKey').value='';
+    await new Promise(resolve=>setTimeout(resolve,900));await refreshCloudLeadInbox({quiet:true});
+  }catch(err){console.error('GrowthWise ADF test failed:',err);setCloudLeadStatus('error',`ADF test failed: ${err?.message||'Unknown error.'}`);}
+  finally{if(btn){btn.disabled=false;btn.textContent='Send CarGurus ADF test';}}
 }
 async function sendCloudGatewayTest(){
   const key=cloudLeadKey();
