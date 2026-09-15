@@ -257,6 +257,20 @@ body{
 .feature-request-status{margin-top:10px;padding:10px 11px;border-radius:11px;font-size:11px;line-height:1.45;display:none}.feature-request-status.ok{display:block;background:#e8f5ea;color:#285e32}.feature-request-status.error{display:block;background:#fff0ee;color:#963b31}
 @media(max-width:420px){.feature-request-grid{grid-template-columns:1fr}.feature-request-grid .full{grid-column:auto}.feature-request-launch{right:12px;bottom:12px;padding:10px 12px}.feature-request-launch .feature-request-label{display:none}}
 
+
+/* GrowthWise Lead Center */
+.lead-center{border:1px solid #d4e0e7;background:linear-gradient(180deg,#fbfdff,#f5f8fa)}
+.lead-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.lead-head h3{margin:0}.lead-mode{font-size:9px;font-weight:950;border-radius:999px;padding:6px 8px;background:#fff8e7;color:#745b24;white-space:nowrap}
+.lead-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}.lead-kpi{border:1px solid #dfe6eb;border-radius:12px;background:#fff;padding:10px}.lead-kpi strong{display:block;font-size:20px;color:#152c3d}.lead-kpi span{display:block;margin-top:2px;font-size:9px;color:#71808b;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.lead-source-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.lead-source{border:1px solid #dfe6eb;background:#fff;border-radius:12px;padding:10px}.lead-source-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.lead-source strong{font-size:11px;color:#203847}.lead-source small{display:block;color:#74818b;font-size:9px;line-height:1.4;margin-top:4px}.lead-source-status{font-size:8px;font-weight:950;padding:4px 6px;border-radius:999px;background:#eef1f3;color:#68747f;white-space:nowrap}.lead-source-status.target{background:#eef4fb;color:#325a7e}.lead-source-status.next{background:#fff8e7;color:#745b24}
+.lead-automation-box{margin-top:12px;border:1px solid #d7e1e7;background:#fff;border-radius:14px;padding:13px}.lead-automation-box h4{margin:0 0 5px;font-size:14px}.lead-automation-box p{margin:0;color:#697782;font-size:10px;line-height:1.45}.lead-mode-row{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}.lead-mode-btn{border:1px solid #dbe3e8;background:#f7f9fa;border-radius:10px;padding:9px 6px;font-size:9px;font-weight:900;color:#3b4c58;cursor:pointer}.lead-mode-btn.active{background:#0f2230;color:#fff;border-color:#0f2230}
+.lead-rule-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}.lead-rule{border-radius:11px;padding:10px;font-size:10px;line-height:1.45}.lead-rule.auto{background:#e8f5ea;color:#285e32}.lead-rule.review{background:#fff0ee;color:#963b31}.lead-rule strong{display:block;margin-bottom:4px}
+.lead-test{margin-top:12px;border:1px dashed #c9d4dc;background:#fff;border-radius:14px;padding:13px}.lead-test-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.lead-test-head h4{margin:0}.lead-test-badge{font-size:8px;font-weight:950;padding:5px 7px;border-radius:999px;background:#eef1f3;color:#68747f}.lead-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.lead-actions button{border:0;border-radius:10px;padding:10px;font-weight:900;cursor:pointer}.lead-actions .run{background:#b31f2b;color:#fff}.lead-actions .sample{background:#eef1f3;color:#263c4c}
+.lead-result{margin-top:12px;border:1px solid #dce5ea;border-radius:14px;background:#fff;padding:13px}.lead-result-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.lead-decision{font-size:9px;font-weight:950;padding:6px 8px;border-radius:999px}.lead-decision.auto{background:#e8f5ea;color:#285e32}.lead-decision.review{background:#fff0ee;color:#963b31}.lead-intent{font-size:10px;color:#65737e;margin-top:5px}.lead-reason{margin-top:9px;padding:9px 10px;border-radius:10px;background:#f4f7f9;color:#596873;font-size:10px;line-height:1.45}.lead-result textarea{min-height:105px}.lead-result-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.lead-result-actions button{border:0;border-radius:10px;padding:10px;font-weight:900;cursor:pointer}.lead-copy{background:#0f2230;color:#fff}.lead-save{background:#eef1f3;color:#263c4c}.lead-inbox{margin-top:12px}.lead-inbox-card{border:1px solid #dfe6eb;background:#fff;border-radius:12px;padding:10px;margin-top:7px}.lead-inbox-card-top{display:flex;justify-content:space-between;gap:8px}.lead-inbox-card strong{font-size:11px}.lead-inbox-card small{color:#71808a;font-size:9px}.lead-inbox-message{font-size:10px;line-height:1.4;color:#566570;margin-top:6px}.lead-inbox-empty{padding:12px;text-align:center;border:1px dashed #d4dce2;border-radius:12px;color:#71808a;font-size:10px;background:#fff}.lead-note{margin-top:10px;padding:10px 11px;border-radius:11px;background:#eef4fb;color:#3b5c79;font-size:10px;line-height:1.45}
+.quick-nav{grid-template-columns:repeat(5,minmax(0,1fr))}.quick-nav button{font-size:9px;padding:9px 3px}
+#leadCenter{scroll-margin-top:72px}
+@media(max-width:420px){.lead-source-grid,.lead-rule-grid,.lead-actions,.lead-result-actions{grid-template-columns:1fr}.lead-mode-row{grid-template-columns:1fr 1fr 1fr}.lead-kpis{grid-template-columns:repeat(3,1fr)}.quick-nav{gap:4px}.quick-nav button{font-size:8px;padding-left:2px;padding-right:2px}}
+
 </style>
 </head>
 <body>
@@ -269,8 +283,9 @@ body{
     <div class="quick-nav">
       <button id="quickBuy" type="button">BUY</button>
       <button id="quickSell" type="button">SELL</button>
-      <button id="quickService" type="button">SERVICE</button>
+      <button id="quickLeads" type="button">LEADS</button>
       <button id="quickInventory" type="button">INVENTORY</button>
+      <button id="quickService" type="button">SERVICE</button>
     </div>
   </nav>
   <main class="wrap">
@@ -284,12 +299,13 @@ body{
           </div>
           <div class="dash-logo" aria-hidden="true">GW</div>
         </div>
-        <p>Choose what you want to do. GrowthWise guides the buyer, seller, service team and inventory manager through the next steps.</p>
+        <p>Choose what you want to do. GrowthWise guides buying, selling, lead response, inventory and service through the next steps.</p>
         <div class="dash-pills" aria-label="Quick links to GrowthWise Automotive sections">
           <button class="dash-pill dash-pill-action" id="heroBuy" type="button" aria-label="Go to Buyer Assistant">BUY</button>
           <button class="dash-pill dash-pill-action" id="heroSell" type="button" aria-label="Go to Seller Assistant">SELL</button>
-          <button class="dash-pill dash-pill-action" id="heroService" type="button" aria-label="Go to Service Assistant">SERVICE</button>
+          <button class="dash-pill dash-pill-action" id="heroLeads" type="button" aria-label="Go to Lead Reply Assistant">LEADS</button>
           <button class="dash-pill dash-pill-action" id="heroInventory" type="button" aria-label="Go to Inventory Manager">INVENTORY</button>
+          <button class="dash-pill dash-pill-action" id="heroService" type="button" aria-label="Go to Service Assistant">SERVICE</button>
         </div>
       </div>
 
@@ -298,7 +314,7 @@ body{
           <h3>AI access</h3>
           <span class="access-ok hidden" id="accessBadge">AI READY</span>
         </div>
-        <p>Enter the GrowthWise access code once. It unlocks the Buyer, Seller and Service AI tools for this browser tab. Inventory Manager and Data & Excel remain available on this device.</p>
+        <p>Enter the GrowthWise access code once. It unlocks the Buyer, Seller, Leads and Service AI tools for this browser tab. Inventory Manager and Data & Excel remain available on this device.</p>
         <div class="access-row">
           <input id="adminKey" type="password" autocomplete="off" placeholder="Enter GrowthWise access code" aria-label="GrowthWise access code" />
           <button class="access-btn" id="unlockAiBtn" type="button">Unlock AI</button>
@@ -328,7 +344,8 @@ body{
         <h3>Today</h3>
         <div class="today-line"><span class="today-dot"></span><div><strong id="todayVehicleStatus">No vehicle in progress yet.</strong><small>Take a photo below to start a live vehicle workflow.</small></div></div>
         <div class="today-line"><span class="today-dot"></span><div><strong id="todayDealStatus">Deal Finder</strong><small>Live AI opportunity scouting can search current public listings and rank potential buys.</small></div></div>
-        <div class="today-line"><span class="today-dot"></span><div><strong>Service Center</strong><small>AI customer follow-up, open-bay promotions and service-retention tools are ready to use.</small></div></div>
+        <div class="today-line"><span class="today-dot"></span><div><strong id="todayLeadStatus">Lead Reply Assistant</strong><small>Automation engine is ready for testing. Live DealerCenter / messaging connections are the next step.</small></div></div>
+        <div class="today-line"><span class="today-dot"></span><div><strong>Service Center</strong><small>Available for recon and service workflows; lower priority for the Auto City pilot.</small></div></div>
         <div class="today-line"><span class="today-dot"></span><div><strong id="todayInventoryStatus">Inventory Manager</strong><small id="todayInventorySub">Track owned vehicles, recon, days on lot, asking price and sold results in one place.</small></div></div>
       </div>
 
@@ -341,9 +358,13 @@ body{
           <div class="dash-row"><div class="dash-icon">🚗</div><div class="dash-copy"><strong>Seller Assistant</strong><small>Select an inventory vehicle or start with photos. GrowthWise guides listing, photo prep, campaign creation and selling strategy.</small></div><span class="dash-tag">LIVE AI</span></div>
           <button class="dash-cta" type="button" id="goSell">I want to sell</button>
         </div>
+        <div class="dash-action primary-action">
+          <div class="dash-row"><div class="dash-icon">💬</div><div class="dash-copy"><strong>Lead Reply Assistant</strong><small>Let GrowthWise understand incoming leads, answer safe questions automatically and send price/finance/negotiation decisions to Mo.</small></div><span class="dash-tag">NEW</span></div>
+          <button class="dash-cta" type="button" id="goLeads">Open Lead Center</button>
+        </div>
         <div class="dash-action service-action">
-          <div class="dash-row"><div class="dash-icon">🔧</div><div class="dash-copy"><strong>Service Assistant</strong><small>Work customer retention, declined repairs, open bays and inventory recon from one guided service workflow.</small></div><span class="dash-tag">LIVE AI</span></div>
-          <button class="dash-cta secondary-cta" type="button" id="goService">I want to work with Service</button>
+          <div class="dash-row"><div class="dash-icon">🔧</div><div class="dash-copy"><strong>Service Assistant</strong><small>Keep service and recon tools available when needed. Auto City can focus on buying, selling, leads and inventory first.</small></div><span class="dash-tag next">AVAILABLE</span></div>
+          <button class="dash-cta secondary-cta" type="button" id="goService">Open Service</button>
         </div>
         <div class="dash-action marketing-action">
           <div class="dash-row"><div class="dash-icon">📋</div><div class="dash-copy"><strong>Inventory Manager</strong><small>Track owned vehicles from purchase through recon, listing, aging inventory and final sale.</small></div><span class="dash-tag next">LOCAL STORAGE</span></div>
@@ -662,6 +683,83 @@ body{
       </div>
     </section>
 
+
+
+    <section class="card section-anchor lead-center" id="leadCenter">
+      <div class="lead-head">
+        <div>
+          <div class="tag">LEADS · AI REPLY AUTOMATION</div>
+          <h3>GrowthWise Lead Center</h3>
+          <p class="helper">The goal is zero copy/paste for Mo: connected lead sources will flow into GrowthWise automatically, the AI will use current vehicle and dealership facts, and routine questions can be answered without interrupting him. GrowthWise can acknowledge price questions and offers without negotiating; the actual price decision, financing promises, trades, complaints and uncertain facts stay with a person.</p>
+        </div>
+        <span class="lead-mode" id="leadConnectionBadge">ENGINE READY</span>
+      </div>
+
+      <div class="lead-kpis">
+        <div class="lead-kpi"><strong id="leadInboxCount">0</strong><span>lead tests</span></div>
+        <div class="lead-kpi"><strong id="leadAutoCount">0</strong><span>AI safe</span></div>
+        <div class="lead-kpi"><strong id="leadReviewCount">0</strong><span>needs Mo</span></div>
+      </div>
+
+      <div class="lead-note"><strong>Live connection status:</strong> the AI reply engine is being built now. Auto City's DealerCenter, CarGurus, email/SMS and Facebook channels are not connected to GrowthWise yet, so nothing can send to a real customer from this build. This test area lets us prove the decision logic before wiring those live sources.</div>
+
+      <div class="lead-source-grid" aria-label="Lead source connection plan">
+        <div class="lead-source"><div class="lead-source-top"><strong>DealerCenter</strong><span class="lead-source-status target">PRIMARY TARGET</span></div><small>Preferred hub if Auto City's incoming leads can be securely routed or integrated.</small></div>
+        <div class="lead-source"><div class="lead-source-top"><strong>CarGurus</strong><span class="lead-source-status next">VIA CRM</span></div><small>Goal: let the existing CRM route identify vehicle + customer context automatically.</small></div>
+        <div class="lead-source"><div class="lead-source-top"><strong>Facebook Marketplace</strong><span class="lead-source-status next">VERIFY ROUTE</span></div><small>Use a supported connection or existing DealerCenter path; do not rely on disguised browser automation.</small></div>
+        <div class="lead-source"><div class="lead-source-top"><strong>Email / SMS / Website</strong><span class="lead-source-status next">CONNECT NEXT</span></div><small>These channels can feed the same GrowthWise reply engine once Auto City authorizes a route.</small></div>
+      </div>
+
+      <div class="lead-automation-box">
+        <h4>Automation level</h4>
+        <p>This controls what GrowthWise is allowed to do after live lead channels are connected. Smart Auto-Reply is the recommended Auto City pilot mode.</p>
+        <div class="lead-mode-row">
+          <button class="lead-mode-btn" data-lead-mode="draft" type="button">DRAFT ONLY</button>
+          <button class="lead-mode-btn active" data-lead-mode="smart" type="button">SMART AUTO</button>
+          <button class="lead-mode-btn" data-lead-mode="off" type="button">AI OFF</button>
+        </div>
+        <div class="lead-rule-grid">
+          <div class="lead-rule auto"><strong>✓ GrowthWise may auto-answer</strong>Known availability, advertised price, mileage, dealership address/contact, known vehicle facts, requests for photos/listing links, simple scheduling questions, and neutral pricing questions such as “What’s your lowest price?” when the current asking price is verified.</div>
+          <div class="lead-rule review"><strong>⚠ Auto-acknowledge, then route to Mo</strong>If a shopper makes a specific offer, GrowthWise may immediately acknowledge it without accepting, rejecting or countering. The actual pricing decision goes to Mo / a salesperson. Financing approvals or payment promises, trade values, deposits/holds, warranty claims, unverified history, complaints and uncertain facts always require human judgment.</div>
+        </div>
+        <label class="field">Auto City reply style<textarea id="leadTone">Friendly, brief and natural. Do not sound like a bot. Answer the customer's question directly, then move the conversation toward a visit or test drive when appropriate.</textarea></label>
+        <label class="field">Negotiation / approval rule<textarea id="leadPolicy">GrowthWise may state the verified advertised price, invite a shopper to make an offer, and automatically acknowledge a specific offer with neutral language. Never accept, reject, counter, or promise a discount automatically. Route the actual price decision to Mo or another salesperson. Never value a trade, promise financing approval/payments, guarantee vehicle condition/history, or confirm a deposit/hold automatically.</textarea></label>
+      </div>
+
+      <div class="lead-test">
+        <div class="lead-test-head"><div><h4>Test the automation engine</h4><p class="helper" style="margin:4px 0 0">This is only a test harness while we connect live lead sources. Production leads should arrive automatically — staff should not have to paste them here.</p></div><span class="lead-test-badge">TEST ONLY</span></div>
+        <div class="grid2">
+          <label class="field">Lead source<select id="leadSource"><option>CarGurus</option><option>Facebook Marketplace</option><option>Facebook / Messenger</option><option>DealerAssist website</option><option>Email</option><option>SMS</option><option>Phone follow-up</option><option>Other</option></select></label>
+          <label class="field">Customer name (optional)<input id="leadCustomer" placeholder="e.g. James" /></label>
+        </div>
+        <label class="field">Vehicle from inventory<select id="leadVehicleSelect"><option value="">Choose known inventory vehicle (recommended)</option></select></label>
+        <label class="field">Incoming customer message<textarea id="leadMessage" placeholder="Test example: Is the 2021 Equinox still available? Can I see it tomorrow?"></textarea></label>
+        <label class="field">Previous conversation (optional)<textarea id="leadHistory" placeholder="Only add prior conversation if this is a follow-up lead."></textarea></label>
+        <div class="lead-actions">
+          <button class="sample" id="leadLoadSample" type="button">Load safe example</button>
+          <button class="sample" id="leadLoadOfferSample" type="button">Load price-offer example</button>
+          <button class="run" id="leadRunBtn" type="button">Run through AI automation</button>
+        </div>
+        <div id="leadStatus" class="status hidden"></div>
+
+        <div id="leadResult" class="lead-result hidden">
+          <div class="lead-result-top"><strong>GrowthWise decision</strong><span id="leadDecision" class="lead-decision review">REVIEW</span></div>
+          <div id="leadIntent" class="lead-intent"></div>
+          <div id="leadReason" class="lead-reason"></div>
+          <label class="field">Suggested customer reply<textarea id="leadReply"></textarea></label>
+          <div class="lead-result-actions">
+            <button class="lead-copy" id="leadCopyReply" type="button">Copy reply</button>
+            <button class="lead-save" id="leadSaveTest" type="button">Save test result</button>
+          </div>
+          <div class="mini" id="leadNextAction"></div>
+        </div>
+      </div>
+
+      <div class="lead-inbox">
+        <div class="lead-head"><div><strong>Recent automation tests</strong><small style="display:block;color:#74818b;margin-top:3px">Temporary local log for tuning the AI before live DealerCenter / messaging connections.</small></div></div>
+        <div id="leadInboxList"></div>
+      </div>
+    </section>
 
     <section class="card section-anchor" id="servicePreview">
       <div class="tag">SERVICE ASSISTANT · LIVE AI</div>
@@ -2435,7 +2533,7 @@ function isoToday(){return new Date().toISOString().slice(0,10);}
 function loadInventoryRecords(){
   try{const raw=localStorage.getItem(INVENTORY_STORAGE_KEY);const parsed=raw?JSON.parse(raw):[];inventoryRecords=Array.isArray(parsed)?parsed:[];}catch{inventoryRecords=[];}
 }
-function persistInventory(){localStorage.setItem(INVENTORY_STORAGE_KEY,JSON.stringify(inventoryRecords));renderInventory();refreshInventorySelectors();}
+function persistInventory(){localStorage.setItem(INVENTORY_STORAGE_KEY,JSON.stringify(inventoryRecords));renderInventory();refreshInventorySelectors();if(typeof refreshLeadVehicleOptions==='function')refreshLeadVehicleOptions();}
 function inventoryNextStock(){
   let max=0;for(const r of inventoryRecords){const m=String(r.stock||'').match(/GW-(\d+)/i);if(m)max=Math.max(max,Number(m[1])||0);}return `GW-${String(max+1).padStart(3,'0')}`;
 }
@@ -2522,7 +2620,121 @@ $('inventoryAddBuy')?.addEventListener('click',markCurrentBuyPurchased);$('inven
 $('marketingInventorySelect')?.addEventListener('change',e=>{if(e.target.value)loadInventoryIntoMarketing(e.target.value);});$('serviceInventorySelect')?.addEventListener('change',e=>{const r=inventoryRecords.find(x=>x.id===e.target.value);if(r)$('serviceVehicle').value=inventoryRecordLabel(r);});
 loadInventoryRecords();renderInventory();refreshInventorySelectors();
 
-const workflowTargets={buy:'opportunityScout',sell:'sellStart',service:'servicePreview',inventory:'inventoryManager'};
+
+// ---------- GrowthWise Lead Reply Assistant ----------
+function leadEscape(value){return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[ch]||ch));}
+const LEAD_SETTINGS_KEY='growthwise_auto_lead_settings_v1';
+const LEAD_TEST_LOG_KEY='growthwise_auto_lead_tests_v1';
+let leadAutomationMode='smart';
+let lastLeadResult=null;
+function leadLoadSettings(){
+  try{
+    const s=JSON.parse(localStorage.getItem(LEAD_SETTINGS_KEY)||'{}');
+    leadAutomationMode=s.mode||'smart';
+    if($('leadTone')&&s.tone)$('leadTone').value=s.tone;
+    if($('leadPolicy')&&s.policy)$('leadPolicy').value=s.policy;
+  }catch{}
+  document.querySelectorAll('[data-lead-mode]').forEach(b=>b.classList.toggle('active',b.dataset.leadMode===leadAutomationMode));
+}
+function leadSaveSettings(){
+  localStorage.setItem(LEAD_SETTINGS_KEY,JSON.stringify({mode:leadAutomationMode,tone:$('leadTone')?.value.trim()||'',policy:$('leadPolicy')?.value.trim()||''}));
+}
+function leadTests(){try{return JSON.parse(localStorage.getItem(LEAD_TEST_LOG_KEY)||'[]')}catch{return[]}}
+function leadSaveTests(rows){localStorage.setItem(LEAD_TEST_LOG_KEY,JSON.stringify(rows.slice(-50)))}
+function leadVehiclePayload(){
+  const id=$('leadVehicleSelect')?.value||'';
+  if(!id)return null;
+  const r=inventoryRecords.find(x=>x.id===id); if(!r)return null;
+  return {id:r.id,stock:r.stock||'',vin:r.vin||'',vehicle:inventoryRecordLabel(r),year:r.year||'',make:r.make||'',model:r.model||'',trim:r.trim||'',mileage:r.mileage||'',asking:r.asking||'',status:r.status||'',notes:r.notes||'',days_on_lot:inventoryDays(r)};
+}
+function refreshLeadVehicleOptions(){
+  const sel=$('leadVehicleSelect'); if(!sel)return;
+  const keep=sel.value; sel.innerHTML='<option value="">Choose known inventory vehicle (recommended)</option>';
+  inventoryRecords.filter(r=>r.status!=='Sold').sort((a,b)=>inventoryRecordLabel(a).localeCompare(inventoryRecordLabel(b))).forEach(r=>{const o=document.createElement('option');o.value=r.id;o.textContent=`${inventoryRecordLabel(r)}${r.asking?` · ${money(r.asking)}`:''}`;sel.appendChild(o)});
+  if([...sel.options].some(o=>o.value===keep))sel.value=keep;
+}
+function renderLeadInbox(){
+  const list=$('leadInboxList');if(!list)return;const rows=leadTests().slice().reverse();
+  const autos=rows.filter(r=>r.decision==='auto_reply').length,reviews=rows.filter(r=>r.decision!=='auto_reply').length;
+  if($('leadInboxCount'))$('leadInboxCount').textContent=rows.length;
+  if($('leadAutoCount'))$('leadAutoCount').textContent=autos;
+  if($('leadReviewCount'))$('leadReviewCount').textContent=reviews;
+  list.replaceChildren();
+  if(!rows.length){const e=document.createElement('div');e.className='lead-inbox-empty';e.textContent='No automation tests yet. Load the safe example and run it through the AI engine.';list.appendChild(e);return;}
+  rows.slice(0,8).forEach(r=>{const card=document.createElement('div');card.className='lead-inbox-card';const d=r.decision==='auto_reply'?'AI SAFE':r.decision==='auto_reply_then_review'?'AI ACK + MO':'NEEDS MO';card.innerHTML=`<div class="lead-inbox-card-top"><strong>${leadEscape(r.source||'Lead')} · ${leadEscape(r.customer||'Customer')}</strong><small>${leadEscape(d)}</small></div><div class="lead-inbox-message">${leadEscape((r.message||'').slice(0,180))}</div>`;list.appendChild(card)});
+}
+function setLeadStatus(kind,msg){setBoxStatus('leadStatus',kind,msg)}
+function leadDecisionUi(data){
+  const auto=data.decision==='auto_reply';
+  const ack=data.decision==='auto_reply_then_review';
+  $('leadDecision').textContent=auto?'AI SAFE TO AUTO-REPLY':ack?'AI ACKNOWLEDGES · MO DECIDES':'MO / SALESPERSON REVIEW';
+  $('leadDecision').className=`lead-decision ${auto?'auto':'review'}`;
+  $('leadIntent').textContent=`Intent: ${(data.intent||'other').replaceAll('_',' ')} · Risk: ${data.risk_level||'—'}${data.customer_name?` · ${data.customer_name}`:''}`;
+  $('leadReason').textContent=data.reason||'GrowthWise evaluated the message against Auto City rules and known facts.';
+  $('leadReply').value=data.reply||'';
+  const fallback=auto?'When a live channel is connected, this type of reply can be sent automatically.':ack?'GrowthWise sends the neutral acknowledgement immediately, then alerts Mo / a salesperson to make the actual pricing decision.':'Mo reviews/edits before anything is sent.';
+  $('leadNextAction').innerHTML=`<strong>Next step:</strong> ${leadEscape(data.follow_up_action||fallback)}`;
+  $('leadResult').classList.remove('hidden');
+}
+async function runLeadAutomation(){
+  const key=$('adminKey').value||sessionStorage.getItem('growthwise_admin_key')||'';
+  if(!key){setLeadStatus('error','Unlock AI in the AI access section first.');return;}
+  const message=$('leadMessage').value.trim(); if(!message){setLeadStatus('error','Add a test customer message first.');return;}
+  const vehicle=leadVehiclePayload();
+  const business={name:$('businessName').value.trim()||'Auto City Sales',address:$('businessAddress').value.trim(),phone:$('businessPhone').value.trim(),website:$('businessWebsite').value.trim(),market:$('defaultMarket').value.trim()};
+  const payload={mode:leadAutomationMode,source:$('leadSource').value,customer_name:$('leadCustomer').value.trim(),message,history:$('leadHistory').value.trim(),vehicle,business,tone:$('leadTone').value.trim(),policy:$('leadPolicy').value.trim()};
+  const btn=$('leadRunBtn');btn.disabled=true;btn.textContent='AI evaluating lead…';setLeadStatus('loading','GrowthWise is checking the customer question against inventory facts and Auto City approval rules…');
+  try{
+    const r=await fetch('/.netlify/functions/lead-assistant',{method:'POST',headers:{'Content-Type':'application/json','X-GrowthWise-Key':key},body:JSON.stringify(payload)});
+    const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Lead AI failed (HTTP ${r.status}).`);
+    lastLeadResult={...d,source:payload.source,customer:payload.customer_name||'Customer',message:payload.message,vehicle:vehicle?.vehicle||'',createdAt:new Date().toISOString()};
+    leadDecisionUi(d);sessionStorage.setItem('growthwise_admin_key',key);$('adminKey').value='';
+    setLeadStatus('ok',d.decision==='auto_reply'?'AI marked this as safe for Smart Auto-Reply once a live lead channel is connected.':d.decision==='auto_reply_then_review'?'GrowthWise can send the neutral acknowledgement automatically, then route the price decision to Mo / a salesperson.':'AI routed this lead to Mo / a salesperson for human judgment.');
+  }catch(err){setLeadStatus('error',err.message||'Could not evaluate this lead.');}
+  finally{btn.disabled=false;btn.textContent='Run through AI automation';}
+}
+function saveCurrentLeadTest(){
+  if(!lastLeadResult){setLeadStatus('warn','Run the AI automation test first.');return;}
+  const rows=leadTests();rows.push(lastLeadResult);leadSaveTests(rows);renderLeadInbox();setLeadStatus('ok','Test result saved locally. This does not create or send a real customer message.');
+}
+function loadLeadSample(){
+  $('leadSource').value='CarGurus';$('leadCustomer').value='James';$('leadHistory').value='';
+  const sale=inventoryRecords.find(r=>r.status==='For sale'||r.status==='Aging inventory');
+  if(sale){
+    $('leadVehicleSelect').value=sale.id;
+    const label=inventoryRecordLabel(sale);
+    $('leadMessage').value=`Is the ${label} still available? Can I come see it tomorrow?`;
+    setLeadStatus('warn',`Safe example loaded using ${label}. GrowthWise should use its current inventory facts and decide whether this is safe for automatic reply.`);
+  }else{
+    $('leadVehicleSelect').value='';
+    $('leadMessage').value='Is the vehicle still available? Can I come see it tomorrow?';
+    setLeadStatus('warn','Safe example loaded, but there is no For sale inventory vehicle on this device. GrowthWise should avoid claiming availability and require review.');
+  }
+}
+function loadLeadOfferSample(){
+  $('leadSource').value='Facebook Marketplace';$('leadCustomer').value='Chris';$('leadHistory').value='';
+  const sale=inventoryRecords.find(r=>r.status==='For sale'||r.status==='Aging inventory');
+  if(sale){
+    $('leadVehicleSelect').value=sale.id;
+    const label=inventoryRecordLabel(sale);
+    const asking=Number(sale.asking||0);
+    const offer=asking?Math.max(500,Math.round((asking*0.9)/100)*100):12000;
+    $('leadMessage').value=`Would you take ${money(offer)} for the ${label} if I can come today?`;
+    setLeadStatus('warn',`Price-offer example loaded using ${label}. GrowthWise should acknowledge the offer without accepting, rejecting or countering, then route the actual pricing decision to Mo.`);
+  }else{
+    $('leadVehicleSelect').value='';
+    $('leadMessage').value='Would you take $12,000 if I can come today?';
+    setLeadStatus('warn','Price-offer example loaded. GrowthWise may acknowledge the offer neutrally, but without a matched vehicle it must not quote or infer vehicle-specific pricing facts.');
+  }
+}
+document.querySelectorAll('[data-lead-mode]').forEach(b=>b.addEventListener('click',()=>{leadAutomationMode=b.dataset.leadMode;document.querySelectorAll('[data-lead-mode]').forEach(x=>x.classList.toggle('active',x===b));leadSaveSettings();}));
+$('leadTone')?.addEventListener('change',leadSaveSettings);$('leadPolicy')?.addEventListener('change',leadSaveSettings);
+$('leadLoadSample')?.addEventListener('click',loadLeadSample);$('leadLoadOfferSample')?.addEventListener('click',loadLeadOfferSample);$('leadRunBtn')?.addEventListener('click',runLeadAutomation);$('leadSaveTest')?.addEventListener('click',saveCurrentLeadTest);
+$('leadCopyReply')?.addEventListener('click',async()=>{const v=$('leadReply')?.value||'';if(!v)return;try{await navigator.clipboard.writeText(v);setLeadStatus('ok','Reply copied. In the live pilot, connected low-risk leads will not require this copy step.');}catch{setLeadStatus('warn','Select the reply text and copy it manually.');}});
+leadLoadSettings();renderLeadInbox();setTimeout(refreshLeadVehicleOptions,50);
+
+
+const workflowTargets={buy:'opportunityScout',sell:'sellStart',leads:'leadCenter',inventory:'inventoryManager',service:'servicePreview'};
 function setWorkflowNavActive(mode){
   for(const m of Object.keys(workflowTargets)){
     const cap=m[0].toUpperCase()+m.slice(1);
@@ -2538,14 +2750,17 @@ function goWorkflow(mode){
 }
 $('quickBuy')?.addEventListener('click',()=>goWorkflow('buy'));
 $('quickSell')?.addEventListener('click',()=>goWorkflow('sell'));
+$('quickLeads')?.addEventListener('click',()=>goWorkflow('leads'));
 $('quickService')?.addEventListener('click',()=>goWorkflow('service'));
 $('quickInventory')?.addEventListener('click',()=>goWorkflow('inventory'));
 $('heroBuy')?.addEventListener('click',()=>goWorkflow('buy'));
 $('heroSell')?.addEventListener('click',()=>goWorkflow('sell'));
+$('heroLeads')?.addEventListener('click',()=>goWorkflow('leads'));
 $('heroService')?.addEventListener('click',()=>goWorkflow('service'));
 $('heroInventory')?.addEventListener('click',()=>goWorkflow('inventory'));
 $('goSell')?.addEventListener('click',()=>goWorkflow('sell'));
 $('goBuy')?.addEventListener('click',()=>goWorkflow('buy'));
+$('goLeads')?.addEventListener('click',()=>goWorkflow('leads'));
 $('goService')?.addEventListener('click',()=>goWorkflow('service'));
 $('goInventory')?.addEventListener('click',()=>goWorkflow('inventory'));
 $('goDataExcel')?.addEventListener('click',()=>{$('dataExcelCenter')?.scrollIntoView({behavior:'smooth',block:'start'});});
