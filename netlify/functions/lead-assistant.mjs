@@ -304,14 +304,25 @@ export default async (request) => {
     decision = mode === "smart" ? "auto_reply_then_review" : "review_required";
   } else if (tradeQuestion || intent === "trade") {
     intent = "trade";
-    reply = `Absolutely. We can help with a trade appraisal. Please send the year, make, model, mileage, trim level, overall condition, VIN if available, and a few clear photos. If you've already shared any of those details, no need to repeat them. Our sales team will review everything before any trade value is quoted.`;
-    reason = "GrowthWise can collect the appraisal facts, but it must not estimate or promise a trade value.";
-    followUpAction = "Keep collecting trade-in details automatically. Once enough information is gathered, alert the sales team with a complete appraisal request.";
+    const hasYear = /\b(?:19|20)\d{2}\b/.test(message);
+    const hasMileage = /\b\d{2,3}(?:,\d{3})?\s*(?:miles?|mi\b)|\b\d{2,3}k\s*(?:miles?|mi)?\b/i.test(message);
+    const hasVin = /\b[A-HJ-NPR-Z0-9]{17}\b/i.test(message);
+    const asks = [];
+    if (!hasYear) asks.push("year");
+    if (!/\b(?:ford|chevrolet|chevy|honda|toyota|nissan|jeep|dodge|ram|gmc|buick|cadillac|chrysler|subaru|mazda|kia|hyundai|volkswagen|vw|bmw|mercedes|audi|lexus|acura|lincoln|volvo|mitsubishi|infiniti)\b/i.test(message)) asks.push("make");
+    if (!hasMileage) asks.push("mileage");
+    asks.push("trim level", "overall condition");
+    if (!hasVin) asks.push("VIN if available");
+    asks.push("a few clear photos");
+    const missing = asks.join(", ").replace(/, ([^,]*)$/, ", and $1");
+    reply = `Absolutely. We can help with a trade appraisal. I have the details you've already shared, so no need to repeat them. Please send ${missing}. Our sales team will review everything before any trade value is quoted.`;
+    reason = "GrowthWise can collect the missing appraisal facts without making the customer repeat details, but it must not estimate or promise a trade value.";
+    followUpAction = "Keep collecting only the missing trade-in details automatically. Once enough information is gathered, alert the sales team with a complete appraisal request.";
     riskLevel = "high";
     decision = mode === "smart" ? "auto_reply_then_review" : "review_required";
   } else if (historyQuestion || intent === "vehicle_history") {
     intent = "vehicle_history";
-    reply = `Thanks for asking${customerName ? `, ${customerName}` : ""}. I'll have our team verify the title and accident history for the ${displayVehicle} and get back to you. Would you also like to schedule a time to see it?`;
+    reply = `Thanks for asking${customerName ? `, ${customerName}` : ""}. I'll have our team verify the title and accident history for the ${displayVehicle} and get back to you. Once we confirm those details, I can also help you schedule a time to see it.`;
     reason = "Title and accident-history facts were not verified in the supplied vehicle record, so GrowthWise must not guess. It can acknowledge the question while the team verifies the facts.";
     followUpAction = "Send the acknowledgement automatically, then verify title/history from an approved source before providing those facts.";
     riskLevel = "high";
