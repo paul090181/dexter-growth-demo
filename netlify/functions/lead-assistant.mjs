@@ -42,6 +42,36 @@ function normalizeVehicle(vehicle) {
   };
 }
 
+function hasSpecificOffer(message) {
+  const m = String(message || "").toLowerCase();
+  return /(?:would\s+you\s+(?:take|accept)|(?:my\s+)?offer(?:\s+is|\s+of)?|i(?:'|’)ll\s+(?:pay|do)|i\s+can\s+(?:pay|do)|can\s+you\s+do|how\s+about)\s*\$?\s*\d[\d,]*(?:\.\d{1,2})?/i.test(m) ||
+    /\$\s*\d[\d,]*(?:\.\d{1,2})?[^?!.]{0,45}(?:today|cash|offer|take|deal)/i.test(m);
+}
+
+function isPriceFlexQuestion(message) {
+  const m = String(message || "").toLowerCase();
+  return /lowest\s+price|best\s+price|best\s+you\s+can\s+do|any\s+room|room\s+on\s+(?:the\s+)?price|flexib|negotiable|can\s+you\s+do\s+better|move\s+on\s+(?:the\s+)?price/i.test(m);
+}
+
+function hasSpecificAppointmentTime(message) {
+  const m = String(message || "").toLowerCase();
+  return /\b(?:at\s+)?(?:1[0-2]|0?[1-9])(?::[0-5]\d)?\s*(?:a\.?m\.?|p\.?m\.?)\b/i.test(m) ||
+    /\b(?:noon|midday|midnight)\b/i.test(m);
+}
+
+function containsAny(message, patterns) {
+  const m = String(message || "").toLowerCase();
+  return patterns.some((re) => re.test(m));
+}
+
+function displayPrice(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  const numeric = Number(raw.replace(/[$,\s]/g, ""));
+  if (Number.isFinite(numeric)) return `$${Math.round(numeric).toLocaleString("en-US")}`;
+  return raw;
+}
+
 export default async (request) => {
   if (request.method === "OPTIONS") {
     return new Response(null, {
@@ -71,6 +101,7 @@ export default async (request) => {
   const customerName = clean(body.customer_name, 100);
   const message = clean(body.message, 4000);
   const history = clean(body.history, 5000);
+  const appointmentAvailability = clean(body.appointment_availability, 1800);
   const tone = clean(body.tone, 1800);
   const policy = clean(body.policy, 2200);
   const vehicle = normalizeVehicle(body.vehicle);
@@ -113,7 +144,9 @@ export default async (request) => {
     `If the shopper asks for the lowest price, asks whether there is flexibility, or asks if the dealer can do better WITHOUT making a specific offer, and a verified advertised asking price is supplied, you may state that advertised price and invite the shopper to make an offer for the sales team to review. ` +
     `If the shopper MAKES A SPECIFIC OFFER or directly asks the dealer to accept a proposed price, draft a neutral acknowledgement such as: "Thanks for the offer. I'll have our sales team review it and get back to you as soon as possible. In the meantime, would you like to schedule a time to see the vehicle?" Do not imply acceptance, rejection, a counteroffer, or likely approval. Classify that as auto_reply_then_review in smart mode so the acknowledgement can be sent immediately while the offer is routed to a salesperson for the actual decision. ` +
     `Never promise financing approval/rates/payments, value a trade, promise a warranty, state accident/title/history facts that were not supplied, promise a deposit/hold, or handle a complaint as if resolved. Those require human review. ` +
-    `A simple request to schedule or see a vehicle can receive an automated reply asking the shopper for a preferred time, but never confirm a specific appointment slot unless verified appointment availability was supplied. ` +
+    `If a shopper asks about financing, trades, warranty, vehicle history/title/accidents, deposits/holds, or makes a complaint, you may draft a helpful neutral acknowledgement, but the decision must require human review. ` +
+    `A simple request to schedule or see a vehicle can receive an automated reply asking the shopper for a preferred time. If the shopper proposes a specific clock time and verified appointment availability was NOT supplied, do not confirm the slot; acknowledge the request and say the team will confirm availability, then route it for review. ` +
+    `If a matched vehicle is explicitly marked Sold or otherwise unavailable, you may truthfully say it is no longer available and offer to help find a similar vehicle. ` +
     `Replies should be concise, human, helpful and oriented toward the next step. Never say you are an AI unless asked. ` +
     `The automation mode is ${mode}. In smart mode, low-risk factual messages may be labeled auto_reply. In draft/off mode, still classify the risk accurately, but decision must be review_required because automatic sending is disabled.\n\n` +
     `Dealer-configured reply style: ${tone || "Friendly, brief and natural. Answer directly and move toward a visit/test drive when appropriate."}\n` +
@@ -125,6 +158,7 @@ export default async (request) => {
     customerName && `Customer name: ${customerName}`,
     vehicleFacts,
     history && `Previous conversation:\n${history}`,
+    appointmentAvailability && `Verified appointment availability:\n${appointmentAvailability}`,
     `Incoming customer message:\n${message}`,
   ].filter(Boolean).join("\n\n");
 
@@ -185,28 +219,101 @@ export default async (request) => {
   try { result = JSON.parse(outputText); }
   catch { return json(502, { error: "AI returned an unreadable lead response." }); }
 
-  // Server-side guardrails override the model when automation is disabled.
+  // Server-side guardrails override the model. These are intentionally stricter than the prompt.
   const rawDecision = clean(result.decision, 40);
   let decision = rawDecision === "auto_reply" ? "auto_reply" : rawDecision === "auto_reply_then_review" ? "auto_reply_then_review" : "review_required";
+  let intent = clean(result.intent, 80) || "other";
+  let reply = clean(result.reply, 1800);
+  let reason = clean(result.reason, 1200);
+  let followUpAction = clean(result.follow_up_action, 1200);
+  let riskLevel = clean(result.risk_level, 40) || "medium";
+
+  const specificOffer = hasSpecificOffer(message);
+  const priceFlexQuestion = isPriceFlexQuestion(message);
+  const specificAppointmentTime = hasSpecificAppointmentTime(message);
+  const financingQuestion = containsAny(message, [/\bfinanc/i,/\bcredit\b/i,/\bapproved?\b/i,/monthly\s+payment/i,/down\s+payment/i,/interest\s+rate/i,/\bapr\b/i]);
+  const tradeQuestion = containsAny(message, [/trade[ -]?in/i,/\btrade\b/i,/what.*(?:give|offer).*my\s+(?:car|truck|vehicle)/i]);
+  const warrantyQuestion = containsAny(message, [/warrant/i,/guarantee/i,/covered\s+if/i]);
+  const historyQuestion = containsAny(message, [/carfax/i,/autocheck/i,/accident/i,/clean\s+title/i,/salvage/i,/rebuilt\s+title/i,/vehicle\s+history/i,/flood/i,/lemon/i]);
+  const depositHoldQuestion = containsAny(message, [/deposit/i,/hold\s+(?:it|the|this)/i,/reserve\s+(?:it|the|this)/i]);
+  const complaintQuestion = containsAny(message, [/complaint/i,/rip[ -]?off/i,/scam/i,/lied/i,/misled/i,/angry/i,/unacceptable/i,/want\s+(?:a\s+)?refund/i]);
+  const sensitiveQuestion = financingQuestion || tradeQuestion || warrantyQuestion || historyQuestion || depositHoldQuestion || complaintQuestion ||
+    ["financing","trade","vehicle_history","warranty","complaint"].includes(intent);
+
   if (mode !== "smart") decision = "review_required";
+
+  // A specific price offer gets a guaranteed neutral acknowledgement; the actual decision always goes to a person.
+  if (specificOffer) {
+    intent = "negotiation";
+    reply = `Thanks for the offer. I'll have our sales team review it and get back to you as soon as possible. In the meantime, would you like to schedule a time to see the vehicle?`;
+    reason = "The shopper made a specific offer. GrowthWise may acknowledge it, but cannot accept, reject, counter or imply approval.";
+    followUpAction = "Route the offer to Mo or another salesperson for the actual pricing decision.";
+    riskLevel = "medium";
+    if (mode === "smart") decision = "auto_reply_then_review";
+  } else if (priceFlexQuestion) {
+    // "Lowest price?" is safe only when the currently advertised asking price is actually supplied.
+    intent = "price_info";
+    if (mode === "smart" && vehicle?.asking) {
+      const asking = displayPrice(vehicle.asking);
+      reply = `The vehicle is currently advertised at ${asking}. If you have an offer in mind, feel free to send it over and I'll have our sales team review it.`;
+      reason = "GrowthWise may state the verified advertised price and invite an offer, but may not invent a discount or negotiate.";
+      followUpAction = "Continue automatically unless the shopper makes a specific offer or asks for a decision that requires the sales team.";
+      riskLevel = "low";
+      decision = "auto_reply";
+    } else {
+      decision = "review_required";
+    }
+  } else if (intent === "negotiation" && decision === "auto_reply") {
+    decision = "auto_reply_then_review";
+  }
+
+  // A requested exact appointment time is acknowledged but not confirmed unless real availability was supplied.
+  if ((intent === "appointment" || specificAppointmentTime) && specificAppointmentTime && !appointmentAvailability) {
+    intent = "appointment";
+    reply = "Thanks — I can check that time for you. I'll have our team confirm the appointment availability with you shortly.";
+    reason = "The shopper proposed a specific appointment time, but no verified calendar availability was supplied.";
+    followUpAction = "Confirm the requested time from a real calendar or staff member before promising the appointment.";
+    riskLevel = "medium";
+    if (mode === "smart") decision = "auto_reply_then_review";
+  }
+
+  // A known sold vehicle can be answered automatically because the inventory status is explicit.
+  const normalizedStatus = String(vehicle?.status || "").toLowerCase();
+  const knownSold = vehicle && /sold|unavailable/.test(normalizedStatus);
+  if (knownSold && (intent === "availability" || /still\s+available|available\??/i.test(message))) {
+    intent = "availability";
+    const name = vehicle.vehicle || [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" ") || "vehicle";
+    reply = `Thanks for checking. The ${name} is no longer available. If you'd like, I can help you find a similar vehicle that is currently available.`;
+    reason = "The matched inventory record is explicitly marked sold/unavailable, so GrowthWise can answer that fact without guessing.";
+    followUpAction = "Offer similar active inventory if the shopper wants alternatives.";
+    riskLevel = "low";
+    if (mode === "smart") decision = "auto_reply";
+  }
 
   // Without a matched vehicle, do not auto-answer inventory-specific intents.
   const inventorySensitive = new Set(["availability","price_info","vehicle_details","vehicle_history","warranty"]);
-  if (!vehicle && inventorySensitive.has(clean(result.intent, 80))) decision = "review_required";
+  if (!vehicle && inventorySensitive.has(intent)) decision = "review_required";
 
-  // Negotiation may receive an immediate neutral acknowledgement, but the actual pricing decision always goes to a person.
-  // Never permit a negotiation intent to be treated as fully autonomous.
-  if (clean(result.intent, 80) === "negotiation" && decision === "auto_reply") decision = "auto_reply_then_review";
+  // Sensitive categories are the final safety override. Nothing customer-facing is sent automatically.
+  if (sensitiveQuestion) {
+    if (financingQuestion) intent = "financing";
+    else if (tradeQuestion) intent = "trade";
+    else if (historyQuestion) intent = "vehicle_history";
+    else if (warrantyQuestion) intent = "warranty";
+    else if (complaintQuestion) intent = "complaint";
+    decision = "review_required";
+    if (riskLevel === "low") riskLevel = "medium";
+  }
 
   return json(200, {
     ok: true,
     model,
-    intent: clean(result.intent, 80) || "other",
-    risk_level: clean(result.risk_level, 40) || "medium",
+    intent,
+    risk_level: riskLevel,
     decision,
-    reply: clean(result.reply, 1800),
-    reason: clean(result.reason, 1200),
-    follow_up_action: clean(result.follow_up_action, 1200),
+    reply,
+    reason,
+    follow_up_action: followUpAction,
     appointment_requested: Boolean(result.appointment_requested),
     customer_name: clean(result.customer_name, 100) || customerName,
   });
