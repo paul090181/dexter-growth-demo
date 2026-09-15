@@ -2912,18 +2912,31 @@ async function refreshCloudLeadInbox({quiet=false}={}){
   finally{if(btn&&!quiet){btn.disabled=false;btn.textContent='Refresh cloud inbox';}}
 }
 async function sendCloudGatewayTest(){
-  const key=cloudLeadKey();if(!key){setCloudLeadStatus('warn','Unlock AI access first. The gateway test uses your existing GrowthWise access only for this internal test.');return;}
-  const sale=inventoryRows().find(r=>/for sale|ready|active/i.test(String(r.status||'')))||inventoryRows()[0]||null;
-  const vehicle=sale?{vehicle:inventoryRecordLabel(sale),stock:sale.stock||'',vin:sale.vin||'',year:sale.year||'',make:sale.make||'',model:sale.model||'',trim:sale.trim||'',mileage:sale.mileage||'',asking:sale.asking||'',status:sale.status||'For Sale',notes:sale.notes||'',days_on_lot:sale.days_on_lot||''}:{vehicle:'2018 Honda Odyssey',year:'2018',make:'Honda',model:'Odyssey',mileage:'82500',asking:'14295',status:'For Sale',notes:'Gateway test-only vehicle payload.'};
-  const payload={external_id:`gw-test-${Date.now()}`,source:'GrowthWise Gateway Test',customer_name:'Jordan',customer_email:'jordan@example.test',message:`Is the ${vehicle.vehicle||'vehicle'} still available? I would like to come see it tomorrow.`,vehicle,business:{name:'Auto City Sales',address:'427 Hertel Ave, Buffalo, NY 14207',phone:'(716) 406-7555',website:'https://autocitysales.net',market:'Buffalo, NY'},test:true};
-  const btn=$('cloudLeadTestBtn');btn.disabled=true;btn.textContent='Sending to gateway…';setCloudLeadStatus('loading','Sending a lead directly to the server. No copy/paste and no Run AI button will be used.');
+  const key=cloudLeadKey();
+  if(!key){setCloudLeadStatus('warn','Unlock AI access first. The gateway test uses your existing GrowthWise access only for this internal test.');return;}
+  const btn=$('cloudLeadTestBtn');
+  if(btn){btn.disabled=true;btn.textContent='Sending to gateway…';}
+  setCloudLeadStatus('loading','Preparing a test lead and sending it directly to the server. No copy/paste and no Run AI button will be used.');
   try{
+    const rows=Array.isArray(inventoryRecords)?inventoryRecords:[];
+    const sale=rows.find(r=>/for sale|ready|active|aging inventory/i.test(String(r.status||'')))||rows.find(r=>String(r.status||'').toLowerCase()!=='sold')||null;
+    const vehicle=sale?{vehicle:inventoryRecordLabel(sale),stock:sale.stock||'',vin:sale.vin||'',year:sale.year||'',make:sale.make||'',model:sale.model||'',trim:sale.trim||'',mileage:sale.mileage||'',asking:sale.asking||'',status:sale.status||'For Sale',notes:sale.notes||'',days_on_lot:sale.days_on_lot||''}:{vehicle:'2018 Honda Odyssey',year:'2018',make:'Honda',model:'Odyssey',mileage:'82500',asking:'14295',status:'For Sale',notes:'Gateway test-only vehicle payload.'};
+    const payload={external_id:`gw-test-${Date.now()}`,source:'GrowthWise Gateway Test',customer_name:'Jordan',customer_email:'jordan@example.test',message:`Is the ${vehicle.vehicle||'vehicle'} still available? I would like to come see it tomorrow.`,vehicle,business:{name:'Auto City Sales',address:'427 Hertel Ave, Buffalo, NY 14207',phone:'(716) 406-7555',website:'https://autocitysales.net',market:'Buffalo, NY'},test:true};
     const r=await fetch('/.netlify/functions/lead-ingest',{method:'POST',headers:{'Content-Type':'application/json','X-GrowthWise-Key':key},body:JSON.stringify(payload)});
-    const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Gateway failed (HTTP ${r.status}).`);
-    setCloudLeadStatus('ok',`Gateway test passed ✓ Lead ${d.id||''} was stored and processed automatically. No real customer message was sent.`);sessionStorage.setItem('growthwise_admin_key',key);$('adminKey').value='';
+    const text=await r.text();
+    let d={};
+    try{d=text?JSON.parse(text):{};}catch{d={};}
+    if(!r.ok)throw new Error(d.error||text||`Gateway failed (HTTP ${r.status}).`);
+    setCloudLeadStatus('ok',`Gateway test passed ✓ Lead ${d.id||''} was stored and processed automatically. No real customer message was sent.`);
+    sessionStorage.setItem('growthwise_admin_key',key);
+    if($('adminKey'))$('adminKey').value='';
     await refreshCloudLeadInbox({quiet:true});
-  }catch(err){setCloudLeadStatus('error',err.message||'Gateway test failed.');}
-  finally{btn.disabled=false;btn.textContent='Send test lead to gateway';}
+  }catch(err){
+    console.error('GrowthWise gateway test failed:',err);
+    setCloudLeadStatus('error',`Gateway test failed: ${err?.message||'Unknown error.'}`);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Send test lead to gateway';}
+  }
 }
 let cloudLeadPollTimer=null;
 function startCloudLeadPolling(){if(cloudLeadPollTimer)clearInterval(cloudLeadPollTimer);cloudLeadPollTimer=setInterval(()=>{if(!document.hidden&&sessionStorage.getItem('growthwise_admin_key'))refreshCloudLeadInbox({quiet:true});},30000)}
