@@ -694,7 +694,7 @@ body{
           <h3>GrowthWise Lead Center</h3>
           <p class="helper">The goal is zero copy/paste for Mo: connected lead sources will flow into GrowthWise automatically, the AI will use current vehicle and dealership facts, and routine questions can be handled without interrupting him. For financing, trades, appointments, history questions and complaints, GrowthWise can acknowledge the customer or collect the needed details first, then involve a person only when an actual decision or verification is required.</p>
         </div>
-        <span class="lead-mode" id="leadConnectionBadge">GATEWAY V1</span>
+        <span class="lead-mode" id="leadConnectionBadge">GATEWAY V7</span>
       </div>
 
       <div class="lead-kpis">
@@ -703,29 +703,30 @@ body{
         <div class="lead-kpi"><strong id="leadReviewCount">0</strong><span>human now</span></div>
       </div>
 
-      <div class="lead-note"><strong>Live connection status:</strong> the cloud Lead Gateway now accepts JSON and ADF/XML, can match an incoming vehicle against a trusted cloud inventory snapshot, and can run the lead through the server-side AI safety engine. Auto City's real DealerCenter, CarGurus, email/SMS and Facebook channels are still not connected, and v6 does not send a real customer message yet.</div>
+      <div class="lead-note"><strong>v7 live-intake staging:</strong> GrowthWise is now prepared to receive a real external JSON or ADF/XML lead through a separate secure ingest credential, match it against trusted cloud inventory, analyze it server-side and place it in the Cloud Inbox. <strong>Observe-only is enforced:</strong> v7 cannot send a customer message. Auto City's DealerCenter, CarGurus, email/SMS and Facebook routes still need dealership/provider authorization before real traffic can be pointed here.</div>
 
       <div class="lead-source-grid" aria-label="Lead source connection plan">
-        <div class="lead-source"><div class="lead-source-top"><strong>DealerCenter</strong><span class="lead-source-status target">PRIMARY TARGET</span></div><small>Preferred hub if Auto City's incoming leads can be securely routed or integrated.</small></div>
-        <div class="lead-source"><div class="lead-source-top"><strong>CarGurus</strong><span class="lead-source-status next">VIA CRM</span></div><small>Goal: let the existing CRM route identify vehicle + customer context automatically.</small></div>
+        <div class="lead-source"><div class="lead-source-top"><strong>DealerCenter</strong><span class="lead-source-status target">READY WHEN AUTHORIZED</span></div><small>Preferred hub if Auto City's existing CRM can securely forward or integrate its incoming leads.</small></div>
+        <div class="lead-source"><div class="lead-source-top"><strong>CarGurus</strong><span class="lead-source-status next">ADF READY</span></div><small>The ADF/XML format is validated. A real route can be connected later without changing the AI workflow.</small></div>
         <div class="lead-source"><div class="lead-source-top"><strong>Facebook Marketplace</strong><span class="lead-source-status next">VERIFY ROUTE</span></div><small>Use a supported connection or existing DealerCenter path; do not rely on disguised browser automation.</small></div>
         <div class="lead-source"><div class="lead-source-top"><strong>Email / SMS / Website</strong><span class="lead-source-status next">CONNECT NEXT</span></div><small>These channels can feed the same GrowthWise reply engine once Auto City authorizes a route.</small></div>
       </div>
 
       <div class="cloud-lead-panel" id="cloudLeadPanel">
         <div class="cloud-lead-top">
-          <div><h4>Cloud Lead Gateway</h4><p class="helper" style="margin:4px 0 0">Incoming leads can now arrive as JSON or dealership-style ADF/XML, match against trusted cloud inventory, get analyzed server-side, and appear here even if Mo never opened the app.</p></div>
-          <span class="cloud-lead-badge" id="cloudLeadBadge">SERVER READY</span>
+          <div><h4>Cloud Lead Gateway</h4><p class="helper" style="margin:4px 0 0">Incoming leads can arrive as JSON or dealership-style ADF/XML, match against trusted cloud inventory, get analyzed server-side, and appear here even if nobody has the app open.</p></div>
+          <span class="cloud-lead-badge" id="cloudLeadBadge">OBSERVE MODE</span>
         </div>
-        <div class="cloud-lead-warning"><strong>v6 connection test:</strong> GrowthWise can now test the same ADF/XML format commonly used by automotive lead providers. It still does not send a real customer message. The ADF test first syncs this device's current inventory snapshot so availability/price come from dealership data rather than the lead itself.</div>
+        <div class="cloud-lead-warning"><strong>v7 safety mode:</strong> real external leads can be accepted once the separate ingest credential is configured, but every live lead remains <strong>OBSERVE ONLY</strong>. GrowthWise may analyze and draft what it would do, but no reply is transmitted to the customer. The existing ADF test remains available as a regression test.</div>
         <div class="cloud-lead-actions">
           <button class="cloud-lead-sync" id="cloudInventorySyncBtn" type="button" onclick="syncCloudInventory()">Sync inventory to cloud</button>
           <button class="cloud-lead-adf" id="cloudLeadAdfTestBtn" type="button" onclick="sendCloudAdfTest()">Send CarGurus ADF test</button>
+          <button class="cloud-lead-sync" id="cloudLeadReadinessBtn" type="button" onclick="checkLiveLeadReadiness()">Check live intake readiness</button>
           <button class="cloud-lead-send" id="cloudLeadTestBtn" type="button" onclick="sendCloudGatewayTest()">Send JSON test lead</button>
           <button class="cloud-lead-refresh" id="cloudLeadRefreshBtn" type="button" onclick="refreshCloudLeadInbox()">Refresh cloud inbox</button>
         </div>
         <div id="cloudLeadStatus" class="status hidden"></div>
-        <div class="cloud-lead-status">Lead endpoint: <strong>/.netlify/functions/lead-ingest</strong> · inventory sync: <strong>/.netlify/functions/inventory-sync</strong> · external production feeds will use a separate lead-ingest credential.</div>
+        <div class="cloud-lead-status">Live lead endpoint: <strong>/.netlify/functions/lead-ingest</strong> · inventory sync: <strong>/.netlify/functions/inventory-sync</strong> · external feeds use a separate server-side lead-ingest credential that is never displayed in the app.</div>
         <div class="cloud-inbox" id="cloudLeadInbox"><div class="cloud-lead-empty">No cloud leads loaded yet. Sync inventory and send the CarGurus ADF test to prove vehicle matching + server-side ingestion.</div></div>
       </div>
 
@@ -2884,6 +2885,11 @@ function cloudLeadLabel(row){
 }
 function cloudLeadDeliveryText(row){
   const delivery=row?.delivery||{};
+  if(delivery.mode==='observe_only'){
+    if(delivery.simulated_would_send)return 'LIVE INTAKE · OBSERVE ONLY · AI would auto-handle, but nothing was sent';
+    if(delivery.simulated_would_acknowledge)return 'LIVE INTAKE · OBSERVE ONLY · AI would acknowledge, but nothing was sent';
+    return 'LIVE INTAKE · OBSERVE ONLY · held for human review · nothing was sent';
+  }
   if(delivery.mode==='test_log'&&delivery.would_send)return 'TEST ADAPTER · would auto-send this reply';
   if(delivery.mode==='test_log'&&delivery.would_acknowledge)return 'TEST ADAPTER · would send acknowledgement, then alert staff';
   if(delivery.mode==='test_log')return 'TEST ADAPTER · would hold for human review';
@@ -2900,10 +2906,30 @@ function renderCloudLeadInbox(rows){
     const vm=row.vehicle_match||{};
     const matchText=vm.matched?` · inventory match: ${vm.type||'matched'}`:(row.adf?' · no trusted inventory match':'');
     const adfText=row.adf?' · ADF/XML':'';
-    card.innerHTML=`<div class="cloud-lead-card-top"><div><strong>${leadEscape(row.source||'Lead')} · ${leadEscape(row.customer_name||'Customer')}</strong><div class="cloud-lead-meta">${leadEscape(vehicle)}${when?` · ${leadEscape(when)}`:''}${leadEscape(adfText)}${leadEscape(matchText)}</div></div><span class="cloud-lead-chip ${chip}">${leadEscape(label)}</span></div><div class="cloud-lead-message"><strong>Customer:</strong> ${leadEscape(row.message||'')}</div>${a.reply?`<div class="cloud-lead-reply"><strong>GrowthWise reply:</strong> ${leadEscape(a.reply)}</div>`:''}<div class="cloud-lead-meta">${leadEscape(cloudLeadDeliveryText(row))}${a.follow_up_action?` · ${leadEscape(a.follow_up_action)}`:''}</div>`;
+    const liveText=row.live_external?' · LIVE INTAKE':'';
+    card.innerHTML=`<div class="cloud-lead-card-top"><div><strong>${leadEscape(row.source||'Lead')} · ${leadEscape(row.customer_name||'Customer')}</strong><div class="cloud-lead-meta">${leadEscape(vehicle)}${when?` · ${leadEscape(when)}`:''}${leadEscape(adfText)}${leadEscape(liveText)}${leadEscape(matchText)}</div></div><span class="cloud-lead-chip ${chip}">${leadEscape(label)}</span></div><div class="cloud-lead-message"><strong>Customer:</strong> ${leadEscape(row.message||'')}</div>${a.reply?`<div class="cloud-lead-reply"><strong>GrowthWise reply:</strong> ${leadEscape(a.reply)}</div>`:''}<div class="cloud-lead-meta">${leadEscape(cloudLeadDeliveryText(row))}${a.follow_up_action?` · ${leadEscape(a.follow_up_action)}`:''}</div>`;
     box.appendChild(card);
   });
 }
+async function checkLiveLeadReadiness(){
+  const key=cloudLeadKey();
+  if(!key){setCloudLeadStatus('warn','Unlock AI access first so GrowthWise can securely check the live gateway configuration.');return;}
+  const btn=$('cloudLeadReadinessBtn');if(btn){btn.disabled=true;btn.textContent='Checking readiness…';}
+  try{
+    const r=await fetch('/.netlify/functions/lead-gateway-status',{headers:{'X-GrowthWise-Key':key},cache:'no-store'});
+    const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Gateway readiness check failed (HTTP ${r.status}).`);
+    if(d.ingest_key_configured){
+      $('cloudLeadBadge').textContent='LIVE INTAKE READY';
+      setCloudLeadStatus('ok','v7 live intake is ready ✓ Secure external JSON/ADF ingestion is configured in OBSERVE ONLY mode. Real leads can be analyzed and stored, but no customer reply can be sent.');
+    }else{
+      $('cloudLeadBadge').textContent='SET INGEST KEY';
+      setCloudLeadStatus('warn','The v7 code is ready, but the separate GROWTHWISE_LEAD_INGEST_KEY is not configured in Netlify yet. No dealership/provider connection is needed to finish that server-side safety step.');
+    }
+    sessionStorage.setItem('growthwise_admin_key',key);if($('adminKey'))$('adminKey').value='';
+  }catch(err){setCloudLeadStatus('error',err?.message||'Could not check live intake readiness.');}
+  finally{if(btn){btn.disabled=false;btn.textContent='Check live intake readiness';}}
+}
+
 async function refreshCloudLeadInbox({quiet=false}={}){
   const key=cloudLeadKey();
   if(!key){if(!quiet)setCloudLeadStatus('warn','Unlock AI access first so GrowthWise can securely load the cloud inbox.');return;}
