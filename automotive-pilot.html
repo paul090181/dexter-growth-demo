@@ -695,7 +695,7 @@ body{
           <h3>GrowthWise Lead Center</h3>
           <p class="helper">The goal is zero copy/paste for Mo: connected lead sources will flow into GrowthWise automatically, the AI will use current vehicle and dealership facts, and routine questions can be handled without interrupting him. For financing, trades, appointments, history questions and complaints, GrowthWise can acknowledge the customer or collect the needed details first, then involve a person only when an actual decision or verification is required.</p>
         </div>
-        <span class="lead-mode" id="leadConnectionBadge">GATEWAY V8</span>
+        <span class="lead-mode" id="leadConnectionBadge">GATEWAY V9</span>
       </div>
 
       <div class="lead-kpis">
@@ -704,7 +704,7 @@ body{
         <div class="lead-kpi"><strong id="leadReviewCount">0</strong><span>human now</span></div>
       </div>
 
-      <div class="lead-note"><strong>v8 live-intake monitor:</strong> GrowthWise is ready for a provider to send real JSON or ADF/XML leads through the secure gateway, but we do not need to connect a dealership source yet. <strong>Observe-only is enforced:</strong> v8 can receive, inventory-match, analyze, store and measure live traffic, but it still cannot send a customer message. The new intake monitor gives us a clean baseline before any dealership/provider route is turned on.</div>
+      <div class="lead-note"><strong>v9 secure-route validation:</strong> GrowthWise is ready for a provider to send real JSON or ADF/XML leads through the secure gateway, but we do not need to connect a dealership source yet. <strong>Observe-only is enforced:</strong> v9 adds a server-side external-route self-test so we can prove the separate provider credential actually reaches the live intake endpoint without exposing that secret in the browser. GrowthWise can still receive, inventory-match, analyze, store and measure traffic, but it cannot send a customer message.</div>
 
       <div class="lead-source-grid" aria-label="Lead source connection plan">
         <div class="lead-source"><div class="lead-source-top"><strong>DealerCenter</strong><span class="lead-source-status target">READY WHEN AUTHORIZED</span></div><small>Preferred hub if Auto City's existing CRM can securely forward or integrate its incoming leads.</small></div>
@@ -718,12 +718,13 @@ body{
           <div><h4>Cloud Lead Gateway</h4><p class="helper" style="margin:4px 0 0">Incoming leads can arrive as JSON or dealership-style ADF/XML, match against trusted cloud inventory, get analyzed server-side, and appear here even if nobody has the app open.</p></div>
           <span class="cloud-lead-badge" id="cloudLeadBadge">OBSERVE MODE</span>
         </div>
-        <div class="cloud-lead-warning"><strong>v8 safety mode:</strong> real external leads can be accepted once the separate ingest credential is configured, but every live lead remains <strong>OBSERVE ONLY</strong>. GrowthWise may analyze and draft what it would do, but no reply is transmitted to the customer. The existing ADF test remains available as a regression test.</div>
+        <div class="cloud-lead-warning"><strong>v9 safety mode:</strong> real external leads can be accepted once the separate ingest credential is configured, but every live lead remains <strong>OBSERVE ONLY</strong>. GrowthWise may analyze and draft what it would do, but no reply is transmitted to the customer. The new secure self-test validates the separate external credential path without displaying that credential anywhere in the app.</div>
         <div class="cloud-lead-actions">
           <button class="cloud-lead-sync" id="cloudInventorySyncBtn" type="button" onclick="syncCloudInventory()">Sync inventory to cloud</button>
           <button class="cloud-lead-adf" id="cloudLeadAdfTestBtn" type="button" onclick="sendCloudAdfTest()">Send CarGurus ADF test</button>
           <button class="cloud-lead-sync" id="cloudLeadReadinessBtn" type="button" onclick="checkLiveLeadReadiness()">Check live intake readiness</button>
           <button class="cloud-lead-send" id="cloudLeadTestBtn" type="button" onclick="sendCloudGatewayTest()">Send JSON test lead</button>
+          <button class="cloud-lead-adf" id="cloudLeadSelfTestBtn" type="button" onclick="runSecureGatewaySelfTest()">Run secure gateway self-test</button>
           <button class="cloud-lead-refresh" id="cloudLeadRefreshBtn" type="button" onclick="refreshCloudLeadInbox()">Refresh cloud inbox</button>
         </div>
         <div id="cloudLeadStatus" class="status hidden"></div>
@@ -2962,15 +2963,31 @@ async function checkLiveLeadReadiness(){
     const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Gateway readiness check failed (HTTP ${r.status}).`);
     if(d.ingest_key_configured){
       $('cloudLeadBadge').textContent='LIVE INTAKE READY';
-      setCloudLeadStatus('ok','v8 live intake is ready ✓ Secure external JSON/ADF ingestion is configured in OBSERVE ONLY mode. Real leads can be analyzed and stored, but no customer reply can be sent.');
+      setCloudLeadStatus('ok','v9 live intake is ready ✓ Secure external JSON/ADF ingestion is configured in OBSERVE ONLY mode. Run the secure gateway self-test next to prove the separate provider credential reaches this endpoint.');
       refreshLiveIntakeMonitor({quiet:true});
     }else{
       $('cloudLeadBadge').textContent='SET INGEST KEY';
-      setCloudLeadStatus('warn','The v8 code is ready, but the separate GROWTHWISE_LEAD_INGEST_KEY is not configured in Netlify yet. No dealership/provider connection is needed to finish that server-side safety step.');
+      setCloudLeadStatus('warn','The v9 code is ready, but the separate GROWTHWISE_LEAD_INGEST_KEY is not configured in Netlify yet. No dealership/provider connection is needed to finish that server-side safety step.');
     }
     sessionStorage.setItem('growthwise_admin_key',key);if($('adminKey'))$('adminKey').value='';
   }catch(err){setCloudLeadStatus('error',err?.message||'Could not check live intake readiness.');}
   finally{if(btn){btn.disabled=false;btn.textContent='Check live intake readiness';}}
+}
+
+async function runSecureGatewaySelfTest(){
+  const key=cloudLeadKey();
+  if(!key){setCloudLeadStatus('warn','Unlock AI access first so GrowthWise can securely run the external gateway self-test.');return;}
+  const btn=$('cloudLeadSelfTestBtn');if(btn){btn.disabled=true;btn.textContent='Testing secure route…';}
+  try{
+    const r=await fetch('/.netlify/functions/lead-gateway-self-test',{method:'POST',headers:{'X-GrowthWise-Key':key,'Content-Type':'application/json'},body:'{}'});
+    const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||`Secure gateway self-test failed (HTTP ${r.status}).`);
+    const matched=d?.lead_result?.vehicle_match?.matched===true;
+    setCloudLeadStatus('ok',`v9 secure gateway self-test passed ✓ The separate external credential reached lead-ingest${matched?' and matched trusted cloud inventory':''}. The test was stored as TEST traffic and no customer message was sent.`);
+    sessionStorage.setItem('growthwise_admin_key',key);if($('adminKey'))$('adminKey').value='';
+    await refreshCloudLeadInbox({quiet:true});
+    await refreshLiveIntakeMonitor({quiet:true});
+  }catch(err){setCloudLeadStatus('error',err?.message||'Could not validate the secure external gateway route.');}
+  finally{if(btn){btn.disabled=false;btn.textContent='Run secure gateway self-test';}}
 }
 
 async function refreshCloudLeadInbox({quiet=false}={}){
