@@ -43,7 +43,7 @@ export default async (request) => {
 
     return json(200, {
       ok: true,
-      gateway_version: "v8",
+      gateway_version: "v9",
       mode: "observe_only",
       live_customer_sending_enabled: false,
       live_count: live.length,

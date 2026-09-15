@@ -155,7 +155,7 @@ function deliveryPreview(analysis, { observeOnly = false } = {}) {
       simulated_would_send: simulatedWouldSend,
       simulated_would_acknowledge: simulatedWouldAcknowledge,
       needs_human_before_send: d === "review_required",
-      note: "LIVE INTAKE · OBSERVE ONLY — GrowthWise analyzed and stored this lead, but v8 is not permitted to send any customer message.",
+      note: "LIVE INTAKE · OBSERVE ONLY — GrowthWise analyzed and stored this lead, but v9 is not permitted to send any customer message.",
     };
   }
 
@@ -244,7 +244,7 @@ export default async (request) => {
     live_external: liveExternal,
     adf: Boolean(incoming.adf),
     intake: {
-      gateway_version: "v8",
+      gateway_version: "v9",
       via: auth.via,
       mode: liveExternal ? "observe_only" : "test",
       content_type: clean(request.headers.get("content-type") || "", 160),
