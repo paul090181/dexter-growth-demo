@@ -17,7 +17,7 @@ export function clean(value, max = 5000) {
 }
 
 export function leadStore() {
-  return getStore({ name: "growthwise-leads-v1", consistency: "strong" });
+  return getStore("growthwise-leads-v1");
 }
 
 export function leadKey({ source, externalId }) {
@@ -42,8 +42,7 @@ export async function getLead(key) {
 export async function listLeads(limit = 50) {
   const store = leadStore();
   const { blobs = [] } = await store.list({ prefix: "lead/" });
-  const chosen = blobs.slice(-Math.max(limit * 2, limit));
-  const rows = (await Promise.all(chosen.map(async ({ key }) => {
+  const rows = (await Promise.all(blobs.map(async ({ key }) => {
     try { return await store.get(key, { type: "json", consistency: "strong" }); }
     catch { return null; }
   }))).filter(Boolean);
