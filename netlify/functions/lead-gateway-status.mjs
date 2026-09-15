@@ -19,12 +19,13 @@ export default async (request) => {
 
   return json(200, {
     ok: true,
-    gateway_version: "v7",
+    gateway_version: "v8",
     mode: "observe_only",
     accepts: ["application/json", "application/xml", "text/xml", "ADF/XML"],
     ingest_key_configured: ingestKeyConfigured,
     live_customer_sending_enabled: false,
     endpoint: `${origin}/.netlify/functions/lead-ingest`,
-    safety: "External leads may be received, matched, analyzed and stored, but v7 cannot send a customer message.",
+    monitor_endpoint: `${origin}/.netlify/functions/lead-intake-monitor`,
+    safety: "External leads may be received, matched, analyzed and stored, but v8 cannot send a customer message.",
   });
 };
