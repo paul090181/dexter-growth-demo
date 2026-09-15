@@ -140,13 +140,31 @@ async function analyzeThroughExistingEngine(request, normalized) {
   return data;
 }
 
-function deliveryPreview(analysis) {
+function deliveryPreview(analysis, { observeOnly = false } = {}) {
   const d = analysis?.decision || "review_required";
+  const simulatedWouldSend = d === "auto_reply";
+  const simulatedWouldAcknowledge = d === "auto_reply_then_review";
+
+  if (observeOnly) {
+    return {
+      mode: "observe_only",
+      status: "not_sent",
+      sent: false,
+      would_send: false,
+      would_acknowledge: false,
+      simulated_would_send: simulatedWouldSend,
+      simulated_would_acknowledge: simulatedWouldAcknowledge,
+      needs_human_before_send: d === "review_required",
+      note: "LIVE INTAKE · OBSERVE ONLY — GrowthWise analyzed and stored this lead, but v7 is not permitted to send any customer message.",
+    };
+  }
+
   return {
     mode: "test_log",
     status: "not_sent",
-    would_send: d === "auto_reply",
-    would_acknowledge: d === "auto_reply_then_review",
+    sent: false,
+    would_send: simulatedWouldSend,
+    would_acknowledge: simulatedWouldAcknowledge,
     needs_human_before_send: d === "review_required",
     note: d === "auto_reply"
       ? "Live sender not connected. In Smart Auto mode this reply would be sent automatically."
@@ -167,6 +185,12 @@ export default async (request) => {
     });
   }
   if (request.method !== "POST") return json(405, { error: "Method not allowed" });
+
+  const contentLength = Number(request.headers.get("content-length") || 0);
+  if (Number.isFinite(contentLength) && contentLength > 512 * 1024) {
+    return json(413, { error: "Incoming lead payload is too large." });
+  }
+
   const auth = authorized(request, { allowLeadKey: true });
   if (!auth.ok) return json(401, { error: "Invalid lead gateway credential." });
 
@@ -175,6 +199,7 @@ export default async (request) => {
   catch (err) { return json(400, { error: err?.message || "Could not parse incoming lead." }); }
   if (!incoming.message) return json(400, { error: "Incoming lead message/comments are required." });
 
+  const liveExternal = auth.via === "lead_key" && incoming.test !== true;
   const sourceVehicle = incoming.vehicle;
   let vehicleMatch = { record: null, match_type: "none", confidence: "none", synced_at: "" };
   try { vehicleMatch = await matchInventoryVehicle(sourceVehicle || {}); }
@@ -216,7 +241,16 @@ export default async (request) => {
     },
     business: incoming.business,
     test: Boolean(incoming.test || auth.via === "admin"),
+    live_external: liveExternal,
     adf: Boolean(incoming.adf),
+    intake: {
+      gateway_version: "v7",
+      via: auth.via,
+      mode: liveExternal ? "observe_only" : "test",
+      content_type: clean(request.headers.get("content-type") || "", 160),
+      user_agent: clean(request.headers.get("user-agent") || "", 300),
+      received_at: createdAt,
+    },
     status: "processing",
     events: [
       { at: createdAt, type: "received", detail: `Lead received through ${auth.via === "admin" ? "internal gateway test" : "external lead gateway"}.` },
@@ -233,11 +267,11 @@ export default async (request) => {
       updated_at: completedAt,
       status: analysis.decision === "review_required" ? "human_review" : analysis.decision === "auto_reply_then_review" ? "ai_then_human" : "ai_handled",
       analysis,
-      delivery: deliveryPreview(analysis),
+      delivery: deliveryPreview(analysis, { observeOnly: liveExternal }),
       events: [
         ...base.events,
         { at: completedAt, type: "ai_analyzed", detail: `${analysis.intent || "other"} · ${analysis.decision || "review_required"}` },
-        { at: completedAt, type: "delivery_preview", detail: deliveryPreview(analysis).note },
+        { at: completedAt, type: liveExternal ? "observe_only" : "delivery_preview", detail: deliveryPreview(analysis, { observeOnly: liveExternal }).note },
       ],
     };
     await saveLead(record);
@@ -251,7 +285,9 @@ export default async (request) => {
       vehicle_match: record.vehicle_match,
       analysis,
       delivery: record.delivery,
-      message: "Lead received, matched against trusted cloud inventory when possible, stored in the cloud inbox, and processed automatically. No real customer message was sent in v6 test-delivery mode.",
+      message: liveExternal
+        ? "Live external lead received, matched against trusted cloud inventory when possible, analyzed and stored in OBSERVE ONLY mode. No customer message was sent."
+        : "Lead received, matched against trusted cloud inventory when possible, stored in the cloud inbox, and processed automatically. No real customer message was sent in test mode.",
     });
   } catch (err) {
     const failedAt = new Date().toISOString();
