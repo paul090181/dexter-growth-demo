@@ -143,8 +143,8 @@ export default async (request) => {
     `Never accept, reject, counter, or promise a negotiated price or discount. You MAY keep the conversation moving with a neutral pricing response. ` +
     `If the shopper asks for the lowest price, asks whether there is flexibility, or asks if the dealer can do better WITHOUT making a specific offer, and a verified advertised asking price is supplied, you may state that advertised price and invite the shopper to make an offer for the sales team to review. ` +
     `If the shopper MAKES A SPECIFIC OFFER or directly asks the dealer to accept a proposed price, draft a neutral acknowledgement such as: "Thanks for the offer. I'll have our sales team review it and get back to you as soon as possible. In the meantime, would you like to schedule a time to see the vehicle?" Do not imply acceptance, rejection, a counteroffer, or likely approval. Classify that as auto_reply_then_review in smart mode so the acknowledgement can be sent immediately while the offer is routed to a salesperson for the actual decision. ` +
-    `Never promise financing approval/rates/payments, value a trade, promise a warranty, state accident/title/history facts that were not supplied, promise a deposit/hold, or handle a complaint as if resolved. Those require human review. ` +
-    `If a shopper asks about financing, trades, warranty, vehicle history/title/accidents, deposits/holds, or makes a complaint, you may draft a helpful neutral acknowledgement, but the decision must require human review. ` +
+    `Never promise financing approval/rates/payments, value a trade, promise a warranty, state accident/title/history facts that were not supplied, promise a deposit/hold, admit fault, or handle a complaint as if resolved. Those underlying decisions require human judgment. ` +
+    `In smart mode, financing questions, trade-in questions, warranty/history questions, deposits/holds and complaints should usually receive a safe immediate acknowledgement or information-gathering reply, then be classified auto_reply_then_review so staff is involved only for the decision or verification that remains. Complaints should be treated as priority human follow-up after the acknowledgement. ` +
     `A simple request to schedule or see a vehicle can receive an automated reply asking the shopper for a preferred time. If the shopper proposes a specific clock time and verified appointment availability was NOT supplied, do not confirm the slot; acknowledge the request and say the team will confirm availability, then route it for review. ` +
     `If a matched vehicle is explicitly marked Sold or otherwise unavailable, you may truthfully say it is no longer available and offer to help find a similar vehicle. ` +
     `Replies should be concise, human, helpful and oriented toward the next step. Never say you are an AI unless asked. ` +
@@ -236,9 +236,7 @@ export default async (request) => {
   const warrantyQuestion = containsAny(message, [/warrant/i,/guarantee/i,/covered\s+if/i]);
   const historyQuestion = containsAny(message, [/carfax/i,/autocheck/i,/accident/i,/clean\s+title/i,/salvage/i,/rebuilt\s+title/i,/vehicle\s+history/i,/flood/i,/lemon/i]);
   const depositHoldQuestion = containsAny(message, [/deposit/i,/hold\s+(?:it|the|this)/i,/reserve\s+(?:it|the|this)/i]);
-  const complaintQuestion = containsAny(message, [/complaint/i,/rip[ -]?off/i,/scam/i,/lied/i,/misled/i,/angry/i,/unacceptable/i,/want\s+(?:a\s+)?refund/i]);
-  const sensitiveQuestion = financingQuestion || tradeQuestion || warrantyQuestion || historyQuestion || depositHoldQuestion || complaintQuestion ||
-    ["financing","trade","vehicle_history","warranty","complaint"].includes(intent);
+  const complaintQuestion = containsAny(message, [/complaint/i,/rip[ -]?off/i,/scam/i,/lied/i,/misled/i,/angry/i,/upset/i,/problem\s+with\s+the\s+vehicle/i,/unacceptable/i,/want\s+(?:a\s+)?refund/i]);
 
   if (mode !== "smart") decision = "review_required";
 
@@ -294,15 +292,50 @@ export default async (request) => {
   const inventorySensitive = new Set(["availability","price_info","vehicle_details","vehicle_history","warranty"]);
   if (!vehicle && inventorySensitive.has(intent)) decision = "review_required";
 
-  // Sensitive categories are the final safety override. Nothing customer-facing is sent automatically.
-  if (sensitiveQuestion) {
-    if (financingQuestion) intent = "financing";
-    else if (tradeQuestion) intent = "trade";
-    else if (historyQuestion) intent = "vehicle_history";
-    else if (warrantyQuestion) intent = "warranty";
-    else if (complaintQuestion) intent = "complaint";
-    decision = "review_required";
-    if (riskLevel === "low") riskLevel = "medium";
+  // High-value intake categories can be acknowledged automatically in Smart mode while staff handles only the decision or verification that remains.
+  const displayVehicle = vehicle?.vehicle || [vehicle?.year, vehicle?.make, vehicle?.model, vehicle?.trim].filter(Boolean).join(" ") || "vehicle";
+
+  if (financingQuestion || intent === "financing") {
+    intent = "financing";
+    reply = `Thanks for reaching out${customerName ? `, ${customerName}` : ""}. We can't guarantee approval or quote a monthly payment until the application and financing options are reviewed. Our sales team can help go over the available options for the ${displayVehicle}. Would you like someone to contact you?`;
+    reason = "Financing approval, rates and payment quotes require a person, but GrowthWise can safely acknowledge the question immediately without making a promise.";
+    followUpAction = "Send the safe acknowledgement automatically, then alert the sales team for financing follow-up and application review.";
+    riskLevel = "high";
+    decision = mode === "smart" ? "auto_reply_then_review" : "review_required";
+  } else if (tradeQuestion || intent === "trade") {
+    intent = "trade";
+    reply = `Absolutely. We can help with a trade appraisal. Please send the year, make, model, mileage, trim level, overall condition, VIN if available, and a few clear photos. If you've already shared any of those details, no need to repeat them. Our sales team will review everything before any trade value is quoted.`;
+    reason = "GrowthWise can collect the appraisal facts, but it must not estimate or promise a trade value.";
+    followUpAction = "Keep collecting trade-in details automatically. Once enough information is gathered, alert the sales team with a complete appraisal request.";
+    riskLevel = "high";
+    decision = mode === "smart" ? "auto_reply_then_review" : "review_required";
+  } else if (historyQuestion || intent === "vehicle_history") {
+    intent = "vehicle_history";
+    reply = `Thanks for asking${customerName ? `, ${customerName}` : ""}. I'll have our team verify the title and accident history for the ${displayVehicle} and get back to you. Would you also like to schedule a time to see it?`;
+    reason = "Title and accident-history facts were not verified in the supplied vehicle record, so GrowthWise must not guess. It can acknowledge the question while the team verifies the facts.";
+    followUpAction = "Send the acknowledgement automatically, then verify title/history from an approved source before providing those facts.";
+    riskLevel = "high";
+    decision = mode === "smart" ? "auto_reply_then_review" : "review_required";
+  } else if (warrantyQuestion || intent === "warranty") {
+    intent = "warranty";
+    reply = `Thanks for asking${customerName ? `, ${customerName}` : ""}. I'll have our team verify what warranty or coverage, if any, applies to the ${displayVehicle} and get back to you so we don't give you incorrect information.`;
+    reason = "Warranty or coverage details require verification; GrowthWise may acknowledge the question but cannot promise coverage.";
+    followUpAction = "Send the acknowledgement automatically, then verify the applicable warranty/coverage before answering the customer.";
+    riskLevel = "high";
+    decision = mode === "smart" ? "auto_reply_then_review" : "review_required";
+  } else if (depositHoldQuestion) {
+    reply = `Thanks for asking. I can have our sales team review the hold or deposit options for the ${displayVehicle} and get back to you. I don't want to promise that the vehicle is reserved until they confirm it.`;
+    reason = "GrowthWise may acknowledge a hold/deposit request, but it cannot promise a reservation or accept terms automatically.";
+    followUpAction = "Send the acknowledgement automatically, then alert the sales team to confirm any hold/deposit terms.";
+    riskLevel = "high";
+    decision = mode === "smart" ? "auto_reply_then_review" : "review_required";
+  } else if (complaintQuestion || intent === "complaint") {
+    intent = "complaint";
+    reply = `Hi${customerName ? ` ${customerName}` : ""}, I'm sorry you're dealing with this. I'll have our team review what happened and contact you to discuss next steps. Please send us a brief description of the issue and the best phone number to reach you at.`;
+    reason = "This is a customer complaint. GrowthWise may acknowledge the concern immediately, but it must not admit fault, guarantee vehicle condition or promise a remedy.";
+    followUpAction = "Send the acknowledgement automatically, then create a priority follow-up for Mo or another salesperson to review the complaint and contact the customer.";
+    riskLevel = "high";
+    decision = mode === "smart" ? "auto_reply_then_review" : "review_required";
   }
 
   return json(200, {
