@@ -36,6 +36,7 @@ export default async (request) => {
     });
     const errors = live.filter((row) => row?.status === "error" || row?.error);
     const autoHandled = live.filter((row) => String(row?.analysis?.decision || "") === "auto_reply");
+    const duplicateCount = live.reduce((sum, row) => sum + Number(row?.duplicate_count || 0), 0);
     const last = live
       .map((row) => String(row?.created_at || ""))
       .filter(Boolean)
@@ -43,7 +44,7 @@ export default async (request) => {
 
     return json(200, {
       ok: true,
-      gateway_version: "v9",
+      gateway_version: "v10",
       mode: "observe_only",
       live_customer_sending_enabled: false,
       live_count: live.length,
@@ -51,11 +52,12 @@ export default async (request) => {
       human_follow_up_count: human.length,
       auto_handle_count: autoHandled.length,
       error_count: errors.length,
+      duplicate_block_count: duplicateCount,
       match_rate: live.length ? Math.round((matched.length / live.length) * 100) : null,
       last_live_received_at: last || null,
       sources: sourceSummary(live),
       sample_window: rows.length,
-      note: "Metrics include only real external leads received with the separate lead-ingest credential. Internal JSON and ADF tests are excluded.",
+      note: "Metrics include only real external leads received with the separate lead-ingest credential. Internal JSON, ADF, and replay-protection tests are excluded.",
     });
   } catch (err) {
     return json(500, { error: err?.message || "Could not build the live intake monitor." });

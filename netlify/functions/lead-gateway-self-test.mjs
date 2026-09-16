@@ -42,39 +42,46 @@ export default async (request) => {
   };
 
   try {
-    const response = await fetch(`${origin}/.netlify/functions/lead-ingest`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-GrowthWise-Lead-Key": leadKey,
-        "User-Agent": "GrowthWise-v9-secure-route-self-test",
-      },
-      body: JSON.stringify(payload),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      return json(response.status || 502, {
-        error: data.error || `lead-ingest self-test failed (HTTP ${response.status}).`,
-        lead_result: data,
+    const sendOnce = async () => {
+      const response = await fetch(`${origin}/.netlify/functions/lead-ingest`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-GrowthWise-Lead-Key": leadKey,
+          "User-Agent": "GrowthWise-v10-secure-route-self-test",
+        },
+        body: JSON.stringify(payload),
       });
-    }
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || `lead-ingest self-test failed (HTTP ${response.status}).`);
+      }
+      if (data?.delivery?.sent === true) {
+        throw new Error("Safety validation failed: the self-test unexpectedly reported a sent customer message.");
+      }
+      return data;
+    };
 
-    if (data?.delivery?.sent === true) {
-      return json(500, {
-        error: "Safety validation failed: the self-test unexpectedly reported a sent customer message.",
-        lead_result: data,
-      });
+    const first = await sendOnce();
+    const second = await sendOnce();
+    if (first?.duplicate === true) {
+      return json(500, { error: "Replay self-test failed: the first delivery was unexpectedly marked duplicate.", first, second });
+    }
+    if (second?.duplicate !== true || Number(second?.duplicate_count || 0) < 1) {
+      return json(500, { error: "Replay self-test failed: the second identical provider delivery was not blocked as a duplicate.", first, second });
     }
 
     return json(200, {
       ok: true,
-      gateway_version: "v9",
+      gateway_version: "v10",
       credential_path_verified: true,
+      replay_protection_verified: true,
       used_browser_secret: false,
       test_traffic_only: true,
       customer_message_sent: false,
-      lead_result: data,
-      note: "The separate server-side lead-ingest credential successfully reached the production intake function. This self-test is marked TEST and is excluded from live monitor counts.",
+      first_result: first,
+      duplicate_result: second,
+      note: "The secure provider credential reached production intake, the first test lead was processed once, and the identical replay was blocked as a duplicate. Test traffic remains excluded from live monitor counts.",
     });
   } catch (err) {
     return json(500, { error: err?.message || "Could not run the secure gateway self-test." });

@@ -19,13 +19,15 @@ export default async (request) => {
 
   return json(200, {
     ok: true,
-    gateway_version: "v9",
+    gateway_version: "v10",
     mode: "observe_only",
     accepts: ["application/json", "application/xml", "text/xml", "ADF/XML"],
     ingest_key_configured: ingestKeyConfigured,
     live_customer_sending_enabled: false,
+    replay_protection_enabled: true,
+    idempotency_headers_supported: ["Idempotency-Key", "X-Idempotency-Key"],
     endpoint: `${origin}/.netlify/functions/lead-ingest`,
     monitor_endpoint: `${origin}/.netlify/functions/lead-intake-monitor`,
-    safety: "External leads may be received, matched, analyzed and stored, but v9 cannot send a customer message.",
+    safety: "External leads may be received, deduplicated, matched, analyzed and stored, but v10 cannot send a customer message.",
   });
 };

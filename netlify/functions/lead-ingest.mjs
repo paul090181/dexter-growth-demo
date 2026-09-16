@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   authorized,
   clean,
@@ -115,6 +116,54 @@ async function parseIncoming(request) {
   };
 }
 
+
+function inboundIdentity(request, incoming, sourceVehicle) {
+  const explicit = clean(incoming?.external_id, 300);
+  if (explicit) return { value: explicit, method: "external_id" };
+
+  const headerKey = clean(
+    request.headers.get("idempotency-key") || request.headers.get("x-idempotency-key") || "",
+    300,
+  );
+  if (headerKey) return { value: `idempotency:${headerKey}`, method: "idempotency_key" };
+
+  // Last-resort replay protection for providers that do not supply a lead ID.
+  // The 30-minute bucket catches immediate provider retries without suppressing
+  // a shopper who legitimately submits the same inquiry again much later.
+  const bucket = Math.floor(Date.now() / (30 * 60 * 1000));
+  const fingerprintBasis = JSON.stringify({
+    source: clean(incoming?.source, 160).toLowerCase(),
+    customer_email: clean(incoming?.customer_email, 220).toLowerCase(),
+    customer_phone: clean(incoming?.customer_phone, 80).replace(/\D/g, ""),
+    customer_name: clean(incoming?.customer_name, 120).toLowerCase(),
+    message: clean(incoming?.message, 5000).replace(/\s+/g, " ").toLowerCase(),
+    stock: clean(sourceVehicle?.stock, 80).toLowerCase(),
+    vin: clean(sourceVehicle?.vin, 40).toUpperCase(),
+    vehicle: clean(sourceVehicle?.vehicle, 240).toLowerCase(),
+    bucket,
+  });
+  const digest = createHash("sha256").update(fingerprintBasis).digest("hex").slice(0, 32);
+  return { value: `fingerprint:${bucket}:${digest}`, method: "payload_fingerprint" };
+}
+
+async function recordDuplicate(existing, method) {
+  const at = new Date().toISOString();
+  const duplicateCount = Number(existing?.duplicate_count || 0) + 1;
+  const events = Array.isArray(existing?.events) ? existing.events.slice(-48) : [];
+  const updated = {
+    ...existing,
+    updated_at: at,
+    duplicate_count: duplicateCount,
+    last_duplicate_at: at,
+    events: [
+      ...events,
+      { at, type: "duplicate_blocked", detail: `Duplicate/retry blocked by ${method || "gateway identity"}.` },
+    ],
+  };
+  await saveLead(updated);
+  return updated;
+}
+
 async function analyzeThroughExistingEngine(request, normalized) {
   const adminKey = Netlify.env.get("GROWTHWISE_ADMIN_KEY") || "";
   if (!adminKey) throw new Error("GROWTHWISE_ADMIN_KEY is not configured.");
@@ -155,7 +204,7 @@ function deliveryPreview(analysis, { observeOnly = false } = {}) {
       simulated_would_send: simulatedWouldSend,
       simulated_would_acknowledge: simulatedWouldAcknowledge,
       needs_human_before_send: d === "review_required",
-      note: "LIVE INTAKE · OBSERVE ONLY — GrowthWise analyzed and stored this lead, but v9 is not permitted to send any customer message.",
+      note: "LIVE INTAKE · OBSERVE ONLY — GrowthWise analyzed and stored this lead, but v10 is not permitted to send any customer message.",
     };
   }
 
@@ -213,9 +262,22 @@ export default async (request) => {
   const trustedInternalTestVehicle = auth.via === "admin" && incoming.test === true && !incoming.adf ? sourceVehicle : null;
   incoming.vehicle = vehicleMatch.record || trustedInternalTestVehicle || null;
 
-  const key = leadKey({ source: incoming.source, externalId: incoming.external_id });
+  const identity = inboundIdentity(request, incoming, sourceVehicle || {});
+  const key = leadKey({ source: incoming.source, externalId: identity.value });
   const existing = await getLead(key);
-  if (existing) return json(200, { ok: true, duplicate: true, id: existing.id, lead: existing });
+  if (existing) {
+    const updated = await recordDuplicate(existing, identity.method);
+    return json(200, {
+      ok: true,
+      duplicate: true,
+      duplicate_count: updated.duplicate_count,
+      dedupe_method: identity.method,
+      id: updated.id,
+      status: updated.status,
+      delivery: updated.delivery || { sent: false, status: "not_sent" },
+      message: "Duplicate provider delivery blocked. The existing lead record was kept and no customer message was sent.",
+    });
+  }
 
   const createdAt = new Date().toISOString();
   const id = key.replace(/^lead\//, "");
@@ -244,8 +306,9 @@ export default async (request) => {
     live_external: liveExternal,
     adf: Boolean(incoming.adf),
     intake: {
-      gateway_version: "v9",
+      gateway_version: "v10",
       via: auth.via,
+      dedupe_method: identity.method,
       mode: liveExternal ? "observe_only" : "test",
       content_type: clean(request.headers.get("content-type") || "", 160),
       user_agent: clean(request.headers.get("user-agent") || "", 300),
@@ -259,7 +322,27 @@ export default async (request) => {
   };
 
   try {
-    await saveLead(base, { onlyIfNew: true });
+    try {
+      await saveLead(base, { onlyIfNew: true });
+    } catch (writeErr) {
+      // If two identical provider retries arrive at the same instant, strong storage
+      // may allow one create and reject the other. Treat the loser as a duplicate.
+      const concurrent = await getLead(key).catch(() => null);
+      if (concurrent) {
+        const updated = await recordDuplicate(concurrent, `${identity.method}_concurrent`);
+        return json(200, {
+          ok: true,
+          duplicate: true,
+          duplicate_count: updated.duplicate_count,
+          dedupe_method: identity.method,
+          id: updated.id,
+          status: updated.status,
+          delivery: updated.delivery || { sent: false, status: "not_sent" },
+          message: "Concurrent duplicate provider delivery blocked. No customer message was sent.",
+        });
+      }
+      throw writeErr;
+    }
     const analysis = await analyzeThroughExistingEngine(request, incoming);
     const completedAt = new Date().toISOString();
     const record = {
