@@ -1,0 +1,1669 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0e1b2b" />
+  <title>Dexter Growth Assistant — Pilot</title>
+  <style>*{box-sizing:border-box}html,body{margin:0;background:#edf0f3;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#14202c}body{min-height:100vh}.phone-shell{max-width:520px;margin:0 auto;min-height:100vh;background:#fff;position:relative;padding-bottom:88px;box-shadow:0 0 50px rgba(0,0,0,.08)}.topbar{position:sticky;top:0;z-index:8;background:rgba(255,255,255,.96);backdrop-filter:blur(16px);display:flex;justify-content:space-between;align-items:center;padding:18px 20px 14px;border-bottom:1px solid #edf0f2}.brand{font-weight:800;letter-spacing:-.02em}.eyebrow,.tag{font-size:11px;letter-spacing:.12em;font-weight:800;color:#99742d}.icon-btn{border:0;width:40px;height:40px;border-radius:12px;background:#0e1b2b;color:#fff;font-weight:900}.screen{display:none;padding:20px}.screen.active{display:block}.hero{background:#0e1b2b;color:#fff;padding:24px;border-radius:22px;margin-bottom:18px}.hero h1{font-size:29px;line-height:1.07;margin:8px 0 12px;letter-spacing:-.035em}.hero p{opacity:.78;line-height:1.45;margin:0}.stack{display:grid;gap:12px}.opportunity{display:grid;grid-template-columns:44px 1fr;gap:12px;border:1px solid #e5e8ec;border-radius:18px;padding:16px;background:#fff;box-shadow:0 8px 24px rgba(14,27,43,.045)}.opportunity h3{margin:5px 0 7px;font-size:18px}.opportunity p{margin:0 0 12px;color:#586472;line-height:1.4}.rank{width:38px;height:38px;border-radius:50%;background:#f4ead4;color:#8a6220;display:flex;align-items:center;justify-content:center;font-weight:900}.primary,.ghost{border:0;border-radius:13px;padding:13px 15px;font-weight:800;font-size:15px;cursor:pointer}.primary{background:#0e1b2b;color:#fff;width:100%}.ghost{background:#f1f3f5;color:#17222e}.small{width:auto;padding:10px 12px}.ask-card{width:100%;margin-top:15px;border:0;border-radius:18px;background:#f5ead1;padding:17px;display:grid;grid-template-columns:42px 1fr 18px;text-align:left;align-items:center;gap:9px}.ask-card strong,.ask-card small{display:block}.ask-card small{margin-top:4px;color:#6a5b40}.ask-icon{font-size:24px}.section-head{display:flex;gap:12px;align-items:center;margin-bottom:18px}.section-head h2{margin:2px 0 0}.back{width:40px;height:40px;border-radius:13px;border:1px solid #e0e4e8;background:#fff;font-size:26px}.photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.caption{font-size:12px;font-weight:800;margin:0 0 7px;color:#65717d}.product-img{width:100%;aspect-ratio:1/1.15;object-fit:cover;border-radius:15px;border:1px solid #e5e8ec}.form-card,.content-card,.publish-card,.answer-card,.notice,.chat-intro{margin-top:14px;border:1px solid #e4e7ea;border-radius:18px;padding:17px;background:#fff}.form-card label{display:block;font-size:12px;font-weight:800;color:#596673;margin-bottom:12px}.form-card input{width:100%;margin-top:6px;border:1px solid #d8dde2;border-radius:12px;padding:12px;font-size:15px}.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}.generated.hidden,.modal.hidden{display:none}.success-line{margin-top:16px;background:#e8f5ea;color:#285e32;border-radius:12px;padding:11px 13px;font-weight:800}.content-card h3{margin:7px 0 0}.content-card p{line-height:1.52;color:#4b5966}.publish-card h3{margin:0 0 10px}.check{display:flex;gap:10px;padding:9px 0;font-weight:700}.check input{transform:scale(1.25)}.chips{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.chip{border:1px solid #dce1e5;background:#fff;border-radius:999px;padding:10px 12px;font-weight:700}.chat-intro,.notice{background:#f7f8fa;color:#596673;line-height:1.45}.answer-card{min-height:160px}.answer-card h3{margin-top:7px}.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}.metric{background:#0e1b2b;color:white;padding:18px;border-radius:17px;min-height:126px;display:flex;flex-direction:column;justify-content:space-between}.metric strong{font-size:32px}.metric span{font-size:13px;opacity:.82}.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(520px,100%);height:75px;background:rgba(255,255,255,.97);backdrop-filter:blur(16px);border-top:1px solid #e7eaed;display:grid;grid-template-columns:repeat(4,1fr);z-index:9;padding-bottom:max(4px,env(safe-area-inset-bottom))}.nav{border:0;background:transparent;color:#6d7883;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}.nav span{font-size:22px}.nav small{font-size:11px}.nav.active{color:#0e1b2b}.modal{position:fixed;inset:0;background:rgba(4,12,20,.62);display:flex;align-items:center;justify-content:center;padding:22px;z-index:20}.modal-card{max-width:420px;background:#fff;border-radius:24px;padding:25px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.25)}.modal-icon{width:62px;height:62px;border-radius:50%;margin:0 auto 12px;background:#e7f3e9;color:#2f6d39;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900}.modal-card p{color:#586472;line-height:1.5}@media(max-width:390px){.hero h1{font-size:25px}.photo-grid{grid-template-columns:1fr}.two-col{grid-template-columns:1fr}}
+.square-live{margin:0 0 16px;border:1px solid #d7e8dc;background:#eef8f1;border-radius:16px;padding:13px 15px;display:flex;align-items:center;gap:10px;color:#285c36;font-weight:800}
+.square-dot{width:10px;height:10px;border-radius:50%;background:#3b8f50;box-shadow:0 0 0 4px rgba(59,143,80,.12);flex:0 0 auto}
+.square-live small{display:block;font-weight:600;color:#5b6f61;margin-top:2px}
+.square-live.error{background:#fff4e8;border-color:#efd5b7;color:#8a5725}
+.square-live.error .square-dot{background:#c67a2c}
+.live-value{font-weight:900;color:#0e1b2b}
+
+.form-card textarea{width:100%;margin-top:6px;border:1px solid #d8dde2;border-radius:12px;padding:12px;font-size:15px;font-family:inherit;min-height:90px;resize:vertical}
+.form-helper{font-size:13px;line-height:1.45;color:#64717d;margin:7px 0 15px}
+.button-gap{margin-top:10px}
+.create-status{margin-top:12px;border-radius:12px;padding:11px 13px;font-weight:800;font-size:13px;line-height:1.4}
+.create-status.ok{background:#e8f5ea;color:#285e32}
+.create-status.error{background:#fff0ee;color:#8b3028}
+.create-status.loading{background:#eef3f8;color:#3d566f}
+.create-status.hidden{display:none}
+.sandbox-badge{display:inline-block;background:#f5ead1;color:#8a6220;border-radius:999px;padding:6px 9px;font-size:10px;letter-spacing:.09em;font-weight:900;margin-bottom:8px}
+
+.live-unlock{margin:-4px 0 16px;border:1px solid #e3e7eb;background:#f8fafb;border-radius:16px;padding:14px}
+.live-unlock.hidden{display:none}
+.live-unlock label{display:block;font-size:12px;font-weight:800;color:#596673;margin-bottom:8px}
+.live-unlock-row{display:grid;grid-template-columns:1fr auto;gap:8px}
+.live-unlock input{width:100%;border:1px solid #d8dde2;border-radius:12px;padding:11px 12px;font-size:14px}
+.live-unlock button{border:0;border-radius:12px;background:#0e1b2b;color:#fff;font-weight:800;padding:0 14px}
+.live-unlock small{display:block;color:#65717d;line-height:1.4;margin-top:8px}
+
+.inventory-summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.inventory-stat{border:1px solid #e4e7ea;border-radius:16px;padding:15px;background:#fff}
+.inventory-stat strong{display:block;font-size:24px;color:#0e1b2b}
+.inventory-stat span{display:block;margin-top:3px;font-size:12px;color:#65717d;font-weight:700}
+.inventory-search{width:100%;border:1px solid #d8dde2;border-radius:13px;padding:12px 14px;font-size:15px;margin-bottom:12px}
+.inventory-list{display:grid;gap:10px}
+.inventory-row{border:1px solid #e4e7ea;border-radius:16px;padding:14px;background:#fff}
+.inventory-row-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.inventory-name{font-weight:850;line-height:1.25}
+.inventory-price{font-weight:900;white-space:nowrap}
+.inventory-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+.inventory-pill{background:#f1f3f5;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:800;color:#56636f}
+.inventory-pill.low{background:#fff1dc;color:#865c18}
+.inventory-pill.out{background:#fff0ee;color:#8b3028}
+.inventory-empty{border:1px dashed #d8dde2;border-radius:16px;padding:22px;text-align:center;color:#65717d}
+.inventory-updated{font-size:12px;color:#65717d;margin:0 0 14px}
+
+.sales-mini-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 4px}
+.sales-mini{background:#f6f7f8;border-radius:12px;padding:10px 8px;text-align:center}
+.sales-mini strong{display:block;font-size:17px;color:#0e1b2b}
+.sales-mini span{display:block;margin-top:3px;font-size:10px;font-weight:750;color:#68737e;line-height:1.25}
+.inventory-onboarding{margin-top:16px;border:1px solid #dfe4e8;border-radius:16px;padding:14px;background:#f8fafb}
+.inventory-onboarding strong{display:block;margin-bottom:5px}
+.inventory-onboarding p{margin:0;color:#65717d;font-size:13px;line-height:1.45}
+
+.promo-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.promo-toggle button{border:1px solid #dfe4e8;background:#fff;border-radius:13px;padding:12px;font-weight:850;color:#31404d}
+.promo-toggle button.active{background:#0e1b2b;color:#fff;border-color:#0e1b2b}
+.promo-card{border:1px solid #e4e7ea;border-radius:18px;padding:17px;background:#fff;margin-top:12px}
+.promo-card h3{margin:6px 0 8px}
+.promo-card p{margin:0;color:#56636f;line-height:1.48}
+.offer-banner{background:#f5ead1;border-radius:17px;padding:16px;margin:12px 0}
+.offer-banner strong{display:block;font-size:20px;line-height:1.2;color:#0e1b2b}
+.offer-banner span{display:block;margin-top:6px;color:#715d34;font-weight:700}
+.promo-preview{border:1px solid #e3e6ea;border-radius:16px;padding:15px;background:#f9fafb;white-space:pre-line;line-height:1.5;color:#26333f}
+.copy-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.copy-row button{border:0;border-radius:12px;padding:11px 12px;font-weight:800}
+.copy-primary{background:#0e1b2b;color:#fff}
+.copy-secondary{background:#eef1f3;color:#17222e}
+.promo-note{font-size:12px;color:#65717d;line-height:1.45;margin-top:10px}
+.promo-metric{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.promo-metric div{background:#f5f7f8;border-radius:13px;padding:11px}
+.promo-metric strong{display:block;font-size:15px}
+.promo-metric span{font-size:11px;color:#68737e}
+
+.photo-studio{border:1px solid #e4e7ea;border-radius:18px;padding:16px;background:#fff;margin-top:14px}
+.photo-drop{border:2px dashed #d7dde2;border-radius:16px;padding:20px;text-align:center;background:#fafbfc}
+.photo-drop input{display:none}
+.photo-drop label{display:inline-block;background:#0e1b2b;color:#fff;padding:11px 15px;border-radius:12px;font-weight:850;cursor:pointer}
+.photo-drop p{margin:10px 0 0;color:#65717d;font-size:13px;line-height:1.45}
+.photo-choice-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.photo-choice-row label{min-width:150px}
+.photo-preview-wrap{display:none;margin-top:14px}
+.photo-preview-wrap.show{display:block}
+.photo-preview-frame{background:#fff;border:1px solid #e3e6e9;border-radius:16px;padding:12px;display:flex;justify-content:center;align-items:center;min-height:220px}
+.photo-preview-frame img{max-width:100%;max-height:360px;object-fit:contain;border-radius:10px;background:#fff}
+.photo-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.photo-actions button{border:0;border-radius:12px;padding:11px 12px;font-weight:850}
+.photo-primary{background:#0e1b2b;color:#fff}
+.photo-secondary{background:#eef1f3;color:#17222e}
+.photo-rules{margin-top:12px;background:#f6f8f9;border-radius:14px;padding:12px}
+.photo-rules strong{display:block;margin-bottom:5px}
+.photo-rules p{margin:0;color:#65717d;font-size:12px;line-height:1.5}
+.photo-status{margin-top:10px;font-size:12px;font-weight:750;color:#53606c}
+.photo-standard-note{margin:12px 0 0;background:#f6f8f9;border-radius:14px;padding:12px;font-size:12px;color:#596673;line-height:1.5}
+
+.ai-result{display:none;margin-top:14px}
+.ai-result.show{display:block}
+.ai-result-title{font-size:13px;font-weight:900;color:#2d6f48;margin-bottom:8px}
+.ai-result-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.ai-result-actions a,.ai-result-actions button{display:block;text-align:center;text-decoration:none;border:0;border-radius:12px;padding:11px 12px;font-weight:850}
+.ai-result-actions a{background:#0e1b2b;color:#fff}
+.ai-result-actions button{background:#eef1f3;color:#17222e}
+.fb-publish-tools{margin-top:12px;border-top:1px solid #e6e9ec;padding-top:12px}
+.fb-publish-tools label{display:block;font-size:12px;font-weight:850;color:#596673;margin-bottom:7px}
+.fb-caption-editor{width:100%;min-height:105px;border:1px solid #d8dde2;border-radius:13px;padding:12px;font:inherit;line-height:1.45;resize:vertical;background:#fff;color:#17222e}
+.fb-publish-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+.fb-publish-actions button{border:0;border-radius:12px;padding:11px 12px;font-weight:850}
+.fb-publish-actions .preview{background:#eef1f3;color:#17222e}
+.fb-publish-actions .publish{background:#1877f2;color:#fff}
+.fb-publish-actions button:disabled{opacity:.6}
+.fb-publish-note{font-size:12px;color:#65717d;line-height:1.45;margin:9px 0 0}
+.fb-publish-status{margin-top:9px;border-radius:12px;padding:10px 12px;font-size:12px;font-weight:800;line-height:1.4}
+.fb-publish-status.hidden{display:none}
+.fb-publish-status.loading{background:#eef3f8;color:#3d566f}
+.fb-publish-status.ok{background:#e8f5ea;color:#285e32}
+.fb-publish-status.error{background:#fff0ee;color:#8b3028}
+</style>
+
+
+
+
+
+
+
+</head>
+<body>
+  <div class="phone-shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">PRIVATE DEMO</div>
+        <div class="brand">Dexter Growth Assistant</div>
+      </div>
+      <button class="icon-btn" id="squareBtn" aria-label="Square connection">S</button>
+    </header>
+
+    <main>
+      <section class="screen active" id="home">
+        <div class="hero">
+          <div class="eyebrow">GOOD MORNING</div>
+          <h1>Dexter, here are your 3 best opportunities today.</h1>
+          <p>This pilot is designed to turn business data into simple actions—not more dashboards.</p>
+        </div>
+
+        <div class="square-live" id="squareLiveStatus">
+          <span class="square-dot"></span>
+          <span>
+            Latest Inventory Update
+            <small id="squareLiveDetail">Syncing with Square…</small>
+          </span>
+        </div>
+
+        <div class="live-unlock" id="liveUnlock">
+          <label for="liveAdminKeyInput">Unlock live Square data</label>
+          <div class="live-unlock-row">
+            <input id="liveAdminKeyInput" type="password" placeholder="GrowthWise beta admin key" autocomplete="current-password" />
+            <button id="unlockLiveBtn" type="button" onclick="growthwiseUnlockSquare(event)">Unlock</button>
+          </div>
+          <small>Enter the beta admin key once per browser session. It is kept only in this tab's session storage and is not written into the public webpage.</small>
+        </div>
+
+        <script>
+        // Critical-path Square unlock: intentionally self-contained so the button still works
+        // even if another optional GrowthWise UI feature throws a JavaScript error later.
+        window.growthwiseUnlockSquare = async function(event){
+          if(event) event.preventDefault();
+          const input = document.getElementById('liveAdminKeyInput');
+          const btn = document.getElementById('unlockLiveBtn');
+          const detail = document.getElementById('squareLiveDetail');
+          const status = document.getElementById('squareLiveStatus');
+          const unlockBox = document.getElementById('liveUnlock');
+          const key = (input?.value || '').trim();
+
+          if(!key){
+            if(detail) detail.textContent = 'Enter your GrowthWise access key first.';
+            input?.focus();
+            return false;
+          }
+
+          if(btn){ btn.disabled = true; btn.textContent = 'Checking…'; }
+          if(detail) detail.textContent = 'Checking your GrowthWise access key…';
+          status?.classList.remove('error');
+
+          try{
+            const response = await fetch('/.netlify/functions/square-data', {
+              method: 'GET',
+              headers: { 'X-GrowthWise-Key': key },
+              cache: 'no-store'
+            });
+            const data = await response.json().catch(()=>({}));
+
+            if(response.status === 401){
+              sessionStorage.removeItem('growthwise_admin_key');
+              status?.classList.add('error');
+              if(detail) detail.textContent = 'Admin key was not accepted. Please check it and try again.';
+              return false;
+            }
+            if(!response.ok){
+              throw new Error(data.error || `Square data request failed (HTTP ${response.status}).`);
+            }
+
+            sessionStorage.setItem('growthwise_admin_key', key);
+            if(input) input.value = '';
+            unlockBox?.classList.add('hidden');
+
+            const products = Array.isArray(data.products) ? data.products : [];
+            const variations = data.summary?.variation_count ?? products.length;
+            const units = data.summary?.total_units_in_stock ?? 0;
+            if(detail) detail.textContent = `${variations} products · ${units} units in stock · updated just now`;
+
+            // Use the richer app renderers when the rest of the script loaded successfully.
+            if(typeof window.renderInventory === 'function'){
+              window.renderInventory(products, data.summary || {}, data.generated_at || null);
+            }
+            if(typeof window.loadLiveSalesData === 'function'){
+              window.loadLiveSalesData(key).catch(()=>{});
+            }
+            return true;
+          }catch(err){
+            console.error('Square unlock failed:', err);
+            status?.classList.add('error');
+            if(detail) detail.textContent = err?.message || 'GrowthWise could not connect to Square.';
+            unlockBox?.classList.remove('hidden');
+            return false;
+          }finally{
+            if(btn){ btn.disabled = false; btn.textContent = 'Unlock'; }
+          }
+        };
+        </script>
+
+        <div class="stack">
+          <article class="opportunity">
+            <div class="rank">1</div>
+            <div>
+              <div class="tag">MARKETING OPPORTUNITY</div>
+              <h3>Feature the <span id="homeProductName">Stacy Adams Dublin</span></h3>
+              <p><span id="homeProductLive">Loading Square price and inventory…</span><br>Create a polished product image and ready-to-post content for your website and social channels.</p>
+              <button class="primary small" data-nav="promotion">Create promotion</button>
+            </div>
+          </article>
+
+          <article class="opportunity">
+            <div class="rank">2</div>
+            <div>
+              <div class="tag">WEBSITE</div>
+              <h3>Improve a weak product listing</h3>
+              <p>Turn a short title into a complete product page with better copy, SEO text and a cleaner image.</p>
+              <button class="ghost small" data-nav="product">Fix listing</button>
+            </div>
+          </article>
+
+          <article class="opportunity">
+            <div class="rank">A</div>
+            <div>
+              <div class="tag">AUTOMOTIVE PILOT</div>
+              <h3>Test GrowthWise for a dealership + repair shop</h3>
+              <p>Turn a vehicle photo and dealer-supplied facts into an accurate listing, social copy, and a quick deal-profit check.</p>
+              <button class="ghost small" type="button" onclick="window.location.href='automotive-pilot.html'">Open automotive pilot</button>
+            </div>
+          </article>
+
+          <article class="opportunity">
+            <div class="rank">3</div>
+            <div>
+              <div class="tag">SALES PULSE</div>
+              <h3 id="salesHeadline">Checking recent sales…</h3>
+              <p id="squareOpportunityText">GrowthWise is combining recent sales with current inventory.</p>
+              <div class="sales-mini-grid">
+                <div class="sales-mini">
+                  <strong id="salesTotal">—</strong>
+                  <span>30-day sales</span>
+                </div>
+                <div class="sales-mini">
+                  <strong id="salesOrders">—</strong>
+                  <span>orders</span>
+                </div>
+                <div class="sales-mini">
+                  <strong id="salesAverage">—</strong>
+                  <span>avg. order</span>
+                </div>
+              </div>
+              <button class="ghost small" id="connectSquare">View sales details</button>
+            </div>
+          </article>
+        </div>
+
+        <button class="ask-card" data-nav="chat">
+          <span class="ask-icon">✦</span>
+          <span>
+            <strong>Ask My Business AI</strong>
+            <small>“What should I promote on our slow days?”</small>
+          </span>
+          <span>›</span>
+        </button>
+      </section>
+
+      
+      <section class="screen" id="promotion">
+        <div class="section-head">
+          <button class="back" data-nav="home">‹</button>
+          <div>
+            <div class="eyebrow">READY-TO-USE PROMOTIONS</div>
+            <h2>Create Promotion</h2>
+          </div>
+        </div>
+
+        <div class="promo-card">
+          <div class="tag">DEXTER'S SLOW-DAY PLAN</div>
+          <h3>Turn Tuesday and Wednesday into traffic days</h3>
+          <p>GrowthWise can prepare Dexter's existing offers, keep the wording consistent, and later measure whether they actually improve sales versus a normal Tuesday or Wednesday.</p>
+        </div>
+
+        <div class="promo-toggle">
+          <button type="button" id="promoTuesdayBtn" class="active">Tuesday</button>
+          <button type="button" id="promoWednesdayBtn">Wednesday</button>
+        </div>
+
+        <div class="promo-card">
+          <div class="tag" id="promoDayTag">TUESDAY OFFER</div>
+          <div class="offer-banner">
+            <strong id="promoOfferTitle">Free Accessory Tuesday</strong>
+            <span id="promoOfferRule">Free accessory with a purchase of $100 or more.</span>
+          </div>
+
+          <div class="promo-metric">
+            <div>
+              <strong id="promoGoal">Raise average ticket</strong>
+              <span>primary goal</span>
+            </div>
+            <div>
+              <strong id="promoGuardrail">Track giveaway cost</strong>
+              <span>GrowthWise check</span>
+            </div>
+          </div>
+
+          <p class="promo-note" id="promoAdvice">
+            Best use: encourage shoppers who are already near the $100 mark to add another item. Once product costs are connected, GrowthWise can recommend which accessories are safest to give away.
+          </p>
+        </div>
+
+        <div class="promo-card">
+          <div class="tag">FACEBOOK POST</div>
+          <div class="promo-preview" id="facebookPromoText"></div>
+          <div class="copy-row">
+            <button type="button" class="copy-primary" id="copyFacebookPromo">Copy Facebook post</button>
+            <button type="button" class="copy-secondary" id="copyOfferPromo">Copy offer only</button>
+          </div>
+          <div class="fb-publish-tools">
+            <label for="facebookCaptionEditor">Final Facebook caption — review before publishing</label>
+            <textarea id="facebookCaptionEditor" class="fb-caption-editor" maxlength="5000"></textarea>
+            <div class="fb-publish-actions">
+              <button type="button" class="preview" id="previewFacebookPostBtn">Preview</button>
+              <button type="button" class="publish" id="publishFacebookPostBtn">Post to Facebook</button>
+            </div>
+            <p class="fb-publish-note">GrowthWise will never publish automatically from this screen. You must tap Post to Facebook and confirm. If you selected the cleaned product photo below, GrowthWise will attach it to the post.</p>
+            <div class="fb-publish-status hidden" id="facebookPublishStatus"></div>
+          </div>
+        </div>
+
+        <div class="promo-card">
+          <div class="tag">INSTAGRAM / SHORT CAPTION</div>
+          <div class="promo-preview" id="instagramPromoText"></div>
+          <div class="copy-row">
+            <button type="button" class="copy-primary" id="copyInstagramPromo">Copy caption</button>
+            <button type="button" class="copy-secondary" id="previewPromoBtn">Preview approval</button>
+          </div>
+        </div>
+
+
+        <div class="photo-studio">
+          <div class="tag">PRODUCT PHOTO</div>
+          <h3>Prepare Dexter's clean product image</h3>
+          <div class="photo-drop">
+            <input id="promoPhotoInput" type="file" accept="image/*" />
+            <input id="promoCameraInput" type="file" accept="image/*" capture="environment" />
+            <div class="photo-choice-row">
+              <label for="promoCameraInput">Take a photo</label>
+              <label for="promoPhotoInput">Choose from gallery</label>
+            </div>
+            <p>Take a new product photo or choose an existing image. GrowthWise will use Dexter's preferred clean white-background presentation.</p>
+          </div>
+
+          <div class="photo-preview-wrap" id="promoPhotoPreviewWrap">
+            <div class="photo-preview-frame">
+              <img id="promoPhotoPreview" alt="Selected product preview" />
+            </div>
+            <div class="photo-actions">
+              <button type="button" class="photo-primary" id="prepareWhiteBgBtn">Prepare white-background version</button>
+              <button type="button" class="photo-secondary" id="removePromoPhotoBtn">Remove photo</button>
+            </div>
+            <div class="photo-status" id="photoStatus">Photo selected.</div>
+
+            <div class="ai-result" id="aiPhotoResult">
+              <div class="ai-result-title">✓ White-background version ready</div>
+              <div class="photo-preview-frame">
+                <img id="aiPhotoOutput" alt="GrowthWise cleaned product photo" />
+              </div>
+              <div class="ai-result-actions">
+                <a id="saveCleanPhotoBtn" href="#" download="dexter-clean-product.png">Save image</a>
+                <button type="button" id="useCleanPhotoBtn">Use for promotion</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="photo-rules">
+            <strong>Dexter's photo standard</strong>
+            <p>No mannequin heads. Remove distracting backgrounds or displays. Keep the actual hat realistic and unchanged, centered on a clean white background.</p>
+          </div>
+        </div>
+
+        <div class="promo-card">
+          <div class="tag">MEASUREMENT PLAN</div>
+          <h3>GrowthWise will judge the promotion by results</h3>
+          <p id="promoMeasurement">
+            Compare Tuesday sales, orders and average ticket against Dexter's normal Tuesday baseline. Track how often customers cross the $100 threshold and, once costs are available, estimate the accessory giveaway cost versus added revenue.
+          </p>
+        </div>
+      </section>
+
+<section class="screen" id="product">
+        <div class="section-head">
+          <button class="back" data-nav="home">‹</button>
+          <div>
+            <div class="eyebrow">ONE PHOTO → SQUARE → FACEBOOK</div>
+            <h2>New Product</h2>
+          </div>
+        </div>
+
+        <div class="content-card" style="margin-top:0">
+          <div class="tag">FAST WORKFLOW</div>
+          <h3>Take one photo. Add it. Promote it.</h3>
+          <p>Photograph a new hat or choose one from the gallery, confirm the product details, then GrowthWise can create it in Square and publish the approved product photo and caption to Facebook in one workflow.</p>
+        </div>
+
+        <div class="photo-studio" style="margin-top:14px">
+          <div class="tag">1 · PRODUCT PHOTO</div>
+          <h3>Take a photo or choose from gallery</h3>
+          <div class="photo-drop">
+            <input id="newProductGalleryInput" type="file" accept="image/*" />
+            <input id="newProductCameraInput" type="file" accept="image/*" capture="environment" />
+            <div class="photo-choice-row">
+              <label for="newProductCameraInput">Take a photo</label>
+              <label for="newProductGalleryInput">Choose from gallery</label>
+            </div>
+            <p>GrowthWise will use this photo for the Facebook promotion. You can optionally prepare a clean white-background version before publishing.</p>
+          </div>
+          <div class="photo-preview-wrap" id="newProductPhotoWrap">
+            <div class="photo-preview-frame">
+              <img id="newProductPhotoPreview" alt="New product photo preview" />
+            </div>
+            <div class="photo-actions">
+              <button type="button" class="photo-primary" id="newProductCleanBtn">Prepare white-background version</button>
+              <button type="button" class="photo-secondary" id="newProductRemovePhotoBtn">Remove photo</button>
+            </div>
+            <div class="photo-status" id="newProductPhotoStatus">Photo selected.</div>
+            <div class="ai-result" id="newProductAiResult">
+              <div class="ai-result-title">✓ White-background version ready</div>
+              <div class="photo-preview-frame">
+                <img id="newProductAiOutput" alt="Cleaned new product photo" />
+              </div>
+              <div class="ai-result-actions">
+                <a id="newProductSaveCleanBtn" href="#" download="dexter-new-product-clean.png">Save image</a>
+                <button type="button" id="newProductUseCleanBtn">Use cleaned photo</button>
+              </div>
+              <div class="photo-status" id="newProductSelectedPhotoStatus">Original photo is currently selected for promotion.</div>
+            </div>
+          </div>
+          <div class="photo-rules">
+            <strong>Dexter's photo standard</strong>
+            <p>Keep the real hat color, shape, trim and branding intact. Use a clean white background and avoid mannequin heads or distracting displays.</p>
+          </div>
+        </div>
+
+        <div class="form-card">
+          <div class="sandbox-badge">2 · PRODUCT DETAILS · SQUARE SANDBOX</div>
+          <p class="form-helper">Confirm the details GrowthWise needs to create this product in Dexter’s Hats TEST Square account.</p>
+
+          <label>Brand
+            <input id="brandInput" placeholder="e.g. Bailey" autocomplete="off" />
+          </label>
+
+          <label>Product name
+            <input id="productNameInput" placeholder="e.g. Waits Porkpie Hat" autocomplete="off" />
+          </label>
+
+          <div class="two-col">
+            <label>Price
+              <input id="priceInput" type="number" min="0" step="0.01" inputmode="decimal" placeholder="79.95" />
+            </label>
+            <label>Starting inventory
+              <input id="inventoryInput" type="number" min="0" step="1" inputmode="numeric" placeholder="6" />
+            </label>
+          </div>
+
+          <div class="tag" style="margin-top:14px">AI PRODUCT WRITER</div>
+          <p class="form-helper">Let GrowthWise analyze the product photo and draft a product description plus Facebook caption. Review everything before publishing.</p>
+          <button type="button" class="ghost" id="aiDescribeProductBtn" style="width:100%">AI analyze photo &amp; write listing</button>
+          <div class="create-status hidden" id="aiDescribeStatus"></div>
+
+          <label style="margin-top:12px">Description
+            <textarea id="descriptionInput" placeholder="GrowthWise can draft this from the product photo, or you can type/edit it yourself."></textarea>
+          </label>
+
+          <label>GrowthWise beta admin key
+            <input id="adminKeyInput" type="password" placeholder="Required to save/publish" autocomplete="current-password" />
+          </label>
+          <p class="form-helper">Enter the beta admin key once per browser session. It is used only for secure Netlify Functions and is not written into the public webpage.</p>
+
+          <div class="tag" style="margin-top:14px">3 · FACEBOOK CAPTION</div>
+          <label style="margin-top:8px">Review/edit before publishing
+            <textarea id="newProductCaption" maxlength="5000" placeholder="GrowthWise will prepare this from the product details."></textarea>
+          </label>
+          <button type="button" class="ghost" id="buildNewProductCaptionBtn" style="width:100%">Prepare caption from product details</button>
+
+          <div class="notice" style="margin-top:14px">
+            <strong>One-button action</strong><br>
+            <span>GrowthWise will confirm once, then create the item in Square first. Only if Square succeeds will it publish the approved Facebook post.</span>
+          </div>
+
+          <button class="primary" id="addAndPromoteBtn" style="margin-top:14px">Add to Square &amp; Promote</button>
+          <button class="ghost button-gap" id="saveSquareBtn" style="width:100%">Save to Square only</button>
+          <div class="create-status hidden" id="createStatus"></div>
+        </div>
+
+        <div class="generated hidden" id="generated">
+          <div class="success-line">✓ Product workflow prepared</div>
+          <div class="content-card">
+            <div class="tag">PRODUCT</div>
+            <h3 id="websiteTitle">New Product</h3>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="chat">
+        <div class="section-head">
+          <button class="back" data-nav="home">‹</button>
+          <div>
+            <div class="eyebrow">BUSINESS-SPECIFIC AI</div>
+            <h2>Ask My Business AI</h2>
+          </div>
+        </div>
+
+        <div class="chat-intro">
+          This pilot now reads live Square inventory and recent sales. Promotion history, website performance and margin data are the next layers.
+        </div>
+
+        <div class="chips">
+          <button class="chip" data-q="weekend">What should I promote on our slow days?</button>
+          <button class="chip" data-q="slow">What isn't selling?</button>
+          <button class="chip" data-q="website">What should I fix on my website?</button>
+          <button class="chip" data-q="money">How can I make more money this week?</button>
+        </div>
+
+        <div id="chatAnswer" class="answer-card">
+          <div class="tag">TRY A QUESTION</div>
+          <p>Tap one of the suggestions above to see how the pilot would answer.</p>
+        </div>
+      </section>
+
+      <section class="screen" id="results">
+        <div class="section-head">
+          <button class="back" data-nav="home">‹</button>
+          <div>
+            <div class="eyebrow">LIVE INVENTORY</div>
+            <h2>Inventory</h2>
+          </div>
+        </div>
+
+        <p class="inventory-updated" id="inventoryUpdated">Unlock live Square data on Home to view current inventory.</p>
+
+        <div class="inventory-summary">
+          <div class="inventory-stat">
+            <strong id="invProductCount">—</strong>
+            <span>products / variations</span>
+          </div>
+          <div class="inventory-stat">
+            <strong id="invUnits">—</strong>
+            <span>units in stock</span>
+          </div>
+          <div class="inventory-stat">
+            <strong id="invValue">—</strong>
+            <span>inventory value</span>
+          </div>
+          <div class="inventory-stat">
+            <strong id="invLowStock">—</strong>
+            <span>low / out of stock</span>
+          </div>
+        </div>
+
+        <input
+          class="inventory-search"
+          id="inventorySearch"
+          placeholder="Search inventory…"
+          autocomplete="off"
+        />
+
+        <div class="inventory-list" id="inventoryList">
+          <div class="inventory-empty">Live inventory will appear here after GrowthWise connects to Square.</div>
+        </div>
+
+        <div class="inventory-onboarding">
+          <strong>Full inventory setup is automatic</strong>
+          <p>When Dexter connects his real Square account, GrowthWise can sync the catalog already in Square automatically. A spreadsheet import will only be needed for products that are not already in Square.</p>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav">
+      <button class="nav active" data-nav="home"><span>⌂</span><small>Home</small></button>
+      <button class="nav" data-nav="product"><span>＋</span><small>New Product</small></button>
+      <button class="nav" data-nav="chat"><span>✦</span><small>AI Chat</small></button>
+      <button class="nav" data-nav="results"><span>▥</span><small>Inventory</small></button>
+    </nav>
+  </div>
+
+  <div class="modal hidden" id="modal">
+    <div class="modal-card">
+      <div class="modal-icon">✓</div>
+      <h2 id="modalTitle">Demo published</h2>
+      <p id="modalText">In the beta, this is where we would create/update the website listing and send approved content to connected channels.</p>
+      <button class="primary" id="closeModal">Got it</button>
+    </div>
+  </div>
+
+  <script>const screens=[...document.querySelectorAll('.screen')];
+const navs=[...document.querySelectorAll('.nav')];
+
+function show(id){
+  screens.forEach(s=>s.classList.toggle('active',s.id===id));
+  navs.forEach(n=>n.classList.toggle('active',n.dataset.nav===id));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('[data-nav]').forEach(el=>{
+  el.addEventListener('click',()=>show(el.dataset.nav));
+});
+
+const promotionTemplates = {
+  tuesday: {
+    dayTag: "TUESDAY OFFER",
+    title: "Free Accessory Tuesday",
+    rule: "Free accessory with a purchase of $100 or more.",
+    goal: "Raise average ticket",
+    guardrail: "Track giveaway cost",
+    advice: "Best use: encourage shoppers who are already near the $100 mark to add another item. Once product costs are connected, GrowthWise can recommend which accessories are safest to give away.",
+    facebook: `🎩 FREE ACCESSORY TUESDAY at Dexter's Hats, Caps & Things!
+
+Spend $100 or more and receive a FREE accessory with your purchase.
+
+Stop in Tuesday, find the hat or cap that fits your style, and make your purchase go a little further.
+
+Offer valid Tuesday while supplies last. See store for eligible accessories.`,
+    instagram: `FREE ACCESSORY TUESDAY 🎩
+Spend $100+ and receive a free accessory with your purchase.
+Dexter's Hats, Caps & Things
+Tuesday only • While supplies last`,
+    offerOnly: `Tuesday: Free accessory with a purchase of $100 or more. While supplies last.`,
+    measurement: "Compare Tuesday sales, orders and average ticket against Dexter's normal Tuesday baseline. Track how often customers cross the $100 threshold and, once costs are available, estimate the accessory giveaway cost versus added revenue."
+  },
+  wednesday: {
+    dayTag: "VALUE WEDNESDAY",
+    title: "Value Wednesdays",
+    rule: "Buy 1 hat or cap and get a second of equal or lesser value 30% off.",
+    goal: "Increase units per sale",
+    guardrail: "Protect margin",
+    advice: "Best use: turn one-hat shoppers into two-hat buyers. GrowthWise can later flag products that should be excluded if stock is low or the discount would cut too deeply into margin.",
+    facebook: `🔥 VALUE WEDNESDAYS at Dexter's Hats, Caps & Things!
+
+Buy 1 hat or cap and get a second hat or cap of equal or lesser value for 30% OFF.
+
+Whether you're adding another look for yourself or picking one up for someone else, Wednesday is the day to save.
+
+Valid Wednesday on eligible hats and caps. Second item must be of equal or lesser value.`,
+    instagram: `VALUE WEDNESDAYS 🔥
+Buy 1 hat or cap and get the second of equal or lesser value 30% OFF.
+Dexter's Hats, Caps & Things
+Wednesday only • Eligible items`,
+    offerOnly: `Wednesday: Buy 1 hat or cap and get the second of equal or lesser value 30% off.`,
+    measurement: "Compare Wednesday sales, orders, units per order and average ticket against Dexter's normal Wednesday baseline. GrowthWise can also measure how much discount was given and whether the extra units sold created enough additional revenue."
+  }
+};
+
+let activePromotionDay = 'tuesday';
+
+function renderPromotion(day){
+  activePromotionDay = day;
+  const p = promotionTemplates[day];
+
+  document.getElementById('promoTuesdayBtn').classList.toggle('active', day === 'tuesday');
+  document.getElementById('promoWednesdayBtn').classList.toggle('active', day === 'wednesday');
+
+  document.getElementById('promoDayTag').textContent = p.dayTag;
+  document.getElementById('promoOfferTitle').textContent = p.title;
+  document.getElementById('promoOfferRule').textContent = p.rule;
+  document.getElementById('promoGoal').textContent = p.goal;
+  document.getElementById('promoGuardrail').textContent = p.guardrail;
+  document.getElementById('promoAdvice').textContent = p.advice;
+  document.getElementById('facebookPromoText').textContent = p.facebook;
+  document.getElementById('facebookCaptionEditor').value = p.facebook;
+  document.getElementById('instagramPromoText').textContent = p.instagram;
+  document.getElementById('promoMeasurement').textContent = p.measurement;
+}
+
+async function copyPromotionText(text, successLabel){
+  try{
+    await navigator.clipboard.writeText(text);
+    openModal('Copied ✓', successLabel);
+  }catch{
+    openModal('Ready to copy', text);
+  }
+}
+
+document.getElementById('promoTuesdayBtn').addEventListener('click',()=>renderPromotion('tuesday'));
+document.getElementById('promoWednesdayBtn').addEventListener('click',()=>renderPromotion('wednesday'));
+
+document.getElementById('copyFacebookPromo').addEventListener('click',()=>{
+  copyPromotionText(document.getElementById('facebookCaptionEditor').value, 'Facebook post copied to your clipboard.');
+});
+document.getElementById('copyInstagramPromo').addEventListener('click',()=>{
+  copyPromotionText(promotionTemplates[activePromotionDay].instagram, 'Instagram caption copied to your clipboard.');
+});
+document.getElementById('copyOfferPromo').addEventListener('click',()=>{
+  copyPromotionText(promotionTemplates[activePromotionDay].offerOnly, 'Offer wording copied to your clipboard.');
+});
+document.getElementById('previewPromoBtn').addEventListener('click',()=>{
+  const p = promotionTemplates[activePromotionDay];
+  openModal(
+    `${p.title} ready for review`,
+    `GrowthWise prepared the offer and social copy. The next production step will be Dexter review → approve → publish to connected channels.`
+  );
+});
+
+
+let selectedPromotionImageDataUrl = '';
+
+const promoPhotoInput = document.getElementById('promoPhotoInput');
+const promoCameraInput = document.getElementById('promoCameraInput');
+const promoPhotoPreviewWrap = document.getElementById('promoPhotoPreviewWrap');
+const promoPhotoPreview = document.getElementById('promoPhotoPreview');
+const promoPhotoStatus = document.getElementById('photoStatus');
+let selectedPromotionFile = null;
+let selectedPromotionPreviewUrl = '';
+
+function handlePromotionPhoto(file){
+  if(!file) return;
+  selectedPromotionFile = file;
+  selectedPromotionImageDataUrl = '';
+  if(selectedPromotionPreviewUrl) URL.revokeObjectURL(selectedPromotionPreviewUrl);
+  selectedPromotionPreviewUrl = URL.createObjectURL(file);
+  promoPhotoPreview.src = selectedPromotionPreviewUrl;
+  promoPhotoPreviewWrap.classList.add('show');
+  promoPhotoStatus.textContent = 'Photo selected. Dexter standard: clean white background, no mannequin heads.';
+}
+
+promoPhotoInput.addEventListener('change', ()=>{
+  handlePromotionPhoto(promoPhotoInput.files && promoPhotoInput.files[0]);
+});
+
+promoCameraInput.addEventListener('change', ()=>{
+  handlePromotionPhoto(promoCameraInput.files && promoCameraInput.files[0]);
+});
+
+document.getElementById('removePromoPhotoBtn').addEventListener('click', ()=>{
+  promoPhotoInput.value = '';
+  promoCameraInput.value = '';
+  selectedPromotionFile = null;
+  if(selectedPromotionPreviewUrl) URL.revokeObjectURL(selectedPromotionPreviewUrl);
+  selectedPromotionPreviewUrl = '';
+  promoPhotoPreview.removeAttribute('src');
+  promoPhotoPreviewWrap.classList.remove('show');
+  document.getElementById('aiPhotoResult').classList.remove('show');
+  document.getElementById('aiPhotoOutput').removeAttribute('src');
+  selectedPromotionImageDataUrl = '';
+});
+
+async function optimizePhotoForUpload(file){
+  const dataUrl = await new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const image = await new Promise((resolve, reject)=>{
+    const img = new Image();
+    img.onload = ()=>resolve(img);
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+
+  const maxEdge = 1600;
+  const scale = Math.min(1, maxEdge / Math.max(image.width, image.height));
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(image, 0, 0, width, height);
+
+  return canvas.toDataURL('image/jpeg', 0.9);
+}
+
+document.getElementById('prepareWhiteBgBtn').addEventListener('click', async ()=>{
+  const file = selectedPromotionFile;
+  if(!file){
+    openModal('Choose a photo first', 'Select a product photo before preparing the white-background version.');
+    return;
+  }
+
+  const adminKey = sessionStorage.getItem('growthwise_admin_key') || '';
+  if(!adminKey){
+    openModal('GrowthWise access key needed', 'Return Home and unlock live data with your beta admin key first.');
+    return;
+  }
+
+  const btn = document.getElementById('prepareWhiteBgBtn');
+  const resultBox = document.getElementById('aiPhotoResult');
+  const output = document.getElementById('aiPhotoOutput');
+  const saveBtn = document.getElementById('saveCleanPhotoBtn');
+
+  btn.disabled = true;
+  btn.textContent = 'Preparing…';
+  promoPhotoStatus.textContent = 'AI is removing the display/background and preparing Dexter’s clean product photo…';
+  resultBox.classList.remove('show');
+
+  try{
+    const optimized = await optimizePhotoForUpload(file);
+
+    const response = await fetch('/.netlify/functions/clean-photo', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-GrowthWise-Key': adminKey
+      },
+      body: JSON.stringify({ image_data_url: optimized })
+    });
+
+    const data = await response.json().catch(()=>({}));
+
+    if(!response.ok){
+      throw new Error(data.error || `Photo processing failed (HTTP ${response.status}).`);
+    }
+
+    output.src = data.image_data_url;
+    saveBtn.href = data.image_data_url;
+    resultBox.classList.add('show');
+    promoPhotoStatus.textContent = 'Done — compare the cleaned image with the original before using it.';
+
+  }catch(err){
+    console.error(err);
+    promoPhotoStatus.textContent = err.message || 'Photo processing failed.';
+    openModal('Could not prepare photo', err.message || 'Please try again.');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'Prepare white-background version';
+  }
+});
+
+document.getElementById('useCleanPhotoBtn').addEventListener('click', ()=>{
+  const output = document.getElementById('aiPhotoOutput');
+  if(!output.src) return;
+  selectedPromotionImageDataUrl = output.src;
+  openModal(
+    'Promotion image selected ✓',
+    'This cleaned product photo is selected for the Facebook post. Review the caption above, then tap Post to Facebook when you are ready.'
+  );
+});
+
+const facebookCaptionEditor = document.getElementById('facebookCaptionEditor');
+const publishFacebookPostBtn = document.getElementById('publishFacebookPostBtn');
+const previewFacebookPostBtn = document.getElementById('previewFacebookPostBtn');
+const facebookPublishStatus = document.getElementById('facebookPublishStatus');
+
+function setFacebookPublishStatus(kind, message){
+  facebookPublishStatus.className = `fb-publish-status ${kind}`;
+  facebookPublishStatus.textContent = message;
+}
+
+previewFacebookPostBtn.addEventListener('click', ()=>{
+  const caption = facebookCaptionEditor.value.trim();
+  if(!caption){
+    openModal('Add a caption first', 'Enter or generate the Facebook caption before previewing the post.');
+    return;
+  }
+  openModal(
+    selectedPromotionImageDataUrl ? 'Facebook post preview — photo + caption' : 'Facebook post preview — caption only',
+    caption
+  );
+});
+
+publishFacebookPostBtn.addEventListener('click', async ()=>{
+  const adminKey = sessionStorage.getItem('growthwise_admin_key') || '';
+  const message = facebookCaptionEditor.value.trim();
+
+  if(!adminKey){
+    openModal('GrowthWise access key needed', 'Return Home and unlock the beta with your admin key first.');
+    return;
+  }
+  if(!message){
+    openModal('Caption required', 'Review or enter the Facebook caption before publishing.');
+    return;
+  }
+
+  const hasPhoto = Boolean(selectedPromotionImageDataUrl);
+  const confirmed = window.confirm(
+    `Publish this ${hasPhoto ? 'photo + caption' : 'caption-only'} post to the connected Facebook Page now?`
+  );
+  if(!confirmed) return;
+
+  publishFacebookPostBtn.disabled = true;
+  publishFacebookPostBtn.textContent = 'Publishing…';
+  setFacebookPublishStatus('loading', 'Sending the approved post to Facebook…');
+
+  try{
+    const response = await fetch('/.netlify/functions/facebook-post', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-GrowthWise-Key': adminKey
+      },
+      body: JSON.stringify({
+        message,
+        image_data_url: selectedPromotionImageDataUrl || null
+      })
+    });
+
+    const data = await response.json().catch(()=>({}));
+    if(!response.ok){
+      throw new Error(data.error || `Facebook publish failed (HTTP ${response.status}).`);
+    }
+
+    setFacebookPublishStatus(
+      'ok',
+      `Published to ${data.page_name || 'the connected Facebook Page'} ✓${data.post_id ? ` · Post ID ${data.post_id}` : ''}`
+    );
+    openModal(
+      'Facebook post published ✓',
+      `GrowthWise successfully published the approved ${hasPhoto ? 'photo and caption' : 'caption'} to ${data.page_name || 'the connected Facebook Page'}.`
+    );
+  }catch(err){
+    console.error('Facebook publishing failed:', err);
+    setFacebookPublishStatus('error', err.message || 'Could not publish to Facebook.');
+    openModal('Could not publish to Facebook', err.message || 'Please try again.');
+  }finally{
+    publishFacebookPostBtn.disabled = false;
+    publishFacebookPostBtn.textContent = 'Post to Facebook';
+  }
+});
+
+renderPromotion('tuesday');
+
+let newProductImageDataUrl = '';
+let newProductCleanImageDataUrl = '';
+let newProductPromotionImageDataUrl = '';
+let newProductPromotionImageKind = 'original';
+
+const newProductGalleryInput = document.getElementById('newProductGalleryInput');
+const newProductCameraInput = document.getElementById('newProductCameraInput');
+const newProductPhotoWrap = document.getElementById('newProductPhotoWrap');
+const newProductPhotoPreview = document.getElementById('newProductPhotoPreview');
+const newProductPhotoStatus = document.getElementById('newProductPhotoStatus');
+const newProductAiResult = document.getElementById('newProductAiResult');
+
+function handleNewProductPhoto(file){
+  if(!file) return;
+  if(!file.type || !file.type.startsWith('image/')){
+    openModal('Choose a photo', 'Please select a JPG, PNG or other image file.');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    newProductImageDataUrl = String(reader.result || '');
+    newProductCleanImageDataUrl = '';
+    newProductPromotionImageDataUrl = newProductImageDataUrl;
+    newProductPromotionImageKind = 'original';
+    newProductPhotoPreview.src = newProductImageDataUrl;
+    newProductPhotoWrap.classList.add('show');
+    newProductAiResult.classList.remove('show');
+    newProductPhotoStatus.textContent = 'Photo selected. Original photo is selected for promotion. You can optionally prepare a white-background version.';
+    const selectedStatus = document.getElementById('newProductSelectedPhotoStatus');
+    if(selectedStatus) selectedStatus.textContent = 'Original photo is currently selected for promotion.';
+
+    // If the beta is already unlocked, start the AI draft automatically from the new photo.
+    const cachedKey = sessionStorage.getItem('growthwise_admin_key') || '';
+    if(cachedKey){
+      setTimeout(()=>analyzeNewProductWithAI(), 50);
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+newProductGalleryInput.addEventListener('change', ()=>{
+  handleNewProductPhoto(newProductGalleryInput.files && newProductGalleryInput.files[0]);
+});
+newProductCameraInput.addEventListener('change', ()=>{
+  handleNewProductPhoto(newProductCameraInput.files && newProductCameraInput.files[0]);
+});
+
+document.getElementById('newProductRemovePhotoBtn').addEventListener('click', ()=>{
+  newProductImageDataUrl = '';
+  newProductCleanImageDataUrl = '';
+  newProductPromotionImageDataUrl = '';
+  newProductPromotionImageKind = 'original';
+  newProductPhotoPreview.removeAttribute('src');
+  document.getElementById('newProductAiOutput').removeAttribute('src');
+  newProductPhotoWrap.classList.remove('show');
+  newProductAiResult.classList.remove('show');
+  newProductGalleryInput.value = '';
+  newProductCameraInput.value = '';
+});
+
+document.getElementById('newProductCleanBtn').addEventListener('click', async ()=>{
+  if(!newProductImageDataUrl){
+    openModal('Choose a product photo first', 'Take a photo or choose one from the gallery before preparing the white-background version.');
+    return;
+  }
+  const adminKey = document.getElementById('adminKeyInput').value || sessionStorage.getItem('growthwise_admin_key') || '';
+  if(!adminKey){
+    openModal('GrowthWise access key needed', 'Enter the beta admin key before preparing the photo.');
+    return;
+  }
+  const btn = document.getElementById('newProductCleanBtn');
+  btn.disabled = true;
+  btn.textContent = 'Preparing…';
+  newProductPhotoStatus.textContent = 'GrowthWise is preparing the clean white-background image…';
+  try{
+    const response = await fetch('/.netlify/functions/clean-photo', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-GrowthWise-Key': adminKey
+      },
+      body: JSON.stringify({ image_data_url: newProductImageDataUrl })
+    });
+    const data = await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error || `Photo processing failed (HTTP ${response.status}).`);
+    newProductCleanImageDataUrl = data.image_data_url || '';
+    if(!newProductCleanImageDataUrl) throw new Error('GrowthWise did not return a cleaned image.');
+    const output = document.getElementById('newProductAiOutput');
+    output.src = newProductCleanImageDataUrl;
+    document.getElementById('newProductSaveCleanBtn').href = newProductCleanImageDataUrl;
+    newProductAiResult.classList.add('show');
+    newProductPhotoStatus.textContent = 'White-background version is ready. Tap Use cleaned photo if you want it in the promotion.';
+    sessionStorage.setItem('growthwise_admin_key', adminKey);
+  }catch(err){
+    newProductPhotoStatus.textContent = err.message || 'Photo processing failed.';
+    openModal('Could not prepare photo', err.message || 'Please try again.');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'Prepare white-background version';
+  }
+});
+
+document.getElementById('newProductUseCleanBtn').addEventListener('click', ()=>{
+  if(!newProductCleanImageDataUrl){
+    newProductPhotoStatus.textContent = 'Cleaned photo is not ready yet.';
+    return;
+  }
+  newProductPromotionImageDataUrl = newProductCleanImageDataUrl;
+  newProductPromotionImageKind = 'cleaned';
+  const btn = document.getElementById('newProductUseCleanBtn');
+  btn.textContent = '✓ Using cleaned photo';
+  btn.setAttribute('aria-pressed','true');
+  newProductPhotoStatus.textContent = '✓ Cleaned photo selected for Square/Facebook promotion.';
+  const selectedStatus = document.getElementById('newProductSelectedPhotoStatus');
+  if(selectedStatus) selectedStatus.textContent = '✓ Cleaned white-background photo is selected for promotion.';
+});
+
+async function analyzeNewProductWithAI(){
+  if(!newProductImageDataUrl){
+    openModal('Choose a product photo first', 'Take a photo or choose one from the gallery before asking GrowthWise to write the listing.');
+    return;
+  }
+  const adminKeyInput = document.getElementById('adminKeyInput');
+  const adminKey = adminKeyInput.value || sessionStorage.getItem('growthwise_admin_key') || '';
+  if(!adminKey){
+    openModal('GrowthWise access key needed', 'Enter the beta admin key before asking AI to analyze the product.');
+    return;
+  }
+
+  const btn = document.getElementById('aiDescribeProductBtn');
+  const status = document.getElementById('aiDescribeStatus');
+  btn.disabled = true;
+  btn.textContent = 'Analyzing product…';
+  status.className = 'create-status loading';
+  status.textContent = 'GrowthWise AI is studying the product photo and drafting the listing…';
+
+  try{
+    const response = await fetch('/.netlify/functions/describe-product', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-GrowthWise-Key': adminKey
+      },
+      body: JSON.stringify({
+        image_data_url: newProductImageDataUrl,
+        brand_hint: document.getElementById('brandInput').value.trim(),
+        product_name_hint: document.getElementById('productNameInput').value.trim(),
+        price: document.getElementById('priceInput').value.trim()
+      })
+    });
+    const data = await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error || `AI product analysis failed (HTTP ${response.status}).`);
+
+    if(!document.getElementById('brandInput').value.trim() && data.brand) {
+      document.getElementById('brandInput').value = data.brand;
+    }
+    if(!document.getElementById('productNameInput').value.trim() && data.product_name) {
+      document.getElementById('productNameInput').value = data.product_name;
+    }
+    if(data.description) document.getElementById('descriptionInput').value = data.description;
+    if(data.facebook_caption) document.getElementById('newProductCaption').value = data.facebook_caption;
+
+    const fullName = [
+      document.getElementById('brandInput').value.trim(),
+      document.getElementById('productNameInput').value.trim()
+    ].filter(Boolean).join(' ') || 'New Product';
+    document.getElementById('websiteTitle').textContent = fullName;
+    document.getElementById('generated').classList.remove('hidden');
+    sessionStorage.setItem('growthwise_admin_key', adminKey);
+    if(adminKeyInput) adminKeyInput.value = '';
+
+    status.className = 'create-status ok';
+    status.textContent = '✓ AI draft ready. Review the product name, description, price and Facebook caption before publishing.';
+  }catch(err){
+    console.error('AI product analysis failed:', err);
+    status.className = 'create-status error';
+    status.textContent = err.message || 'GrowthWise could not analyze this product photo.';
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'AI analyze photo & write listing';
+  }
+}
+
+document.getElementById('aiDescribeProductBtn').addEventListener('click', analyzeNewProductWithAI);
+
+function buildNewProductCaption(){
+  const brand = document.getElementById('brandInput').value.trim();
+  const productName = document.getElementById('productNameInput').value.trim();
+  const priceText = document.getElementById('priceInput').value.trim();
+  const description = document.getElementById('descriptionInput').value.trim();
+  const fullName = [brand, productName].filter(Boolean).join(' ') || 'New arrival';
+  const lines = [`New arrival at Dexter’s Hats & Caps: ${fullName}.`];
+  if(description) lines.push(description);
+  if(priceText && Number.isFinite(Number(priceText))) lines.push(`Available now for $${Number(priceText).toFixed(2)}.`);
+  lines.push('Stop in to see it in person or message us for current availability.');
+  const caption = lines.join('\n\n');
+  document.getElementById('newProductCaption').value = caption;
+  document.getElementById('websiteTitle').textContent = fullName;
+  document.getElementById('generated').classList.remove('hidden');
+  return caption;
+}
+
+document.getElementById('buildNewProductCaptionBtn').addEventListener('click', buildNewProductCaption);
+
+const saveSquareBtn = document.getElementById('saveSquareBtn');
+const createStatus = document.getElementById('createStatus');
+
+function setCreateStatus(kind, message){
+  createStatus.className = `create-status ${kind}`;
+  createStatus.textContent = message;
+}
+
+function getNewProductForm(){
+  const brand = document.getElementById('brandInput').value.trim();
+  const productName = document.getElementById('productNameInput').value.trim();
+  const priceText = document.getElementById('priceInput').value.trim();
+  const quantityText = document.getElementById('inventoryInput').value.trim();
+  const description = document.getElementById('descriptionInput').value.trim();
+  const adminKeyInput = document.getElementById('adminKeyInput');
+  const adminKey = adminKeyInput.value || sessionStorage.getItem('growthwise_admin_key') || '';
+  return {
+    brand, productName, priceText, quantityText, description, adminKey,
+    price: Number(priceText), quantity: Number(quantityText), adminKeyInput
+  };
+}
+
+function validateNewProductForm(form, requirePhoto=false){
+  if(!form.productName) return 'Enter a product name first.';
+  if(form.priceText === '' || !Number.isFinite(form.price) || form.price < 0) return 'Enter a valid price.';
+  if(form.quantityText === '' || !Number.isInteger(form.quantity) || form.quantity < 0) return 'Starting inventory must be a whole number 0 or greater.';
+  if(!form.adminKey) return 'Enter the GrowthWise beta admin key.';
+  if(requirePhoto && !newProductImageDataUrl) return 'Take a product photo or choose one from the gallery before promoting it.';
+  return '';
+}
+
+async function createProductInSquare(form){
+  const response = await fetch('/.netlify/functions/add-product', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-GrowthWise-Key': form.adminKey
+    },
+    body: JSON.stringify({
+      brand: form.brand,
+      productName: form.productName,
+      description: form.description,
+      price: form.price,
+      quantity: form.quantity
+    })
+  });
+  const data = await response.json().catch(()=>({}));
+  if(!response.ok) throw new Error(data.error || `Square request failed (HTTP ${response.status}).`);
+  return data.product || {};
+}
+
+async function publishNewProductToFacebook(form, message){
+  const imageDataUrl = newProductPromotionImageDataUrl || newProductImageDataUrl;
+  const response = await fetch('/.netlify/functions/facebook-post', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-GrowthWise-Key': form.adminKey
+    },
+    body: JSON.stringify({
+      message,
+      image_data_url: imageDataUrl
+    })
+  });
+  const data = await response.json().catch(()=>({}));
+  if(!response.ok) throw new Error(data.error || `Facebook publish failed (HTTP ${response.status}).`);
+  return data;
+}
+
+saveSquareBtn.addEventListener('click', async ()=>{
+  const form = getNewProductForm();
+  const error = validateNewProductForm(form, false);
+  if(error){ setCreateStatus('error', error); return; }
+
+  saveSquareBtn.disabled = true;
+  saveSquareBtn.textContent = 'Creating in Square…';
+  setCreateStatus('loading','Sending the product securely to Square Sandbox…');
+
+  try{
+    const created = await createProductInSquare(form);
+    setCreateStatus('ok', `✓ ${created.name || form.productName} created in Square Sandbox at $${created.price || form.price.toFixed(2)} with ${created.quantity ?? form.quantity} in stock.`);
+    document.getElementById('websiteTitle').textContent = created.name || [form.brand, form.productName].filter(Boolean).join(' ');
+    sessionStorage.setItem('growthwise_admin_key', form.adminKey);
+    form.adminKeyInput.value = '';
+    await loadLiveSquareData(form.adminKey);
+    await loadLiveSalesData(form.adminKey);
+    openModal('Product created in Square ✓', `${created.name || form.productName} was created in Dexter’s Hats TEST with a starting inventory of ${created.quantity ?? form.quantity}.`);
+  }catch(err){
+    setCreateStatus('error', err.message || 'GrowthWise could not create the product.');
+  }finally{
+    form.adminKeyInput.value = '';
+    saveSquareBtn.disabled = false;
+    saveSquareBtn.textContent = 'Save to Square only';
+  }
+});
+
+const addAndPromoteBtn = document.getElementById('addAndPromoteBtn');
+addAndPromoteBtn.addEventListener('click', async ()=>{
+  const form = getNewProductForm();
+  const error = validateNewProductForm(form, true);
+  if(error){ setCreateStatus('error', error); return; }
+
+  let message = document.getElementById('newProductCaption').value.trim();
+  if(!message) message = buildNewProductCaption();
+  if(!message){ setCreateStatus('error', 'Review or prepare the Facebook caption first.'); return; }
+
+  const photoLabel = newProductPromotionImageKind === 'cleaned' ? 'cleaned product photo' : 'selected original product photo';
+  const confirmed = window.confirm(
+    `Add ${[form.brand, form.productName].filter(Boolean).join(' ') || form.productName} to Square and publish the ${photoLabel} + caption to Facebook now?`
+  );
+  if(!confirmed) return;
+
+  addAndPromoteBtn.disabled = true;
+  saveSquareBtn.disabled = true;
+  addAndPromoteBtn.textContent = 'Adding to Square…';
+  setCreateStatus('loading', 'Step 1 of 2: creating the product in Square…');
+
+  let created;
+  try{
+    created = await createProductInSquare(form);
+    sessionStorage.setItem('growthwise_admin_key', form.adminKey);
+    setCreateStatus('loading', `✓ ${created.name || form.productName} created in Square. Step 2 of 2: publishing to Facebook…`);
+    addAndPromoteBtn.textContent = 'Publishing to Facebook…';
+
+    const facebook = await publishNewProductToFacebook(form, message);
+    setCreateStatus('ok', `✓ ${created.name || form.productName} added to Square and published to ${facebook.page_name || 'Facebook'}.`);
+    document.getElementById('websiteTitle').textContent = created.name || [form.brand, form.productName].filter(Boolean).join(' ');
+    document.getElementById('generated').classList.remove('hidden');
+    await loadLiveSquareData(form.adminKey);
+    await loadLiveSalesData(form.adminKey);
+    openModal(
+      'Added & promoted ✓',
+      `${created.name || form.productName} is now in Dexter’s Hats TEST Square inventory and the approved product post was published to ${facebook.page_name || 'the connected Facebook Page'}.`
+    );
+  }catch(err){
+    if(created){
+      setCreateStatus('error', `Square succeeded, but Facebook did not publish: ${err.message || 'Unknown Facebook error.'}`);
+      openModal('Square saved — Facebook needs attention', `The product was created in Square, but Facebook did not publish. You can retry the Facebook post without creating the Square item again.`);
+    }else{
+      setCreateStatus('error', err.message || 'GrowthWise could not add and promote the product.');
+    }
+  }finally{
+    form.adminKeyInput.value = '';
+    addAndPromoteBtn.disabled = false;
+    saveSquareBtn.disabled = false;
+    addAndPromoteBtn.textContent = 'Add to Square & Promote';
+  }
+});
+
+
+const answers={
+  weekend:`<div class="tag">SLOW-DAY PLAN</div><h3>Use Dexter's Tuesday and Wednesday offers consistently.</h3><p>Tuesday: free accessory with $100+ purchase. Wednesday: buy one hat or cap and get a second of equal or lesser value 30% off. GrowthWise can prepare the posts and compare results against Dexter's normal Tuesday/Wednesday performance.</p>`,
+  slow:`<div class="tag">DEMO RECOMMENDATION</div><h3>Connect Square to identify slow movers automatically.</h3><p>The beta can flag products that have been in stock for a chosen period without sales, then prepare bundle, markdown or promotional options for Dexter to approve.</p>`,
+  website:`<div class="tag">DEMO RECOMMENDATION</div><h3>Prioritize thin product pages and inconsistent images.</h3><p>For each weak listing, the system can prepare a stronger title, useful description, image, local-search copy and social post from the same product record.</p>`,
+  money:`<div class="tag">DEMO RECOMMENDATION</div><h3>Focus on actions tied to inventory, traffic and conversion.</h3><p>In the live beta, the assistant would combine Square, website and marketing data to rank a few practical actions—then prepare the work so Dexter only has to review and approve it.</p>`
+};
+document.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{
+  document.getElementById('chatAnswer').innerHTML=answers[c.dataset.q];
+}));
+
+const modal=document.getElementById('modal');
+function openModal(title,text){
+  document.getElementById('modalTitle').textContent=title;
+  document.getElementById('modalText').textContent=text;
+  modal.classList.remove('hidden');
+}
+
+// Wire the modal close controls immediately so a later optional UI error can never trap the user.
+document.getElementById('closeModal')?.addEventListener('click',()=>modal.classList.add('hidden'));
+modal?.addEventListener('click',e=>{if(e.target===modal)modal.classList.add('hidden')});
+
+// This legacy demo button is not present in every GrowthWise layout, so only attach when it exists.
+const publishBtn=document.getElementById('publishBtn');
+if(publishBtn){
+  publishBtn.addEventListener('click',()=>openModal(
+    'Demo published ✓',
+    'In the live beta, approved content would create or update the website listing and be sent to authorized social and Google channels.'
+  ));
+}
+document.getElementById('connectSquare').addEventListener('click',()=>openModal(
+  'Latest sales & inventory',
+  window.salesStatusText || window.squareStatusText || 'GrowthWise is syncing your latest Square activity.'
+));
+document.getElementById('squareBtn').addEventListener('click',()=>openModal(
+  'Square sync is active ✓',
+  window.squareStatusText || 'GrowthWise is syncing your latest inventory from Square.'
+));
+
+let growthwiseInventoryProducts = [];
+
+function formatInventoryUpdated(iso){
+  if(!iso) return 'Live inventory updated just now.';
+  const d = new Date(iso);
+  if(Number.isNaN(d.getTime())) return 'Live inventory updated just now.';
+  return `Last updated ${d.toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})}`;
+}
+
+function renderInventory(products = [], summary = {}, generatedAt = null){
+  growthwiseInventoryProducts = Array.isArray(products) ? products : [];
+
+  const totalProducts = summary.variation_count ?? growthwiseInventoryProducts.length;
+  const totalUnits = summary.total_units_in_stock ?? growthwiseInventoryProducts.reduce(
+    (sum,p)=>sum + (Number(p.quantity)||0), 0
+  );
+  const value = summary.inventory_value ?? (
+    growthwiseInventoryProducts.reduce(
+      (sum,p)=>sum + ((Number(p.price_cents)||0) * (Number(p.quantity)||0)), 0
+    ) / 100
+  ).toFixed(2);
+
+  const lowOrOut = growthwiseInventoryProducts.filter(
+    p => (Number(p.quantity)||0) <= 2
+  ).length;
+
+  document.getElementById('invProductCount').textContent = totalProducts;
+  document.getElementById('invUnits').textContent = totalUnits;
+  document.getElementById('invValue').textContent = `$${Number(value || 0).toFixed(2)}`;
+  document.getElementById('invLowStock').textContent = lowOrOut;
+  document.getElementById('inventoryUpdated').textContent = formatInventoryUpdated(generatedAt);
+
+  filterInventoryList();
+}
+
+function filterInventoryList(){
+  const list = document.getElementById('inventoryList');
+  const query = (document.getElementById('inventorySearch').value || '').trim().toLowerCase();
+
+  const filtered = growthwiseInventoryProducts.filter(p=>{
+    const haystack = [
+      p.item_name,
+      p.variation_name,
+      p.sku,
+      p.upc,
+      p.description
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    return !query || haystack.includes(query);
+  });
+
+  if(!filtered.length){
+    list.innerHTML = '<div class="inventory-empty">No inventory items match that search.</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(p=>{
+    const qty = Number(p.quantity) || 0;
+    const price = p.price ? `$${p.price}` : 'No price';
+    const stockClass = qty === 0 ? 'out' : qty <= 2 ? 'low' : '';
+    const stockText = qty === 0 ? 'Out of stock' : `${qty} in stock`;
+    const variation = p.variation_name && p.variation_name !== 'Default'
+      ? `<span class="inventory-pill">${escapeHtml(p.variation_name)}</span>`
+      : '';
+    const sku = p.sku
+      ? `<span class="inventory-pill">SKU ${escapeHtml(p.sku)}</span>`
+      : '';
+
+    return `
+      <div class="inventory-row">
+        <div class="inventory-row-top">
+          <div class="inventory-name">${escapeHtml(p.item_name || 'Unnamed item')}</div>
+          <div class="inventory-price">${price}</div>
+        </div>
+        <div class="inventory-meta">
+          <span class="inventory-pill ${stockClass}">${stockText}</span>
+          ${variation}
+          ${sku}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function escapeHtml(value){
+  return String(value ?? '')
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'","&#039;");
+}
+
+document.getElementById('inventorySearch').addEventListener('input', filterInventoryList);
+
+const liveUnlock = document.getElementById('liveUnlock');
+const liveAdminKeyInput = document.getElementById('liveAdminKeyInput');
+const unlockLiveBtn = document.getElementById('unlockLiveBtn');
+
+function setSquareLocked(message='Enter your GrowthWise access key to view the latest inventory update.'){
+  const status = document.getElementById('squareLiveStatus');
+  const detail = document.getElementById('squareLiveDetail');
+  status.classList.add('error');
+  detail.textContent = message;
+  liveUnlock.classList.remove('hidden');
+}
+
+async function loadLiveSquareData(key = sessionStorage.getItem('growthwise_admin_key') || ''){
+  const status = document.getElementById('squareLiveStatus');
+  const detail = document.getElementById('squareLiveDetail');
+
+  if(!key){
+    setSquareLocked();
+    return false;
+  }
+
+  status.classList.remove('error');
+  detail.textContent = 'Refreshing your latest inventory…';
+
+  try{
+    const response = await fetch('/.netlify/functions/square-data', {
+      method: 'GET',
+      headers: {
+        'X-GrowthWise-Key': key
+      },
+      cache: 'no-store'
+    });
+
+    const data = await response.json().catch(()=>({}));
+
+    if(response.status === 401){
+      sessionStorage.removeItem('growthwise_admin_key');
+      setSquareLocked('Admin key was not accepted. Re-enter it to unlock live Square data.');
+      return false;
+    }
+
+    if(!response.ok){
+      throw new Error(data.error || `Square data request failed (HTTP ${response.status}).`);
+    }
+
+    sessionStorage.setItem('growthwise_admin_key', key);
+    liveAdminKeyInput.value = '';
+    liveUnlock.classList.add('hidden');
+
+    const products = data.products || [];
+    renderInventory(products, data.summary || {}, data.generated_at || null);
+
+    const product =
+      products.find(p => /GrowthWise Test Porkpie/i.test(p.item_name || '')) ||
+      products[products.length - 1] ||
+      products[0];
+
+    const location = data.location?.name || 'Square location';
+    const itemCount = data.summary?.item_count ?? products.length;
+    const variationCount = data.summary?.variation_count ?? products.length;
+    const totalUnits = data.summary?.total_units_in_stock ?? 0;
+
+    if(product){
+      const price = product.price ? `$${product.price}` : 'Price unavailable';
+      const qty = product.quantity ?? 0;
+      const name = product.item_name || 'Square product';
+
+      document.getElementById('homeProductName').textContent = name;
+      document.getElementById('homeProductLive').innerHTML =
+        `<span class="live-value">${price}</span> · <span class="live-value">${qty} in stock</span> · synced with Square just now`;
+      document.getElementById('websiteTitle').textContent = name;
+
+      detail.textContent = `${data.summary?.variation_count ?? products.length} products · ${data.summary?.total_units_in_stock ?? 0} units in stock · updated just now`;
+
+      answers.weekend =
+        `<div class="tag">LIVE SQUARE DATA</div>
+         <h3>Consider featuring ${name}.</h3>
+         <p>Square currently shows <strong>${qty} in stock</strong> at <strong>${price}</strong>. GrowthWise is reading this directly from Square through the protected Netlify backend. Once sales history is connected, this recommendation can also factor in recent sell-through, timing and margin.</p>`;
+
+      window.squareStatusText =
+        `Latest inventory from ${location}: ${variationCount} product variation(s) and ${totalUnits} total unit(s) in stock.`;
+    } else {
+      document.getElementById('homeProductName').textContent = 'Square catalog';
+      document.getElementById('homeProductLive').textContent =
+        'Connected successfully, but no catalog products were returned.';
+      detail.textContent = 'Connected — no products returned';
+      window.squareStatusText =
+        `GrowthWise connected to ${location}, but no inventory items were returned.`;
+    }
+
+    document.getElementById('squareOpportunityText').textContent =
+      `${itemCount} catalog item(s), ${variationCount} variation(s), and ${totalUnits} total unit(s) in stock are being read directly from ${location}.`;
+
+    return true;
+
+  }catch(err){
+    console.error('Live Square data load failed:', err);
+    status.classList.add('error');
+    detail.textContent = err.message || 'Live Square data unavailable';
+    document.getElementById('homeProductLive').textContent =
+      'Live Square data could not be loaded.';
+    document.getElementById('squareOpportunityText').textContent =
+      'GrowthWise could not refresh the Square catalog right now.';
+    window.squareStatusText =
+      err.message || 'GrowthWise could not refresh Square data.';
+    liveUnlock.classList.remove('hidden');
+    return false;
+  }
+}
+
+
+async function loadLiveSalesData(key = sessionStorage.getItem('growthwise_admin_key') || ''){
+  if(!key) return false;
+
+  const salesHeadline = document.getElementById('salesHeadline');
+  const salesText = document.getElementById('squareOpportunityText');
+  const salesTotal = document.getElementById('salesTotal');
+  const salesOrders = document.getElementById('salesOrders');
+  const salesAverage = document.getElementById('salesAverage');
+
+  salesHeadline.textContent = 'Checking recent sales…';
+  salesText.textContent = 'GrowthWise is combining recent sales with current inventory.';
+
+  try{
+    const response = await fetch('/.netlify/functions/square-sales?days=30', {
+      method: 'GET',
+      headers: {
+        'X-GrowthWise-Key': key
+      },
+      cache: 'no-store'
+    });
+
+    const data = await response.json().catch(()=>({}));
+
+    if(response.status === 401){
+      return false;
+    }
+
+    if(!response.ok){
+      throw new Error(data.error || `Sales request failed (HTTP ${response.status}).`);
+    }
+
+    const summary = data.summary || {};
+    const orders = Number(summary.completed_order_count || 0);
+    const total = Number(summary.total_collected || 0);
+    const average = Number(summary.average_order || 0);
+    const top = (data.top_products || [])[0];
+
+    salesTotal.textContent = `$${total.toFixed(2)}`;
+    salesOrders.textContent = orders;
+    salesAverage.textContent = `$${average.toFixed(2)}`;
+
+    if(orders === 0){
+      salesHeadline.textContent = 'No recent sales yet';
+      salesText.textContent =
+        'There are no completed Square sales in this test account for the last 30 days. Inventory is still syncing normally.';
+      window.salesStatusText =
+        'No completed sales were found in the last 30 days. Inventory syncing is active, so GrowthWise is ready as soon as sales begin.';
+
+      answers.weekend =
+        `<div class="tag">INVENTORY-BASED IDEA</div>
+         <h3>Use current inventory to choose the next promotion.</h3>
+         <p>There are no recent test sales yet, so GrowthWise is using stock levels for now. Once real sales begin, recommendations will automatically factor in what is selling, average order value and current inventory.</p>`;
+      return true;
+    }
+
+    if(top){
+      const inv = growthwiseInventoryProducts.find(
+        p => p.variation_id === top.catalog_object_id
+      );
+      const qty = inv ? Number(inv.quantity || 0) : null;
+      const topName = top.item_name || 'your top-selling item';
+      const unitsSold = Number(top.quantity_sold || 0);
+      const revenue = Number(top.total_collected || 0);
+
+      if(qty !== null && qty <= 2){
+        salesHeadline.textContent = `${topName} may need attention`;
+        salesText.textContent =
+          `${unitsSold} sold in the last 30 days, with only ${qty} currently in stock. Consider restocking before promoting it harder.`;
+      }else{
+        salesHeadline.textContent = `${topName} is leading recent sales`;
+        salesText.textContent =
+          `${unitsSold} sold in the last 30 days · $${revenue.toFixed(2)} collected${qty === null ? '' : ` · ${qty} currently in stock`}.`;
+      }
+
+      answers.weekend =
+        `<div class="tag">LIVE SALES + INVENTORY</div>
+         <h3>${qty !== null && qty <= 2 ? `Protect momentum on ${escapeHtml(topName)}.` : `Consider featuring ${escapeHtml(topName)}.`}</h3>
+         <p>Square shows <strong>${unitsSold} sold</strong> in the last 30 days and <strong>$${revenue.toFixed(2)}</strong> collected${qty === null ? '' : `, with <strong>${qty} in stock</strong> now`}. GrowthWise is combining sales and inventory so the recommendation reflects current business activity.</p>`;
+    }else{
+      salesHeadline.textContent = `${orders} recent order${orders === 1 ? '' : 's'}`;
+      salesText.textContent =
+        `$${total.toFixed(2)} collected in the last 30 days with an average order of $${average.toFixed(2)}.`;
+    }
+
+    window.salesStatusText =
+      `Last 30 days: ${orders} completed order${orders === 1 ? '' : 's'}, $${total.toFixed(2)} collected, and a $${average.toFixed(2)} average order.`;
+
+    return true;
+
+  }catch(err){
+    console.error('Live Square sales load failed:', err);
+    salesHeadline.textContent = 'Sales data needs attention';
+    salesText.textContent = err.message || 'GrowthWise could not refresh recent sales right now.';
+    salesTotal.textContent = '—';
+    salesOrders.textContent = '—';
+    salesAverage.textContent = '—';
+    window.salesStatusText = err.message || 'GrowthWise could not refresh recent sales.';
+    return false;
+  }
+}
+
+// Enter key uses the same critical-path unlock function as the button.
+liveAdminKeyInput.addEventListener('keydown', e=>{
+  if(e.key === 'Enter') growthwiseUnlockSquare(e);
+});
+
+loadLiveSquareData().then(()=>{
+  const key = sessionStorage.getItem('growthwise_admin_key') || '';
+  if(key) loadLiveSalesData(key);
+});
+
+
+
+</script>
+</body>
+</html>

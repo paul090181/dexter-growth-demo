@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "business_id": "dexters-hats",
+  "display_name": "Dexter's Hats",
+  "industry": "retail",
+  "modules": {
+    "core": true,
+    "inventory": true,
+    "publishing": true,
+    "analytics": true,
+    "automotive": false,
+    "automotive_leads": false,
+    "automotive_service": false,
+    "marketplace_bridge": true,
+    "retail": true,
+    "square": true,
+    "retail_promotions": true
+  },
+  "integrations": {
+    "facebook": "optional",
+    "marketplace": "assisted",
+    "square": "optional"
+  }
+}

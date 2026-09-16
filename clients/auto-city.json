@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "business_id": "auto-city",
+  "display_name": "Auto City",
+  "industry": "automotive",
+  "modules": {
+    "core": true,
+    "inventory": true,
+    "publishing": true,
+    "analytics": true,
+    "automotive": true,
+    "automotive_leads": true,
+    "automotive_service": true,
+    "marketplace_bridge": true,
+    "retail": false,
+    "square": false,
+    "retail_promotions": false
+  },
+  "integrations": {
+    "facebook": "optional",
+    "marketplace": "assisted",
+    "lead_providers": "optional"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "platform": "GrowthWise",
+  "organization_version": "1.0",
+  "migration_phase": 1,
+  "rule": "one platform, industry modules, client configuration",
+  "apps": ["automotive", "retail"],
+  "clients": ["auto-city", "dexters-hats"],
+  "production_paths_moved": false
+}
