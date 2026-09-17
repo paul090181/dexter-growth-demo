@@ -20,7 +20,7 @@ This phase connects and verifies identity only. It does **not** grant GrowthWise
 
 * `instagram-connection.mjs` is a read-only, admin-key-protected health endpoint. It resolves a token and expected account ID through names stored in client JSON, calls the Instagram `/me` identity endpoint, and returns only safe state/identity fields. It already fails closed for an absent binding, a mismatched account, or an ambiguous response.
 * `growthwise-dev.json` and `dexters-hats.json` point to tenant-specific token/account-ID environment variables. This is acceptable for a short development bridge but does not scale to self-service tenants.
-* Publishing Core already uses strongly consistent Netlify Blobs named `growthwise-publishing-v1`, keys records below `business/<business_id>/...`, validates key segments, and verifies `record.business_id` after reads. The Instagram store should reuse that pattern, but use a separate `growthwise-integrations-v1` store to keep credential access narrower than publishing data access.
+* Publishing Core already uses strongly consistent Netlify Blobs named `growthwise-publishing-v1`, keys records below `business/<business_id>/...`, validates key segments, and verifies `record.business_id` after reads. The Instagram store should reuse that pattern, but use a separate `growthwise-integrations-v1` store to keep credential access narrower than publishing data access. The current `"@netlify/blobs": "latest"` dependency is not reproducible enough for security-critical conditional writes and must be verified and pinned before implementation relies on it.
 * The temporary security boundary is `GROWTHWISE_ADMIN_KEY`, supplied as `X-GrowthWise-Key`; the current browser keeps the entered key in session storage. It is not tenant-aware user authentication. This design uses it only because owner/session redesign is explicitly out of scope and requires replacement before broad production availability.
 * Dexter's current Square/Facebook behavior and the existing Facebook publishing function are independent legacy paths and must remain unchanged.
 
@@ -42,7 +42,8 @@ Required server environment values:
 |---|---|
 | `GROWTHWISE_INSTAGRAM_APP_ID` | Public app identifier used to build the Meta authorization request and during exchange. |
 | `GROWTHWISE_INSTAGRAM_APP_SECRET` | Server-only code exchange and token lifecycle credential. |
-| `GROWTHWISE_INSTAGRAM_OAUTH_STATE_SECRET` | At least 256 random bits used only to authenticate opaque state values and hash account reverse-index keys. |
+| `GROWTHWISE_INSTAGRAM_OAUTH_STATE_SECRET` | At least 256 random bits used only to authenticate short-lived opaque OAuth state values. |
+| `GROWTHWISE_INSTAGRAM_ACCOUNT_BINDING_SECRET` | A distinct secret of at least 256 random bits used only to derive stable, non-enumerable Instagram account reverse-binding keys. |
 | `GROWTHWISE_INSTAGRAM_CREDENTIAL_ENCRYPTION_KEY` | A versioned 32-byte key, encoded in an agreed deployment-safe form, used only for AES-256-GCM. |
 
 Values are configured in the Netlify server environment, never committed, returned, logged, embedded in HTML/JavaScript, or copied to client JSON. Startup/configuration validation reports only a generic configuration error and the missing variable's non-secret name to restricted operational telemetry; it never reports a value.
@@ -59,19 +60,19 @@ The repository does not establish a canonical production hostname. `GROWTHWISE_P
 
 ### `POST /.netlify/functions/instagram-oauth-start`
 
-`POST` avoids creating transactions through crawlers/prefetch. Under the temporary boundary the form posts `business_id` and the already-entered admin access code over HTTPS; neither goes in the URL. This is the one deliberate exception to the repository's usual header transport because a native top-level form submission can follow the provider redirect while custom headers cannot. The endpoint must not log the body, and implementation should move to an HttpOnly authenticated owner session when GrowthWise replaces the beta boundary. If the UI uses an authenticated server session by implementation time, omit the access-code field entirely.
+`POST` avoids creating transactions through crawlers/prefetch. Under the temporary beta boundary, the GrowthWise frontend sends a same-origin authenticated request with the existing `X-GrowthWise-Key` header and a JSON body containing only `business_id`. The endpoint returns one safe authorization URL; after validating that response, the frontend navigates the browser to it. This preserves the repository's current header transport without putting the admin key in a form body or URL. Implementation should replace the beta key with an HttpOnly authenticated owner session in a future authentication milestone.
 
 Processing order:
 
-1. Require `POST`, an HTTPS/canonical-origin request, a same-origin `Origin` (and compatible `Sec-Fetch-Site` when present), `application/x-www-form-urlencoded`, a small body, and `Cache-Control: no-store`. Reject before any transaction is created otherwise.
-2. Compare the supplied access code to non-empty `GROWTHWISE_ADMIN_KEY` in constant time. This authenticates an admin under the existing temporary boundary; it is not represented as final production owner authentication.
+1. Require `POST`, an HTTPS/canonical-origin request, a same-origin `Origin` (and compatible `Sec-Fetch-Site` when present), `application/json`, a small body, and `Cache-Control: no-store`. Do not enable cross-origin reads. Reject before any transaction is created otherwise.
+2. Compare the `X-GrowthWise-Key` header to non-empty `GROWTHWISE_ADMIN_KEY` in constant time. This authenticates an admin under the existing temporary boundary; it is not represented as final production owner authentication.
 3. Normalize and validate `business_id` as a single safe key segment and resolve it through the server's explicit client registry. Confirm `client.business_id` matches and Instagram connection is allowed. Unknown or inconsistent tenants receive a generic rejection.
 4. Generate 32 random bytes with a cryptographic RNG. Encode the nonce base64url without padding and compute `tag = HMAC-SHA-256(state_secret, "instagram-oauth-v1\n" + nonce)`. The browser state is `v1.<nonce>.<tag>`; it contains no tenant ID, return URL, or secret.
 5. Write a transaction to `oauth/instagram/transaction/<sha256(nonce)>` with strong consistency and create-if-absent semantics. It contains `schema_version`, `provider`, `nonce_hash`, `business_id`, `issued_at`, `expires_at` (ten minutes), `status: "pending"`, and a server-chosen safe return destination identifier. It contains no admin key. Collision/create conflict means generate a new nonce, never overwrite.
 6. Build the provider authorization URL from fixed endpoints/configuration: app ID, exact callback URI, `response_type=code`, exactly `instagram_business_basic`, and the opaque state. Add PKCE (`S256`) if Instagram Login supports it for this app flow at implementation time; if used, store the verifier only in the transaction and send only its challenge. PKCE supplements rather than replaces state.
-7. Return `303 See Other` to that URL with `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, and no permissive CORS. The access code is neither forwarded nor retained.
+7. Return `200 application/json` containing only `{ "authorization_url": "<server-built Meta URL>" }`, with `Cache-Control: no-store`, `Pragma: no-cache`, `Referrer-Policy: no-referrer`, and no permissive CORS. The URL must use the fixed allowlisted Meta authorization origin and contain only the app ID, exact callback, minimum scope, response type, and opaque state (plus a PKCE challenge when supported). It must contain no admin key, app secret, access token, tenant/business claim, or arbitrary return URL. The frontend schema-checks that single field and its HTTPS Meta origin before assigning `window.location`; it never parses state or adds parameters.
 
-Failures return a small HTML/JSON-safe error suitable to the request mode and do not redirect to arbitrary input. No transaction is created when authentication or tenant validation fails.
+Failures return a small JSON error from a fixed allowlist and never return or redirect to arbitrary input. No transaction is created when authentication or tenant validation fails.
 
 ### `GET /.netlify/functions/instagram-oauth-callback`
 
@@ -150,10 +151,10 @@ Although account ID is not returned to users, it is needed server-side for ident
 Use a non-enumerable reverse key:
 
 ```text
-integration/instagram/account/<HMAC-SHA-256(state-secret, canonical-account-id)>
+integration/instagram/account/<HMAC-SHA-256(account-binding-secret, canonical-account-id)>
 ```
 
-Its record contains the owning `business_id`, stable account ID (or a second keyed fingerprint), `status: pending|active`, transaction hash, timestamps, and credential-record version. Binding uses create-if-absent. An existing active record for another tenant is a terminal safe failure. The same tenant may reconnect/rotate only through a version-checked update. A pending reservation can be recovered only when its transaction/version proves ownership; stale reservations require server-side reconciliation, never automatic takeover by a different tenant.
+The HMAC uses only `GROWTHWISE_INSTAGRAM_ACCOUNT_BINDING_SECRET`; OAuth state and encryption secrets are forbidden inputs. Its record contains the owning `business_id`, stable account ID (or a second keyed fingerprint), `status: pending|active`, transaction hash, timestamps, and credential-record version. Binding uses create-if-absent. An existing active record for another tenant is a terminal safe failure. The same tenant may reconnect/rotate only through a version-checked update. A pending reservation can be recovered only when its transaction/version proves ownership; stale reservations require server-side reconciliation, never automatic takeover by a different tenant. This separation lets OAuth state keys rotate without changing durable account index keys or weakening duplicate-account detection.
 
 Netlify Blobs does not provide a multi-key transaction, so use a compensating protocol: reserve reverse binding; write credential; finalize binding. On credential-write failure, conditionally delete only this transaction's reservation. On finalize failure, leave the credential `status: pending` and return failure; health will not call it Connected until reconciliation verifies both records. Disconnect must eventually deactivate both records with version checks. This prevents ambiguous partial state from becoming connected.
 
@@ -186,7 +187,7 @@ Identity ambiguity or any disagreement is always **Needs Attention** and never s
 Create one tenant-parameterized GrowthWise Instagram settings component, not client-specific branches:
 
 * **Not Connected:** explanation plus **Connect Instagram**.
-* **Connecting:** disable repeat clicks after form submission; accessibility-friendly progress text.
+* **Connecting:** issue the authenticated same-origin start request once, validate the returned authorization URL, disable repeat clicks before browser navigation, and show accessibility-friendly progress text.
 * **Connected:** `Connected to @username`, last checked time if useful, and no account ID. Offer a health refresh. Reserve a future **Disconnect** control behind an explicit confirmation and server capability flag.
 * **Needs Attention:** safe nontechnical action text plus **Reconnect**. Never echo provider errors.
 * **Return from OAuth:** treat `?instagram=connected|cancelled|attention` only as a hint, remove it with `history.replaceState`, then fetch authoritative state. Do not infer connection from the query.
@@ -211,13 +212,14 @@ Migration does not alter `facebook-post.mjs`, Dexter Square behavior, Publishing
 | OAuth code interception | Exact HTTPS callback, code used only server-side, ten-minute state, one consumer, no code in final URL, no-referrer/no-store, and PKCE where provider-supported. A stolen code without transaction state cannot bind. |
 | Replay / duplicate callback | Atomic pending-to-processing compare-and-set. All later callbacks perform zero exchange/write work. |
 | Cross-tenant access | Explicit client allowlist, internally constructed keys, record tenant assertion, transaction-derived tenant, AES-GCM tenant AAD, and reverse binding checks on every read/write. |
+| State-secret rotation affecting durable bindings | State HMAC and account-index HMAC use independent secrets. Rotating `GROWTHWISE_INSTAGRAM_OAUTH_STATE_SECRET` may invalidate pending flows but cannot change existing reverse-index keys; the binding secret follows its own controlled rotation procedure. |
 | Token/app-secret leakage | Server environment and encrypted storage only; authorization headers/request bodies; allowlisted telemetry; generic errors; response tests and repository secret scans. |
 | Logs and observability | Log correlation ID, normalized event, tenant-safe identifier if policy permits, and status only. Never log URLs containing OAuth callback queries, request bodies/headers, provider bodies, ciphertext, code, state nonce, token, or secret. Configure platform access-log query redaction where available. |
 | Browser storage | Only the existing temporary admin key remains in tab session storage until auth redesign. Codes/tokens/app secrets/account IDs never enter JavaScript or Web Storage. OAuth result query is a safe enum and promptly removed. |
 | Open redirect / host spoofing | Fixed configured origin and paths; no caller `return_to`; do not trust Host/forwarded headers. |
 | Credential theft/tampering | AES-256-GCM, random IV per write, versioned server-only key, AAD tenant/record binding, minimal decrypt scope, and authenticated-decryption failure to Needs Attention. Key rotation is versioned and re-encrypts after successful decrypt. |
 | Compromised/expired credentials | Local expiry checks, verified refresh, identity pinning, revocation mapping, no mutation use, Needs Attention plus reconnect. |
-| Duplicate account across tenants | HMAC-keyed reverse index plus atomic reservation. Collision/ownership uncertainty rejects both a new bind and silent takeover; operator reconciliation uses token-free metadata. |
+| Duplicate account across tenants | Reverse-index keys use only the dedicated account-binding secret plus atomic reservation. Collision/ownership uncertainty rejects both a new bind and silent takeover; operator reconciliation uses token-free metadata. |
 | Malicious provider response | Time/size/schema limits, exact identity cardinality/type checks, stable-ID pinning, generic mapping, and no raw reflection. |
 | Excessive attempts | Rate-limit starts by coarse client signal and tenant, callbacks by transaction; limits must not require logging secrets. Generic errors avoid tenant/state enumeration. |
 
@@ -231,7 +233,8 @@ Tests must inject clock, RNG, environment, store, crypto wrapper where useful, a
 
 * Start requires the existing authentication boundary; empty server key and wrong key both fail without a transaction.
 * Unknown/malformed business is rejected, and client/config tenant mismatch is rejected.
-* Start creates a tenant-bound, ten-minute transaction and a redirect containing only the exact callback, minimum scope, and opaque state—not admin key or tenant claims.
+* Start accepts the existing key only in `X-GrowthWise-Key`, creates a tenant-bound ten-minute transaction, and returns exactly one safe authorization URL containing the exact callback, minimum scope, and opaque state—not the admin key, app secret, token, tenant claims, or arbitrary return target.
+* Cross-origin start requests, permissive CORS, unsafe authorization origins, extra response fields, and frontend-added authorization parameters are rejected/tested.
 * Valid state is accepted exactly once; two concurrent callbacks produce one exchange and one credential write.
 * Missing, duplicate, malformed, bad-MAC, expired, replayed, and already-processing state are rejected before Meta calls.
 * Added/changed callback `business_id` is ignored/rejected and cannot alter transaction ownership.
@@ -246,6 +249,8 @@ Tests must inject clock, RNG, environment, store, crypto wrapper where useful, a
 * Serialized Blob value contains no plaintext token. Fresh writes use different IV/ciphertext.
 * A credential cannot be read through another tenant ID, including crafted key segments.
 * The same Instagram account cannot bind to two tenants; concurrent reservations yield one owner.
+* Account reverse-index derivation uses `GROWTHWISE_INSTAGRAM_ACCOUNT_BINDING_SECRET`, never the OAuth state secret; rotating the state secret leaves the same account binding key and duplicate-account protection intact.
+* Binding-secret rotation tests cover a versioned dual-read/single-write migration, collision detection across old/new keyed indexes, and fail-closed behavior if either index disagrees; the old binding secret is not retired until every active index is migrated and verified.
 * Partial reserve/write/finalize failures never produce Connected and can be safely reconciled.
 * Token, authorization code, app secret, state nonce, provider raw errors, and account ID never appear in response bodies/headers/redirects, safe errors, captured logger calls, frontend assets, fixtures, or snapshots. Use sentinel secrets for assertions.
 
@@ -262,11 +267,19 @@ Tests must inject clock, RNG, environment, store, crypto wrapper where useful, a
 
 Before merge, run the focused OAuth/store/health suite, full `npm run test:publishing`, `git diff --check`, secret scanning, response/log leakage tests, and a diff assertion that protected Dexter/Facebook and Auto City paths did not change. Manual testing uses a non-production Meta app/tester context and stops after identity health.
 
+### Dependency reproducibility gate
+
+Before implementing security-critical state consumption or reverse-account reservation, inspect the installed Netlify Blobs SDK/API and select an exact tested `@netlify/blobs` version. Do not choose a version blindly in this design and do not rely on the current `"latest"` range. Implementation must prove in focused local/Netlify-compatible tests that the selected version provides the expected `onlyIfNew`, `onlyIfMatch`, `getWithMetadata`/ETag behavior, and strong consistency where required, including contention and stale-ETag failures. Only after those tests pass may `package.json` and its lockfile be changed to that exact version, followed by the full regression suite. If any semantic is unavailable or unreliable, stop and obtain approval for the smallest transactional alternative rather than weakening replay or duplicate-binding protection.
+
 ## Operations and observability
 
 Audit events are token-free: start accepted/rejected category, callback consumed category, binding outcome, health transition, refresh outcome, and actor/session identifier once real user authentication exists. Use UTC timestamps and correlation IDs. Alert on repeated state failures, cross-tenant/reverse-binding conflicts, decrypt failures, and refresh failures without including provider payloads.
 
-Credential-encryption key rotation uses `key_version`: deployment temporarily exposes current and explicitly named previous server keys, reads old ciphertext, re-encrypts with a fresh IV/current key after successful verification, then retires the old key after coverage is confirmed. Losing all applicable keys means **Needs Attention** and reconnect; it never means plaintext recovery.
+Each secret has an independent rotation lifecycle:
+
+* OAuth state-secret rotation may accept an explicitly versioned previous state key only for transactions issued before the rotation and still inside the ten-minute TTL. New transactions use the current key; the previous key is removed after that bounded window. It never derives account indexes.
+* Account-binding-secret rotation is a controlled durable-data migration, not a state-key side effect. Use versioned binding-key IDs and dual-read/single-write while conditionally creating and verifying new reverse indexes for every active binding. During migration, check both versions and fail closed on disagreement or duplicate ownership. Retire the old binding secret/index only after complete reconciliation and regression verification. Losing it before migration blocks binding verification and produces **Needs Attention**; code must not silently rebuild ownership from caller input.
+* Credential-encryption key rotation uses `key_version`: deployment temporarily exposes current and explicitly named previous server keys, reads old ciphertext, re-encrypts with a fresh IV/current key after successful verification, then retires the old key after coverage is confirmed. Losing all applicable keys means **Needs Attention** and reconnect; it never means plaintext recovery.
 
 ## Explicitly out of scope
 
@@ -285,9 +298,8 @@ Credential-encryption key rotation uses `key_version`: deployment temporarily ex
 ## Decision needed before implementation
 
 1. **Canonical deployment origin:** provide and approve the GrowthWise Netlify production host used by `GROWTHWISE_PUBLIC_ORIGIN` and registered as the exact Meta callback. The repository does not verify it.
-2. **Conditional-write capability:** verify the deployed `@netlify/blobs` version/environment provides reliable create-if-absent and ETag/version-conditional writes for state consumption and account reservation. If it does not, approve the smallest transactional persistence substitute; OAuth must not ship with best-effort replay protection.
-3. **Temporary start transport:** approve the short-lived HTML form use of the existing admin access code described above, or make an HttpOnly GrowthWise owner session available first. Query-string keys and unauthenticated starts are not acceptable.
-4. **Provider contract verification:** immediately before implementation, confirm GrowthWise Social's current Instagram Login authorization/token/refresh endpoints, PKCE support, professional identity response, and exact minimum identity scope. Any need for publishing scope stops this milestone for separate approval.
+2. **Pinned conditional-write capability:** verify and test an exact `@netlify/blobs` version for `onlyIfNew`, `onlyIfMatch`, `getWithMetadata`/ETag behavior, and required strong consistency before changing `package.json`. If it does not satisfy the contention tests, approve the smallest transactional persistence substitute; OAuth must not ship with best-effort replay protection.
+3. **Provider contract verification:** immediately before implementation, confirm GrowthWise Social's current Instagram Login authorization/token/refresh endpoints, PKCE support, professional identity response, and exact minimum identity scope. Any need for publishing scope stops this milestone for separate approval.
 
 ## Expected implementation touch set (later, not in this change)
 
@@ -306,6 +318,8 @@ The anticipated exact repository files are:
 * `tests/publishing/instagram-store.test.mjs` (new)
 * `tests/publishing/instagram-connection.test.mjs`
 * `tests/publishing/publishing-shadow-endpoint.test.mjs` and/or the existing shadow regression tests for the global `live_sent: false` guard
+* `package.json` (pin the implementation-verified exact `@netlify/blobs` version only after its conditional-write tests pass)
+* a generated package-manager lockfile, if dependency installation creates one, committed with the same exact resolved version
 * `docs/INSTAGRAM_CONNECTION_RUNBOOK.md`
 
 No Publishing Core channel/orchestrator, `facebook-post.mjs`, Square function, Auto City page, webhook, or deployment configuration file should need runtime behavior changes for this identity-only milestone. Environment values and Meta console settings are deployment operations, not repository content.
@@ -315,7 +329,9 @@ No Publishing Core channel/orchestrator, `facebook-post.mjs`, Square function, A
 * **Placeholders:** the only intentional unresolved value is the canonical Netlify host, explicitly represented as deployment configuration rather than invented. Provider endpoint/version details are deliberately verification gates because Meta contracts can change; implementation must pin verified constants.
 * **Contradictions:** the flow is self-service but still temporarily admin-key-gated; this is called out as a migration boundary. The UI may say Connected only after authoritative health verification, not merely callback success.
 * **Tenant isolation:** tenant comes from an allowlisted start and immutable server transaction; all keys, records, AAD, and reverse bindings independently enforce it. Callback input cannot select a tenant.
-* **Secret leakage:** sensitive inputs remain server-side after the existing access-code form submission; responses, redirect URLs, logs, browser storage, client config, and Git are explicitly denied token/code/secret content and covered by tests.
+* **Secret leakage:** the temporary admin key travels only in the established same-origin request header. The start response contains only a server-built safe authorization URL; responses, redirects, logs, browser storage, client config, and Git are explicitly denied token/code/app-secret content and covered by tests.
+* **Cryptographic separation:** OAuth state, durable account-index derivation, and credential encryption use three independent secrets and independent rotation procedures. State-secret rotation cannot rename or bypass existing account bindings.
 * **Publishing boundary:** only `instagram_business_basic` is requested. No publishing permission, container, endpoint, media storage, or live action is designed. Publishing Core remains `live_sent: false`.
-* **Infrastructure restraint:** this reuses Netlify Functions, Web Crypto/Node crypto, the existing client registry, and existing Blob patterns. A new transactional service is allowed only if conditional Blob operations cannot provide security-critical single-use semantics.
+* **Dependency reproducibility:** implementation must verify conditional-write/ETag/consistency semantics and pin an exact tested Netlify Blobs version before relying on them; `latest` is not accepted. Full regressions precede the dependency change.
+* **Infrastructure restraint:** this reuses Netlify Functions, Web Crypto/Node crypto, the existing client registry, and existing Blob patterns. A new transactional service is allowed only if tested conditional Blob operations cannot provide security-critical single-use semantics.
 * **Fail closed:** replay, ownership conflicts, partial writes, invalid identity, expired/compromised credentials, provider ambiguity, and cryptographic/storage errors never bind or report Connected.
