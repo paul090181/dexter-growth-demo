@@ -1208,6 +1208,38 @@ async function createProductInSquare(form){
   return data.product || {};
 }
 
+// Best-effort shadow copy only. A Core failure must never change Square/Facebook results.
+async function sendDexterPublishingShadow(form, created){
+  const mediaUrl = newProductPromotionImageDataUrl || newProductImageDataUrl;
+  try{
+    const response = await fetch('/.netlify/functions/publishing-shadow', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-GrowthWise-Key': form.adminKey
+      },
+      body: JSON.stringify({
+        business_id: 'dexters-hats',
+        vertical: 'retail',
+        role: 'owner_admin',
+        source_record: {
+          sku: created.variationId || created.itemId,
+          brand: form.brand,
+          name: form.productName,
+          description: form.description,
+          price: form.price,
+          quantity: form.quantity
+        },
+        media: mediaUrl ? [{ id: 'product-hero', type: 'image', url: mediaUrl, role: 'hero', approved: true }] : [],
+        channels: ['facebook-page', 'facebook-marketplace', 'instagram', 'website']
+      })
+    });
+    if(!response.ok) console.warn('Publishing Core shadow copy needs attention.', response.status);
+  }catch(error){
+    console.warn('Publishing Core shadow copy was skipped; the existing workflow remains successful.', error?.message || 'unavailable');
+  }
+}
+
 async function publishNewProductToFacebook(form, message){
   const imageDataUrl = newProductPromotionImageDataUrl || newProductImageDataUrl;
   const response = await fetch('/.netlify/functions/facebook-post', {
@@ -1237,6 +1269,7 @@ saveSquareBtn.addEventListener('click', async ()=>{
 
   try{
     const created = await createProductInSquare(form);
+    void sendDexterPublishingShadow(form, created);
     setCreateStatus('ok', `✓ ${created.name || form.productName} created in Square Sandbox at $${created.price || form.price.toFixed(2)} with ${created.quantity ?? form.quantity} in stock.`);
     document.getElementById('websiteTitle').textContent = created.name || [form.brand, form.productName].filter(Boolean).join(' ');
     sessionStorage.setItem('growthwise_admin_key', form.adminKey);
@@ -1277,6 +1310,7 @@ addAndPromoteBtn.addEventListener('click', async ()=>{
   let created;
   try{
     created = await createProductInSquare(form);
+    void sendDexterPublishingShadow(form, created);
     sessionStorage.setItem('growthwise_admin_key', form.adminKey);
     setCreateStatus('loading', `✓ ${created.name || form.productName} created in Square. Step 2 of 2: publishing to Facebook…`);
     addAndPromoteBtn.textContent = 'Publishing to Facebook…';

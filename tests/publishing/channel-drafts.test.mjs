@@ -79,3 +79,30 @@ test("Marketplace is assisted and distinct from the shadow-only Page adapter", (
   assert.deepEqual(page.payload.image_data_urls, []);
   assert.notDeepEqual(marketplace.payload, page.payload);
 });
+
+test("Instagram prepares preview media without treating local data as publishable", () => {
+  const instagram = adapters.get("instagram");
+  const cases = [
+    { url: "data:image/png;base64,AAAA", expected: "preview_only", ready: false },
+    { url: "https://cdn.example.com/hat.jpg", expected: "remotely_retrievable", ready: true },
+  ];
+  for (const item of cases) {
+    const master = createMasterPackage(retailToMasterInput({
+      businessId: "dexters-hats",
+      product: retailProduct,
+      media: [{ id: "hero", type: "image", url: item.url, approved: true }],
+    }));
+    const prepared = instagram.prepare({ masterPackage: master, draft: createChannelDraft(master, "instagram"), context: { shadowOnly: true } });
+    assert.equal(prepared.payload.shadow_only, true);
+    assert.equal(prepared.preview.media[0].readiness, item.expected);
+    assert.equal(prepared.publish_readiness.ready, item.ready);
+    assert.equal(prepared.live_sent, false);
+  }
+});
+
+test("Instagram reports missing media as a readiness blocker", () => {
+  const master = createMasterPackage(retailToMasterInput({ businessId: "dexters-hats", product: retailProduct, media: [] }));
+  const prepared = adapters.get("instagram").prepare({ masterPackage: master, draft: createChannelDraft(master, "instagram"), context: {} });
+  assert.equal(prepared.publish_readiness.ready, false);
+  assert.match(prepared.publish_readiness.blockers.join(" "), /image/i);
+});

@@ -2,6 +2,7 @@ import autoCityConfig from "../../clients/auto-city.json" with { type: "json" };
 import dextersHatsConfig from "../../clients/dexters-hats.json" with { type: "json" };
 import { createMasterPackage } from "../../core/publishing/master-package/create.mjs";
 import { runShadowPublishing } from "../../core/publishing/orchestration/shadow.mjs";
+import { summarizeShadowValue } from "../../core/publishing/metrics/shadow-value.mjs";
 import { automotiveToMasterInput } from "../../verticals/automotive/publishing-adapter/index.mjs";
 import { retailToMasterInput } from "../../verticals/retail/publishing-adapter/index.mjs";
 import { saveShadowRun } from "./_publishing-store.mjs";
@@ -31,6 +32,7 @@ export function createPublishingShadowHandler({ adminKey = configuredAdminKey, s
     }
 
     try {
+      const startedAt = performance.now();
       const body = await request.json();
       const client = CLIENTS[body?.business_id];
       if (!client || body.vertical !== client.vertical) {
@@ -59,8 +61,10 @@ export function createPublishingShadowHandler({ adminKey = configuredAdminKey, s
         clientConfig: client.config,
         channelIds: body.channels,
       });
-      await saveRun(run);
-      return json(200, { ...run, live_actions_enabled: false });
+      const value_metrics = summarizeShadowValue(run, { preparationDurationMs: performance.now() - startedAt });
+      const measuredRun = { ...run, value_metrics };
+      await saveRun(measuredRun);
+      return json(200, { ...measuredRun, live_actions_enabled: false });
     } catch (error) {
       if (error instanceof SyntaxError || error instanceof TypeError || /not allowed|not authorized|invalid/i.test(error.message)) {
         return json(400, { error: error.message });

@@ -13,7 +13,7 @@ const DEFAULT_CAPABILITIES = Object.freeze({
   statusReadback: false,
 });
 
-function channel(id, displayName, deliveryMode, implementationStatus) {
+function channel(id, displayName, deliveryMode, implementationStatus, capabilities = {}) {
   if (!DELIVERY_MODES.includes(deliveryMode)) {
     throw new TypeError(`Unsupported delivery mode: ${deliveryMode}`);
   }
@@ -23,7 +23,7 @@ function channel(id, displayName, deliveryMode, implementationStatus) {
     displayName,
     deliveryMode,
     implementationStatus,
-    capabilities: DEFAULT_CAPABILITIES,
+    capabilities: Object.freeze({ ...DEFAULT_CAPABILITIES, ...capabilities }),
     automaticActionsAllowed: false,
   });
 }
@@ -31,7 +31,7 @@ function channel(id, displayName, deliveryMode, implementationStatus) {
 export const CHANNELS = Object.freeze([
   channel("facebook-page", "Facebook Page", "direct", "existing-live-path-not-wired-to-core"),
   channel("facebook-marketplace", "Facebook Marketplace", "assisted", "shadow"),
-  channel("instagram", "Instagram", "export", "registry-only"),
+  channel("instagram", "Instagram", "export", "shadow-preview", { photos: 1 }),
   channel("website", "Website", "export", "registry-only"),
   channel("ebay", "eBay", "export", "registry-only"),
   channel("etsy", "Etsy", "export", "registry-only"),
