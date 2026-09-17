@@ -65,7 +65,11 @@ export async function runShadowPublishing({
   const auditEvents = [];
 
   for (const channelId of channelIds) {
-    const automationLevel = resolveAutomationLevel(clientConfig, channelId, action);
+    const configuredAutomationLevel = resolveAutomationLevel(clientConfig, channelId, action);
+    const canPublishAutomatically = authorizeRole(role, "publish:auto").allowed;
+    const automationLevel = configuredAutomationLevel === "automatic" && !canPublishAutomatically
+      ? "review"
+      : configuredAutomationLevel;
     let result;
     try {
       const draft = createChannelDraft(masterPackage, channelId);

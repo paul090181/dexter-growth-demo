@@ -47,6 +47,27 @@ test("shadow runs preserve tenant scope, statuses, and one audit event per attem
   }
 });
 
+test("automatic shadow status requires publish:auto permission", async () => {
+  for (const [role, expectedStatus, expectedLevel] of [
+    ["staff", "Waiting Approval", "review"],
+    ["manager", "Queued", "automatic"],
+    ["owner_admin", "Queued", "automatic"],
+  ]) {
+    const run = await runShadowPublishing({
+      businessId: "auto-city",
+      role,
+      masterPackage: automotiveMaster,
+      clientConfig,
+      channelIds: ["facebook-marketplace"],
+    });
+
+    assert.equal(run.results[0].status, expectedStatus, role);
+    assert.equal(run.results[0].job.status, expectedStatus, role);
+    assert.equal(run.results[0].automation_level, expectedLevel, role);
+    assert.equal(run.results[0].live_sent, false, role);
+  }
+});
+
 test("tenant and authorization checks fail before channel work", async () => {
   await assert.rejects(
     runShadowPublishing({ businessId: "dexters-hats", role: "owner_admin", masterPackage: automotiveMaster, channelIds: ["website"] }),
