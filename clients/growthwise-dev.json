@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "business_id": "growthwise-dev",
+  "display_name": "GrowthWise Development",
+  "integrations": {
+    "instagram": {
+      "token_env": "GROWTHWISE_DEV_INSTAGRAM_ACCESS_TOKEN",
+      "account_id_env": "GROWTHWISE_DEV_INSTAGRAM_ACCOUNT_ID"
+    }
+  }
+}
