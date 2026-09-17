@@ -43,7 +43,9 @@
   - constants verified in preflight: `INSTAGRAM_AUTHORIZATION_ENDPOINT`, `INSTAGRAM_TOKEN_ENDPOINT`, optional verified long-lived/refresh endpoints, `INSTAGRAM_IDENTITY_ENDPOINT`, `INSTAGRAM_IDENTITY_FIELDS`, `INSTAGRAM_IDENTITY_SCOPE`
   - `configuredInstagramOAuth()`, `callbackUri(publicOrigin)`, `buildAuthorizationUrl(input)`, `exchangeAuthorizationCode(input)`, `exchangeLongLivedToken(input)` when supported, `verifyProfessionalIdentity(input)`, and normalized `InstagramProviderError`
 - `netlify/functions/_instagram-clients.mjs`
-  - `INSTAGRAM_CLIENTS` and `getInstagramClient(businessId)` centralize the explicit `growthwise-dev` / `dexters-hats` registry and validate `config.business_id`; future tenants are configuration additions, not endpoint branches
+  - `INSTAGRAM_CLIENTS` and `getInstagramClient(businessId)` centralize the explicit `growthwise-dev` / `dexters-hats` registry and validate `config.business_id`
+  - each registry entry includes an immutable `returnDestinationId`: `growthwise-dev-integration` for `growthwise-dev`, `dexter-integration` for `dexters-hats`
+  - `INSTAGRAM_RETURN_DESTINATIONS` maps only those IDs to `/instagram-dev.html` and `/`; `resolveInstagramReturnDestination({ destinationId, hint, publicOrigin })` accepts only the three safe hints and constructs a URL from the configured origin plus the fixed mapped path
 - `netlify/functions/instagram-oauth-start.mjs`
   - `createInstagramOAuthStartHandler(dependencies?)`; default export handler
 - `netlify/functions/instagram-oauth-callback.mjs`
@@ -53,6 +55,8 @@
 - `assets/instagram-connection.mjs`
   - `createInstagramConnectionController({ businessId, endpointBase, authorizationOrigin, adminKey, fetchImpl, navigate, historyImpl })`
   - `mountInstagramConnection({ root, businessId, endpointBase, authorizationOrigin, getAdminKey, fetchImpl?, navigate?, historyImpl? })`
+- `instagram-dev.html`
+  - temporary GrowthWise beta acceptance harness that mounts the same component with `businessId: "growthwise-dev"`; contains no provider/account credentials and no `growth.wise1` account allowlist
 
 ### Test files
 
@@ -73,6 +77,7 @@ The added `_instagram-clients.mjs`, provider-focused test, UI module/test, prefl
 - Credential statuses: `pending`, `connected`, `needs_attention`.
 - Public connection states: `Not Connected`, `Connected`, `Needs Attention`.
 - Safe callback hints: `connected`, `cancelled`, `attention` only.
+- Server-selected return destination IDs: `growthwise-dev-integration`, `dexter-integration` only. Browsers/provider callbacks cannot supply either ID.
 - Transaction TTL: exactly 10 minutes, with expiry defined as `now >= expires_at`.
 
 ---
@@ -272,7 +277,7 @@ Expected RED: exports are missing.
 
 - [ ] **Step 2: implement transaction persistence**
 
-Use `getStore({ name: "growthwise-integrations-v1", consistency: "strong" })`; use `getWithMetadata` plus verified ETag conditional calls. Store `schema_version`, provider, nonce hash, immutable `business_id`, issued/expiry timestamps, status, safe return destination ID, and optional encrypted/opaque PKCE verifier only if preflight verified PKCE. Never store raw state, admin key, code, or provider response. Error types distinguish internal `not_found`, `expired`, `replayed`, `conflict`, and `corrupt` without including records.
+Use `getStore({ name: "growthwise-integrations-v1", consistency: "strong" })`; use `getWithMetadata` plus verified ETag conditional calls. Store `schema_version`, provider, nonce hash, immutable `business_id`, issued/expiry timestamps, status, the server-selected allowlisted return destination ID copied from the verified tenant registry, and optional encrypted/opaque PKCE verifier only if preflight verified PKCE. Never store raw state, admin key, code, provider response, caller path, or caller URL. Error types distinguish internal `not_found`, `expired`, `replayed`, `conflict`, and `corrupt` without including records.
 
 - [ ] **Step 3: verify GREEN and real contract regression**
 
@@ -368,6 +373,8 @@ Exact names:
 client registry accepts configured GrowthWise and Dexter tenants only
 authorization URL uses the exact callback minimum scope and opaque state
 authorization URL has no business claim arbitrary return or publishing scope
+client registry assigns fixed allowlisted return destinations to GrowthWise and Dexter
+unknown return destination and unsafe hint fail closed
 code exchange sends secrets server-side and enforces response size and schema
 verified supported long-lived exchange normalizes token expiry
 professional identity requires one stable account ID and username
@@ -375,7 +382,7 @@ empty ambiguous and wrong-shaped identity responses fail closed
 provider timeout and raw errors become safe normalized errors
 ```
 
-If preflight proves long-lived exchange unsupported for this flow, name the fifth test `unsupported long-lived exchange is disabled explicitly` and assert no exchange call occurs. If PKCE is unsupported, assert the authorization URL omits PKCE and record that verified decision; do not simulate unsupported parameters.
+If preflight proves long-lived exchange unsupported for this flow, replace the named long-lived-exchange test with `unsupported long-lived exchange is disabled explicitly` and assert no exchange call occurs. If PKCE is unsupported, assert the authorization URL omits PKCE and record that verified decision; do not simulate unsupported parameters.
 
 Run:
 
@@ -397,7 +404,7 @@ git diff --check
 git diff -- netlify/functions/_instagram-oauth.mjs netlify/functions/_instagram-clients.mjs clients/growthwise-dev.json clients/dexters-hats.json tests/publishing/instagram-oauth-provider.test.mjs
 ```
 
-Expected: 8 tests PASS, or 8 including the explicitly unsupported long-lived case. No client JSON contains token/account ID values or secret material.
+Expected: 10 tests PASS, including either the supported or explicitly unsupported long-lived case. No client JSON contains token/account ID values or secret material.
 
 - [ ] **Step 4: commit**
 
@@ -417,7 +424,7 @@ Omit unchanged client files from the actual commit.
 - Create: `netlify/functions/instagram-oauth-start.mjs`
 - Create: `tests/publishing/instagram-oauth.test.mjs`
 
-**Interface:** `POST /.netlify/functions/instagram-oauth-start`; JSON input has exactly `{ business_id }`; authentication is non-empty `GROWTHWISE_ADMIN_KEY` matched against `X-GrowthWise-Key`. Success is `200` JSON with exactly `{ authorization_url }`. Dependencies inject admin key, public origin, app ID, crypto, store, client lookup, URL builder, clock, and rate limiter.
+**Interface:** `POST /.netlify/functions/instagram-oauth-start`; JSON input has exactly `{ business_id }`; authentication is non-empty `GROWTHWISE_ADMIN_KEY` matched against `X-GrowthWise-Key`. Success is `200` JSON with exactly `{ authorization_url }`. Dependencies inject admin key, public origin, app ID, crypto, store, client lookup, URL builder, clock, and rate limiter. The handler copies `returnDestinationId` only from the validated registry entry into the transaction; the request schema has no destination, path, return URL, callback tenant, or redirect URI field.
 
 - [ ] **Step 1: write RED start tests**
 
@@ -430,6 +437,8 @@ OAuth start rejects unknown business and malformed business ID
 OAuth start rejects cross-origin and non-canonical requests
 OAuth start rejects non-POST wrong content type extra body fields and oversized body
 valid start creates one ten-minute tenant-bound transaction
+growthwise-dev transaction receives growthwise-dev-integration destination
+dexters-hats transaction receives dexter-integration destination
 valid start returns only one safe HTTPS Meta authorization URL
 start response contains no sentinel admin key app secret token or business claim
 start rate limit fails closed without creating another transaction
@@ -456,7 +465,7 @@ node --test tests/publishing/instagram-oauth.test.mjs --test-name-pattern="OAuth
 git diff --check
 ```
 
-Expected: 9 focused tests PASS and none of the three sentinel strings appears in serialized responses/headers/log calls.
+Expected: 11 focused tests PASS and none of the three sentinel strings appears in serialized responses/headers/log calls.
 
 - [ ] **Step 4: commit**
 
@@ -473,7 +482,7 @@ git commit -m "feat: add authenticated Instagram OAuth start"
 - Create: `netlify/functions/instagram-oauth-callback.mjs`
 - Modify: `tests/publishing/instagram-oauth.test.mjs`
 
-**Interface:** `GET /.netlify/functions/instagram-oauth-callback`. It accepts provider `state` plus exactly one of `code` or denial fields. Tenant comes exclusively from the transaction. Because the current application entry point is `index.html`, final redirects are fixed to `<GROWTHWISE_PUBLIC_ORIGIN>/?instagram=connected|cancelled|attention`; encode `/` as a server constant and test it. No callback input selects a return URL.
+**Interface:** `GET /.netlify/functions/instagram-oauth-callback`. It accepts provider `state` plus exactly one of `code` or denial fields. Tenant and return-destination ID come exclusively from the immutable transaction. Resolve only `growthwise-dev-integration` to `<GROWTHWISE_PUBLIC_ORIGIN>/instagram-dev.html?instagram=connected|cancelled|attention` and `dexter-integration` to `<GROWTHWISE_PUBLIC_ORIGIN>/?instagram=connected|cancelled|attention`. The callback request has no accepted `return_to`, destination, redirect URI, path, URL, or `business_id`. An unknown stored destination fails before provider exchange with a generic no-store `400` response and no `Location` header.
 
 - [ ] **Step 1: write RED callback tests**
 
@@ -484,6 +493,9 @@ callback rejects missing duplicate malformed and bad-HMAC state before exchange
 callback rejects expired and replayed state before exchange
 concurrent callbacks produce one exchange and one credential write winner
 callback ignores or rejects a changed business_id and uses transaction tenant
+callback uses the immutable transaction return destination
+callback input cannot alter the return destination
+unknown transaction return destination fails closed
 provider denial consumes the transaction and redirects cancelled safely
 code exchange error consumes failed and redirects attention safely
 provider raw error and sentinel secrets do not appear in response headers redirect logs or user errors
@@ -492,6 +504,8 @@ empty or ambiguous Instagram identity is rejected without active binding
 duplicate account binding to a second tenant is rejected
 successful callback encrypts binds and marks consumed_success
 successful callback redirects only to fixed connected hint
+growthwise-dev successful callback returns to the development integration page
+Dexter successful callback returns to the Dexter integration page
 partial reverse-binding writes never redirect connected
 callback rejects duplicate unexpected query parameters and oversized query
 ```
@@ -506,7 +520,7 @@ Expected RED: callback module does not exist.
 
 - [ ] **Step 2: implement callback orchestration**
 
-Validate exact state grammar/HMAC, strong-read transaction, and win `pending → processing` before provider work. Handle denial as `consumed_denied`. Exchange code server-side, perform verified long-lived exchange when supported, verify one professional identity, enforce duplicate binding, encrypt payload, execute reserve/write/finalize/activate, then mark `consumed_success`. Any terminal failure marks `consumed_failed` using the current ETag and redirects to `attention`; a storage ambiguity never redirects connected. Enforce time/size/schema limits in provider helper. Set no-store/no-referrer headers. Do not reflect raw query/provider errors.
+Validate exact state grammar/HMAC, strong-read transaction, validate its destination ID against the server allowlist, and win `pending → processing` before provider work. Handle denial as `consumed_denied`. Exchange code server-side, perform verified long-lived exchange when supported, verify one professional identity, enforce duplicate binding, encrypt payload, execute reserve/write/finalize/activate, then mark `consumed_success`. Any terminal failure marks `consumed_failed` using the current ETag and redirects to the transaction destination's fixed `attention` URL; an unknown destination or storage ambiguity never redirects connected. Enforce time/size/schema limits in provider helper. Set no-store/no-referrer headers. Do not reflect raw query/provider errors.
 
 - [ ] **Step 3: verify GREEN and all OAuth tests**
 
@@ -595,6 +609,7 @@ Omit unchanged client files from the actual commit.
 **Files:**
 - Create: `assets/instagram-connection.mjs`
 - Create: `tests/publishing/instagram-connection-ui.test.mjs`
+- Create: `instagram-dev.html`
 - Modify narrowly: `index.html`
 
 **Interface:** The controller receives `businessId`; no account username/ID is hard-coded. `loadHealth()` fetches the health endpoint with `X-GrowthWise-Key`. `connect()` POSTs `{ business_id }` with JSON and `X-GrowthWise-Key`, validates the response has only `authorization_url`, parses it, requires HTTPS and the exact Meta authorization origin exported/configured from the verified provider contract, then calls injected `navigate(url)`. `consumeReturnHint(url)` recognizes only `connected|cancelled|attention`, removes the query through `history.replaceState`, and always calls `loadHealth`; it never sets Connected itself.
@@ -611,7 +626,10 @@ connect rejects non-HTTPS wrong-origin and extra-field authorization responses
 connect response never exposes or stores token code app secret or state secret
 return query accepts only connected cancelled and attention hints
 return query is removed immediately and never establishes Connected
-growthwise-dev Dexter and future tenant IDs use the same controller path
+both integration pages import and mount the exact same reusable component
+growthwise-dev page requests health and starts OAuth only for growthwise-dev
+Dexter page requests health and starts OAuth only for dexters-hats
+future tenant IDs use the same controller path without tenant-specific OAuth logic
 ```
 
 Use a minimal fake root with deterministic `render` assertions or isolate pure reducer/view-model functions; do not add a DOM framework dependency.
@@ -626,7 +644,9 @@ Expected RED: UI module does not exist.
 
 - [ ] **Step 2: implement module and narrow Dexter bootstrap**
 
-Render buttons/text with `textContent`, not untrusted HTML. Disable Connect/Reconnect while starting. Do not read callback code/state. Do not persist OAuth data. In `index.html`, add only the component container, module import, and bootstrap that passes the active configured tenant (`dexters-hats`) and existing session-scoped admin-key getter. The module itself remains tenant-parameterized and tests prove other IDs require no code branch. Do not alter Square/Facebook submit/success code.
+Render buttons/text with `textContent`, not untrusted HTML. Disable Connect/Reconnect while starting. Do not read callback code/state. Do not persist OAuth data. In `index.html`, add only the component container, module import, and bootstrap that passes the active configured tenant (`dexters-hats`) and existing session-scoped admin-key getter. Create `instagram-dev.html` as a small beta test harness that imports that exact module and mounts it with `businessId: "growthwise-dev"` under the same existing temporary admin-key entry/header boundary. It contains no token, account ID, app/provider secret, credential, or `growth.wise1` allowlist. The module remains tenant-parameterized; neither page duplicates OAuth/health logic. Do not alter Square/Facebook submit/success code.
+
+Document in the page and runbook that `instagram-dev.html` exists only for current `growthwise-dev` beta acceptance. Do not create static pages for future customers: future SaaS onboarding supplies authenticated tenant context to the same component in the shared application shell.
 
 - [ ] **Step 3: verify GREEN and inspect the perceptible UI**
 
@@ -635,15 +655,16 @@ node --test tests/publishing/instagram-connection-ui.test.mjs tests/publishing/d
 npm run test:publishing
 git diff --check
 git diff --word-diff=plain -- index.html
+git diff -- instagram-dev.html assets/instagram-connection.mjs
 git diff --exit-code HEAD -- automotive-pilot.html netlify/functions/facebook-post.mjs netlify/functions/add-product.mjs
 ```
 
-Expected: UI and Dexter bridge tests PASS; protected files unchanged; `index.html` diff contains only the integration panel/bootstrap. Run the application locally with mocked safe endpoint responses and capture screenshots of **Not Connected**, **Connected to @username**, and **Needs Attention**. Store screenshots outside Git or in the PR evidence system, not as repository assets.
+Expected: UI and Dexter bridge tests PASS; protected files unchanged; `index.html` diff contains only the integration panel/bootstrap; `instagram-dev.html` is a credential-free harness of the same component. Run both pages locally with mocked safe endpoint responses. Capture development-page screenshots of **Not Connected**, **Connected to @username**, and **Needs Attention**, plus the Dexter panel. Store screenshots outside Git or in the PR evidence system, not as repository assets.
 
 - [ ] **Step 4: commit**
 
 ```bash
-git add assets/instagram-connection.mjs tests/publishing/instagram-connection-ui.test.mjs index.html
+git add assets/instagram-connection.mjs tests/publishing/instagram-connection-ui.test.mjs instagram-dev.html index.html
 git commit -m "feat: add reusable Instagram connection settings"
 ```
 
@@ -667,6 +688,8 @@ runtime files contain no Instagram publish or media-container endpoint
 Publishing Core source preserves live_sent false invariant
 protected Auto City Square and Facebook files match branch baseline
 frontend assets contain no server environment secret names except the admin header name
+development harness contains no growth.wise1 allowlist account ID token or provider credential
+development and Dexter pages import the same connection component once
 client JSON contains no token code secret or credential values
 all user-facing response and logger captures exclude sentinel secrets
 ```
@@ -720,7 +743,7 @@ git commit -m "test: lock Instagram OAuth safety boundaries"
 
 - [ ] **Step 1: update the runbook with exact safe operator steps**
 
-Include pre-deployment configuration verification but do not deploy. Instruct operators to enter values only in Netlify server environment controls, never browser/client JSON/Git/support chat. The acceptance sequence is Connect → authorize professional tester account → safe return hint removed → authoritative health reports `Connected to @growth.wise1`. Do not paste or manually create a token. Include rollback: disable OAuth UI/start, retain encrypted records, and keep legacy fallback development-only; never enable fallback after a bad stored record.
+Include pre-deployment configuration verification but do not deploy. Instruct operators to enter values only in Netlify server environment controls, never browser/client JSON/Git/support chat. Document the first acceptance sequence exactly: GrowthWise development page (`/instagram-dev.html`) → **Connect Instagram** for `growthwise-dev` → GrowthWise Social authorization → select/authorize the professional `growth.wise1` tester account → safe OAuth callback → server-selected return to `/instagram-dev.html?instagram=connected` → hint removed → authoritative `growthwise-dev` health check → `Connected to @growth.wise1`. Do not create or paste an access token. Then document Dexter using the same component/endpoints with `dexters-hats` and the server-selected `/` destination. State that `growth.wise1` is acceptance data, never an allowed-account constant. Include rollback: disable OAuth UI/start, retain encrypted records, and keep legacy fallback development-only; never enable fallback after a bad stored record.
 
 - [ ] **Step 2: run documentation/static checks**
 
@@ -780,6 +803,7 @@ git diff --stat origin/platform-v1...HEAD
 git diff --name-status origin/platform-v1...HEAD
 git diff --exit-code origin/platform-v1...HEAD -- automotive-pilot.html netlify/functions/facebook-post.mjs netlify/functions/add-product.mjs
 git diff origin/platform-v1...HEAD -- index.html
+git diff origin/platform-v1...HEAD -- instagram-dev.html assets/instagram-connection.mjs
 git diff origin/platform-v1...HEAD -- core/publishing integrations/channels netlify/functions/publishing-shadow.mjs
 git log --oneline --decorate origin/platform-v1..HEAD
 test "$(git rev-parse main)" = "$(cat /tmp/growthwise-main-before)"
@@ -795,6 +819,10 @@ Check every approved spec heading against implemented tests/code/runbook: produc
 ```text
 PASS owner can start authorization without Paul handling a token
 PASS callback binds exactly one professional account to one tenant
+PASS growthwise-dev returns only to the development integration harness
+PASS Dexter returns only to the Dexter integration page
+PASS callback input cannot alter the immutable allowlisted destination
+PASS no arbitrary or open redirect is possible
 PASS authoritative health can report Connected with username only
 PASS tenant/identity/crypto/storage/provider ambiguity fails closed
 PASS live_sent remains false
@@ -847,7 +875,10 @@ No implementation task requires Paul to create, copy, or paste an Instagram acce
 - [ ] Each runtime task has a named RED test, expected failure, minimal GREEN implementation, pass command, diff review, and commit.
 - [ ] OAuth state HMAC, account-binding HMAC, and credential encryption use independent secrets and rotation paths.
 - [ ] Tenant is selected only at authenticated start and thereafter comes from the immutable transaction; every storage read/write validates it.
+- [ ] Return destination is selected only from the verified tenant registry, persisted immutably in the transaction, and resolved through a fixed server allowlist; callback/browser inputs cannot alter it.
+- [ ] No arbitrary/open redirect is possible: unknown destinations return a generic no-store error without a `Location` header.
 - [ ] No task requests publishing permission, calls publishing/container APIs, configures webhooks, or changes Auto City/Dexter legacy behavior.
 - [ ] The UI never treats the callback hint as connection truth and never receives a token/code/secret.
+- [ ] `instagram-dev.html` is a credential-free beta acceptance harness for `growthwise-dev`; it and Dexter mount the same component, while future SaaS tenants use authenticated context in the shared shell rather than static per-customer pages.
 - [ ] The dependency is pinned only after real semantic proof, and failure blocks implementation.
 - [ ] The final result is self-service connection and authoritative `Connected to @username`, with no manual token work by Paul.
