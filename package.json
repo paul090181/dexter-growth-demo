@@ -1,6 +1,9 @@
 {
   "name": "growthwise-automotive-pilot",
   "private": true,
+  "scripts": {
+    "test:publishing": "node --test tests/publishing/*.test.mjs"
+  },
   "dependencies": {
     "@netlify/blobs": "latest"
   }

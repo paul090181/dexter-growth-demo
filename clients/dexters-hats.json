@@ -20,5 +20,16 @@
     "facebook": "optional",
     "marketplace": "assisted",
     "square": "optional"
+  },
+  "publishing": {
+    "shadow_mode": true,
+    "live_actions_enabled": false,
+    "automation": {
+      "default": "review",
+      "channels": {
+        "facebook-marketplace": "manual"
+      },
+      "actions": {}
+    }
   }
 }
