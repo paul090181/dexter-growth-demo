@@ -29,10 +29,9 @@ function requireText(value, label) {
   return value;
 }
 
-function exactObject(value, required, optional = []) {
+function objectWithRequiredFields(value, required) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const allowed = new Set([...required, ...optional]);
-  return required.every((key) => Object.hasOwn(value, key)) && Object.keys(value).every((key) => allowed.has(key));
+  return required.every((key) => Object.hasOwn(value, key));
 }
 
 function normalizedProviderId(value) {
@@ -131,7 +130,7 @@ export async function exchangeAuthorizationCode({ appId, appSecret, callbackUri:
   const body = new URLSearchParams({ client_id: requireText(appId, "app ID"), client_secret: requireText(appSecret, "app secret"), grant_type: "authorization_code", redirect_uri: requireText(redirectUri, "callback URI"), code: requireText(code, "authorization code") });
   const json = await providerJson(INSTAGRAM_TOKEN_ENDPOINT, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: body.toString() }, { fetchImpl, maxResponseBytes, failureCode: "exchange_failed" });
   const accountId = normalizedProviderId(json?.user_id);
-  if (!exactObject(json, ["access_token", "user_id"]) || typeof json.access_token !== "string" || json.access_token.length === 0 || accountId === undefined) {
+  if (!objectWithRequiredFields(json, ["access_token", "user_id"]) || typeof json.access_token !== "string" || json.access_token.length === 0 || accountId === undefined) {
     throw new InstagramProviderError("exchange_failed");
   }
   return { accessToken: json.access_token, accountId };
@@ -141,7 +140,7 @@ export async function exchangeLongLivedToken({ appSecret, accessToken, fetchImpl
   const url = new URL(INSTAGRAM_LONG_LIVED_TOKEN_ENDPOINT);
   url.search = new URLSearchParams({ grant_type: "ig_exchange_token", client_secret: requireText(appSecret, "app secret"), access_token: requireText(accessToken, "access token") }).toString();
   const json = await providerJson(url, { method: "GET" }, { fetchImpl, maxResponseBytes, failureCode: "exchange_failed" });
-  if (!exactObject(json, ["access_token", "token_type", "expires_in"]) || typeof json.access_token !== "string" || typeof json.token_type !== "string" || !Number.isSafeInteger(json.expires_in) || json.expires_in <= 0) {
+  if (!objectWithRequiredFields(json, ["access_token", "token_type", "expires_in"]) || typeof json.access_token !== "string" || json.access_token.length === 0 || typeof json.token_type !== "string" || json.token_type.length === 0 || !Number.isSafeInteger(json.expires_in) || json.expires_in <= 0) {
     throw new InstagramProviderError("exchange_failed");
   }
   return { accessToken: json.access_token, expiresInSeconds: json.expires_in, tokenType: json.token_type.toLowerCase() };
@@ -152,7 +151,7 @@ export async function verifyProfessionalIdentity({ accessToken, fetchImpl = fetc
   url.searchParams.set("fields", INSTAGRAM_IDENTITY_FIELDS);
   const json = await providerJson(url, { method: "GET", headers: { Authorization: `Bearer ${requireText(accessToken, "access token")}` } }, { fetchImpl, maxResponseBytes, failureCode: "invalid_identity" });
   const accountId = normalizedProviderId(json?.user_id);
-  if (!exactObject(json, ["user_id", "username"]) || accountId === undefined || typeof json.username !== "string" || json.username.length === 0) {
+  if (!objectWithRequiredFields(json, ["user_id", "username"]) || accountId === undefined || typeof json.username !== "string" || json.username.length === 0) {
     throw new InstagramProviderError("invalid_identity");
   }
   return { accountId, username: json.username, name: json.username };

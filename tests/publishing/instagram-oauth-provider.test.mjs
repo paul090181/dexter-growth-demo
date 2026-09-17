@@ -73,6 +73,18 @@ test("code exchange sends secrets server-side and enforces response size and sch
   }
 });
 
+test("code exchange accepts provider metadata but returns only required normalized fields", async () => {
+  const result = await exchangeAuthorizationCode({
+    appId: "1", appSecret: "secret", callbackUri: CALLBACK, code: "code",
+    fetchImpl: async () => response({
+      access_token: "SYNTHETIC_SHORT_TOKEN", user_id: "42",
+      permissions: ["instagram_business_basic"], provider_internal: "DO_NOT_PROPAGATE",
+    }),
+  });
+  assert.deepEqual(result, { accessToken: "SYNTHETIC_SHORT_TOKEN", accountId: "42" });
+  assert.doesNotMatch(JSON.stringify(result), /permissions|provider_internal|DO_NOT_PROPAGATE/);
+});
+
 test("verified supported long-lived exchange normalizes token expiry", async () => {
   let requested;
   const result = await exchangeLongLivedToken({ appSecret: "SYNTHETIC_APP_SECRET", accessToken: "SYNTHETIC_SHORT_TOKEN", fetchImpl: async (url) => { requested = new URL(url); return response({ access_token: "SYNTHETIC_LONG_TOKEN", token_type: "bearer", expires_in: 5184000 }); } });
@@ -80,6 +92,25 @@ test("verified supported long-lived exchange normalizes token expiry", async () 
   assert.equal(requested.origin + requested.pathname, "https://graph.instagram.com/access_token");
   assert.equal(requested.searchParams.get("grant_type"), "ig_exchange_token");
   assert.equal(requested.searchParams.get("client_secret"), "SYNTHETIC_APP_SECRET");
+});
+
+test("long-lived exchange ignores provider metadata and still rejects malformed required fields", async () => {
+  const result = await exchangeLongLivedToken({
+    appSecret: "secret", accessToken: "short",
+    fetchImpl: async () => response({ access_token: "long", token_type: "Bearer", expires_in: 3600, provider_internal: "DO_NOT_PROPAGATE" }),
+  });
+  assert.deepEqual(result, { accessToken: "long", expiresInSeconds: 3600, tokenType: "bearer" });
+  assert.doesNotMatch(JSON.stringify(result), /provider_internal|DO_NOT_PROPAGATE/);
+  for (const body of [
+    { token_type: "bearer", expires_in: 3600 },
+    { access_token: "long", expires_in: 3600 },
+    { access_token: "long", token_type: "bearer" },
+    { access_token: "", token_type: "bearer", expires_in: 3600 },
+    { access_token: "long", token_type: "", expires_in: 3600 },
+    { access_token: "long", token_type: "bearer", expires_in: 0 },
+  ]) {
+    await assert.rejects(exchangeLongLivedToken({ appSecret: "secret", accessToken: "short", fetchImpl: async () => response(body) }), /exchange failed/i);
+  }
 });
 
 test("professional identity requires one stable account ID and username", async () => {
@@ -91,8 +122,17 @@ test("professional identity requires one stable account ID and username", async 
   assert.equal(requested.init.headers.Authorization, "Bearer SYNTHETIC_LONG_TOKEN");
 });
 
+test("professional identity accepts harmless extra fields without propagating them", async () => {
+  const identity = await verifyProfessionalIdentity({
+    accessToken: "token",
+    fetchImpl: async () => response({ user_id: "1789", username: "growth.wise1", id: "provider-alias", account_type: "BUSINESS", provider_internal: "DO_NOT_PROPAGATE" }),
+  });
+  assert.deepEqual(identity, { accountId: "1789", username: "growth.wise1", name: "growth.wise1" });
+  assert.doesNotMatch(JSON.stringify(identity), /provider-alias|BUSINESS|provider_internal|DO_NOT_PROPAGATE/);
+});
+
 test("empty ambiguous and wrong-shaped identity responses fail closed", async () => {
-  for (const body of [{}, [], { data: [{ user_id: "1", username: "one" }] }, { user_id: "1" }, { user_id: "1", username: "one", unexpected: true }, { user_id: "", username: "one" }, { user_id: " 1", username: "one" }, { user_id: -1, username: "one" }, { user_id: 1.5, username: "one" }, { user_id: Number.MAX_SAFE_INTEGER + 1, username: "one" }]) {
+  for (const body of [{}, [], { data: [{ user_id: "1", username: "one" }] }, { user_id: "1" }, { username: "one" }, { user_id: "", username: "one" }, { user_id: " 1", username: "one" }, { user_id: -1, username: "one" }, { user_id: 1.5, username: "one" }, { user_id: Number.MAX_SAFE_INTEGER + 1, username: "one" }]) {
     await assert.rejects(verifyProfessionalIdentity({ accessToken: "token", fetchImpl: async () => response(body) }), (error) => error instanceof InstagramProviderError && error.code === "invalid_identity");
   }
 });

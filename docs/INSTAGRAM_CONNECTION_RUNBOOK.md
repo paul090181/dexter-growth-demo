@@ -87,7 +87,7 @@ Perform this manually only after an approved non-production deployment and Meta 
 2. Enter the existing beta administrator key only into the page's intended session control. Do not put it in a URL or capture it in evidence.
 3. Press **Connect Instagram** for the server-authorized `growthwise-dev` tenant.
 4. At **GrowthWise Social**, select and authorize the professional `growth.wise1` tester account. Grant only the requested identity access.
-5. Allow the server callback to claim the transaction once, exchange the code server-side, verify identity, and transactionally store the encrypted credential/account binding.
+5. Allow the server callback to claim the transaction once, exchange the code server-side, and verify the professional identity with the resulting long-lived token. The token-authenticated `/me` `user_id` and `username` are the authoritative GrowthWise account-binding identity; the authorization-code exchange `user_id` is provider metadata and may use a different identifier namespace. The server then transactionally stores the encrypted credential/account binding.
 6. Confirm the server-selected return is exactly `/instagram-dev.html?instagram=connected`. The query value is only a hint; the page must immediately remove it and must not infer success from it.
 7. Allow the page to perform the authoritative authenticated health request for `growthwise-dev`.
 8. Confirm the UI says `Connected to @growth.wise1` and exposes no account ID, token metadata, provider response, or secret.

@@ -95,8 +95,9 @@ export function createInstagramOAuthCallbackHandler(options = {}) {
       const short = await exchangeCode({ ...settings, code: input.code });
       const long = await exchangeLongLived({ appSecret: settings.appSecret, accessToken: short.accessToken });
       const identity = await verifyIdentity({ accessToken: long.accessToken });
-      if (!identity || identity.accountId !== short.accountId || typeof identity.username !== "string" || !identity.username) {
-        throw new Error("IDENTITY_MISMATCH");
+      if (!identity || typeof identity.accountId !== "string" || !identity.accountId
+        || typeof identity.username !== "string" || !identity.username) {
+        throw new Error("INVALID_IDENTITY");
       }
       const expiresAt = new Date(now().getTime() + long.expiresInSeconds * 1000);
       await store.connectCredential({

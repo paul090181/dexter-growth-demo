@@ -273,14 +273,31 @@ test("throwing callback logger cannot prevent failed finalization or the safe at
   assert.equal(fixture.calls.finish[0].status, "consumed_failed");
 });
 
-test("wrong Instagram identity is rejected without active binding", async () => {
-  const fixture = callbackFixture({ verifyIdentity: async () => ({ accountId: "99", username: "wrong" }) });
+test("token-authenticated professional identity is authoritative when exchange metadata uses another ID", async () => {
+  const logs = [];
+  const fixture = callbackFixture({
+    verifyIdentity: async () => ({ accountId: "99", username: "professional.account", name: "Professional Account" }),
+    logger: { warn: (...values) => logs.push(values) },
+  });
   const response = await fixture.handler(callbackRequest("state=v1.valid.tag&code=ok"));
-  assert.equal(response.headers.get("location"), `${ORIGIN}/instagram-dev.html?instagram=attention`); assert.equal(fixture.calls.connect.length, 0);
+  assert.equal(response.headers.get("location"), `${ORIGIN}/instagram-dev.html?instagram=connected`);
+  assert.equal(fixture.calls.connect[0].accountId, "99");
+  assert.equal(fixture.calls.connect[0].username, "professional.account");
+  assert.equal(fixture.calls.connect[0].payload.account_id, "99");
+  assert.deepEqual(logs, []);
+  const browserVisible = JSON.stringify({ headers: [...response.headers], body: await response.text(), logs });
+  for (const value of ["42", "99", "professional.account", "SENTINEL_SHORT_TOKEN", "SENTINEL_LONG_TOKEN"]) {
+    assert.equal(browserVisible.includes(value), false);
+  }
 });
 
 test("empty or ambiguous Instagram identity is rejected without active binding", async () => {
-  for (const identity of [null, { accountId: "42", username: "" }]) {
+  for (const identity of [
+    null,
+    { username: "missing.id" },
+    { accountId: 42, username: "numeric.id" },
+    { accountId: "42", username: "" },
+  ]) {
     const fixture = callbackFixture({ verifyIdentity: async () => identity });
     await fixture.handler(callbackRequest("state=v1.valid.tag&code=ok")); assert.equal(fixture.calls.connect.length, 0);
   }
