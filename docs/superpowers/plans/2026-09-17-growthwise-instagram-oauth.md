@@ -4,9 +4,9 @@
 
 **Goal:** Let a GrowthWise business owner click **Connect Instagram**, authorize one professional Instagram account, return safely, and see authoritative tenant-scoped connection health without Paul creating or pasting tokens.
 
-**Architecture:** Add two small Netlify endpoints over shared OAuth, cryptography, provider, and strongly consistent Blob-store adapters. OAuth transactions are short-lived and one-use; credentials are AES-256-GCM encrypted; durable account uniqueness uses a secret independent from OAuth state signing. The encrypted store is primary and the current environment-reference path remains an explicitly gated development fallback. A parameterized browser component starts OAuth and renders health. No unit in this plan publishes, creates media containers, or registers webhooks.
+**Architecture:** Add two small Netlify endpoints over shared OAuth, cryptography, provider, and a Netlify Database/PostgreSQL adapter. OAuth transactions are short-lived and claimed once by an atomic guarded SQL update; credentials are AES-256-GCM encrypted; a database unique constraint enforces durable account ownership using a binding secret independent from OAuth state signing. The encrypted database is primary and the current environment-reference path remains an explicitly gated development fallback. A parameterized browser component starts OAuth and renders health. No unit in this plan publishes, creates media containers, or registers webhooks.
 
-**Tech Stack:** Node.js ES modules, built-in `node:test` / `node:assert/strict` / `node:crypto`, Netlify Functions, an implementation-verified exact version of `@netlify/blobs`, JSON client configuration, and the existing HTML/CSS/JavaScript application.
+**Tech Stack:** Node.js ES modules, built-in `node:test` / `node:assert/strict` / `node:crypto`, Netlify Functions, `@netlify/database`, PostgreSQL migrations under `netlify/database/migrations/`, JSON client configuration, and the existing HTML/CSS/JavaScript application. Existing Publishing Core may continue using Netlify Blobs.
 
 **Approved spec:** `docs/superpowers/specs/2026-09-17-growthwise-instagram-oauth-design.md`
 
@@ -34,11 +34,11 @@
   - `createInstagramCrypto({ stateSecrets, bindingSecrets, credentialKeys, randomBytesImpl? })`
   - returned methods: `createState()`, `verifyState(state)`, `transactionKey(state)`, `accountBindingKey(accountId)`, `accountBindingKeys(accountId)`, `encryptCredential({ businessId, accountId, payload })`, `decryptCredential({ businessId, accountId, encryptedToken })`
 - `netlify/functions/_instagram-store.mjs`
-  - `instagramStore()` returns strongly consistent `growthwise-integrations-v1`
-  - transaction methods: `createTransaction(record)`, `readTransaction(transactionKey)`, `beginTransaction({ transactionKey, now })`, `finishTransaction({ transactionKey, etag, status, now })`
-  - binding/credential methods: `readCredential(businessId)`, `reserveAccountBinding(input)`, `writePendingCredential(input)`, `finalizeAccountBinding(input)`, `activateCredential(input)`, `compensateReservation(input)`, `readActiveBinding(input)`
-  - abuse-control method: `consumeStartRateLimit({ businessId, bucketStartedAt, limit })`, backed by a tenant/minute record and conditional ETag updates
-  - all exported persistence helpers accept `{ store }` injection for tests
+  - `instagramDatabase()` uses `getDatabase()` from `@netlify/database`
+  - transaction methods: `createTransaction(record)`, `claimTransaction({ transactionKey })`, `finishTransaction({ transactionKey, status, now })`
+  - credential methods: `readCredential(businessId)`, `connectCredential(input)`, `updateCredentialHealth(input)`
+  - `connectCredential` uses one checked-out `db.pool` client for `BEGIN` / `COMMIT` / `ROLLBACK`, always released in `finally`
+  - all SQL is parameterized and all exported persistence helpers accept `{ database }` injection for tests
 - `netlify/functions/_instagram-oauth.mjs`
   - constants verified in preflight: `INSTAGRAM_AUTHORIZATION_ENDPOINT`, `INSTAGRAM_TOKEN_ENDPOINT`, optional verified long-lived/refresh endpoints, `INSTAGRAM_IDENTITY_ENDPOINT`, `INSTAGRAM_IDENTITY_FIELDS`, `INSTAGRAM_IDENTITY_SCOPE`
   - `configuredInstagramOAuth()`, `callbackUri(publicOrigin)`, `buildAuthorizationUrl(input)`, `exchangeAuthorizationCode(input)`, `exchangeLongLivedToken(input)` when supported, `verifyProfessionalIdentity(input)`, and normalized `InstagramProviderError`
@@ -67,9 +67,9 @@
 - `tests/publishing/instagram-connection.test.mjs`
 - `tests/publishing/instagram-connection-ui.test.mjs`
 - `tests/publishing/instagram-safety-regression.test.mjs`
-- `tests/preflight/netlify-blobs-contract.test.mjs`
+- `tests/integration/instagram-database.test.mjs` (runs only with an explicitly configured isolated non-production database)
 
-The added `_instagram-clients.mjs`, provider-focused test, UI module/test, preflight test, and safety test refine the approved expected units by separating client lookup, provider behavior, DOM-independent browser logic, live SDK semantics, and repository-wide negative assertions. This is smaller and easier to audit than putting those concerns in endpoint files.
+The added `_instagram-clients.mjs`, provider-focused test, UI module/test, optional real-database integration test, and safety test separate client lookup, provider behavior, DOM-independent browser logic, database acceptance, and repository-wide negative assertions. This is smaller and easier to audit than putting those concerns in endpoint files.
 
 ### Record/status vocabulary
 
@@ -82,111 +82,46 @@ The added `_instagram-clients.mjs`, provider-focused test, UI module/test, prefl
 
 ---
 
-### Task 1: Mandatory preflight gate and reproducible Blob dependency
+### Task 1: Mandatory preflight gate and approved database amendment
 
-**This task must complete before Tasks 2–11. It performs read-only verification only.**
+**This task must complete before Tasks 2–11. Do not initialize or mutate a production database.**
 
 **Files:**
+- Modify: `docs/superpowers/specs/2026-09-17-growthwise-instagram-oauth-design.md`
+- Modify: `docs/superpowers/plans/2026-09-17-growthwise-instagram-oauth.md`
 - Create: `docs/verification/instagram-oauth-preflight.md`
-- Create: `tests/preflight/netlify-blobs-contract.test.mjs`
-- Modify only after all probes pass: `package.json`
-- Create only if generated by the repository's package manager: `package-lock.json`
 
-**Interfaces/proof produced:**
-- A verified literal `GROWTHWISE_PUBLIC_ORIGIN` and exact callback URI recorded without secrets.
-- A dated table of official Meta URLs/contracts, permission, fields, PKCE result, and source links.
-- A literal tested `@netlify/blobs` version and passing integration proof for `onlyIfNew`, `onlyIfMatch`, `getWithMetadata`/ETag, strong reads, stale-ETag rejection, and concurrent create contention.
-- `package.json` changes from `"latest"` to the exact proven version only after proof succeeds.
+**Approved amendment:** Paul replaced the proposed security-critical Netlify Blobs store with Netlify Database/PostgreSQL because Blobs' last-write-wins behavior has no concurrency-control guarantee sufficient for one-use OAuth consumption or unique cross-tenant account ownership. Remove all `onlyIfNew`, `onlyIfMatch`, ETag-locking, Blob replay, Blob reservation/finalization, and real-Blob preflight requirements. Preserve existing Publishing Core Blobs unchanged.
 
-- [ ] **Step 1: establish branch and protected-file baselines**
+- [ ] **Step 1: confirm the existing feature branch and protected baseline**
 
-Run:
+Confirm the current branch is `feat/growthwise-instagram-oauth`, HEAD descends from the requested starting merge, and the three protected files are unchanged. Do not restart from another branch and do not change `main`.
 
-```bash
-git fetch origin platform-v1
-git switch -c feat/growthwise-instagram-oauth origin/platform-v1
-git merge-base --is-ancestor 9a8d71dcec5e508d875ed21fd2aeb2e0842bc3ba HEAD
-git branch --show-current
-git diff --exit-code origin/platform-v1 -- automotive-pilot.html netlify/functions/facebook-post.mjs netlify/functions/add-product.mjs
-git rev-parse main > /tmp/growthwise-main-before
-```
+- [ ] **Step 2: record the confirmed canonical origin**
 
-Expected: the ancestor and protected-file commands PASS; branch name is not `main`. If the approved spec/plan commits are not already on the feature branch, cherry-pick only those documentation commits before continuing.
-
-- [ ] **Step 2: verify the canonical GrowthWise origin without inventing it**
-
-Inspect tracked Netlify configuration, repository remotes/docs, and read-only Netlify site metadata available to the execution environment. Do not infer the host from a preview URL or request headers. Record the authoritative HTTPS origin, its evidence source, and:
+Record Paul's authoritative production-domain confirmation and exact values:
 
 ```text
-<verified-origin>/.netlify/functions/instagram-oauth-callback
+GROWTHWISE_PUBLIC_ORIGIN=https://euphonious-beijinho-db4b4d.netlify.app
+https://euphonious-beijinho-db4b4d.netlify.app/.netlify/functions/instagram-oauth-callback
 ```
 
-in `docs/verification/instagram-oauth-preflight.md`.
+This is configuration evidence only; do not deploy.
 
-Expected: exactly one canonical HTTPS origin confirmed for the GrowthWise site. **STOP / DECISION NEEDED:** if it cannot be verified automatically or evidence conflicts, ask Paul to supply/confirm it. Do not proceed to provider/storage work.
+- [ ] **Step 3: record the approved provider preflight basis**
 
-- [ ] **Step 3: verify the current official Meta Instagram Login contract**
+Record that direct `developers.facebook.com` access was blocked by the Codex environment proxy. Paul approved current first-party Meta Postman documentation and this contract: authorization `https://www.instagram.com/oauth/authorize`; code exchange `POST https://api.instagram.com/oauth/access_token`; API host `https://graph.instagram.com`; long-lived exchange `/access_token` with `ig_exchange_token`; refresh `/refresh_access_token` with `ig_refresh_token`; identity `/me` using only minimum ID/username fields; exactly `instagram_business_basic`. Do not add PKCE by assumption, publishing scope, publishing endpoints, webhooks, messaging, or comment automation.
 
-Using official Meta documentation only, record the current authorization endpoint, code-exchange endpoint, long-lived exchange/refresh availability and endpoints, `instagram_business_basic`, professional identity endpoint/fields, PKCE support/result, exact redirect matching rules, documentation URLs, and verification date. Explicitly record that neither publishing scope nor a publish/container endpoint is used.
+- [ ] **Step 4: amend and independently review the spec and plan**
 
-Expected: the approved identity-only flow is supported. **STOP / DECISION NEEDED:** if official behavior materially conflicts with the spec—including permission, callback semantics, identity response, or required publishing permission—report the contradiction rather than improvising.
+Ensure both documents consistently require `@netlify/database`, parameterized SQL, migrations under `netlify/database/migrations/`, atomic guarded claim, unique account binding, and one-client transactions with release in `finally`. If no isolated database exists, real integration is **NOT TESTABLE**, not a reason to weaken/fallback. Review for every stale Blob OAuth requirement.
 
-- [ ] **Step 4: write the failing Blob contract probe before pinning**
-
-Create `tests/preflight/netlify-blobs-contract.test.mjs` with exactly these test names, using a unique test prefix and an explicitly configured non-production Netlify Blobs test context:
-
-```text
-getWithMetadata returns the current ETag after a strong write
-onlyIfNew permits exactly one winner under concurrent create contention
-onlyIfMatch accepts the current ETag and rejects a stale ETag
-strong reads observe the winning conditional write
-```
-
-The test must clean up only its unique keys and print no values/bodies/headers. Initially import the candidate SDK package without altering `package.json`.
-
-Run the repository test with the candidate version installed in an isolated temporary directory or with `npm install --no-save --package-lock=false` after recording the candidate version from official package metadata/changelog—not merely choosing whatever `latest` resolves to:
+- [ ] **Step 5: commit the approved documentation correction**
 
 ```bash
-node --test tests/preflight/netlify-blobs-contract.test.mjs
-```
-
-Expected RED: FAIL before correct SDK/context wiring, or FAIL on any unsupported semantic. A skipped/not-testable result does not pass this gate.
-
-- [ ] **Step 5: make the probe pass against real non-production Blob semantics**
-
-Use the candidate version's documented exact signatures for `onlyIfNew`, `onlyIfMatch`, `getWithMetadata`, ETags, and `consistency: "strong"`. Run contention with at least 20 simultaneous create attempts and assert exactly one success. Update with the winning ETag, then repeat with that stale ETag and assert the stale write is rejected without changing stored content.
-
-Run:
-
-```bash
-node --test tests/preflight/netlify-blobs-contract.test.mjs
-```
-
-Expected GREEN: 4 tests PASS, 0 fail, 0 skipped. **STOP / DECISION NEEDED:** if a real non-production context is unavailable or any semantic cannot be proven, propose the smallest transactional store alternative; do not weaken replay/account uniqueness.
-
-- [ ] **Step 6: pin only the proven exact version and run regressions**
-
-Change `package.json` from `"@netlify/blobs": "latest"` to the literal version proven above. Generate/commit a lockfile if `npm install` creates one. Record the literal version and four-test output in the preflight document.
-
-Run:
-
-```bash
-npm install --ignore-scripts --no-audit --no-fund
-node --test tests/preflight/netlify-blobs-contract.test.mjs
-npm run test:publishing
-git diff --check
-git diff -- package.json package-lock.json docs/verification/instagram-oauth-preflight.md tests/preflight/netlify-blobs-contract.test.mjs
-```
-
-Expected: preflight 4/4 PASS; existing publishing suite PASS with its exact count recorded. `package.json` has an exact version, not a range/tag. Review ensures no secret/test context credential was written.
-
-- [ ] **Step 7: commit the closed gate**
-
-```bash
-git add package.json docs/verification/instagram-oauth-preflight.md tests/preflight/netlify-blobs-contract.test.mjs
-test ! -f package-lock.json || git add package-lock.json
+git add docs/superpowers/specs/2026-09-17-growthwise-instagram-oauth-design.md docs/superpowers/plans/2026-09-17-growthwise-instagram-oauth.md docs/verification/instagram-oauth-preflight.md
 git diff --cached --check
-git commit -m "build: verify and pin Netlify Blobs contract"
+git commit -m "docs: move Instagram OAuth state to PostgreSQL"
 ```
 
 ---
@@ -197,7 +132,7 @@ git commit -m "build: verify and pin Netlify Blobs contract"
 - Create: `netlify/functions/_instagram-crypto.mjs`
 - Create: `tests/publishing/instagram-crypto.test.mjs`
 
-**Interfaces:** Implement the `createInstagramCrypto` factory from the file map. Configuration maps are versioned (`{ current: { id, key }, previous?: [...] }`). `createState()` returns `{ state, nonceHash, keyVersion }`; browser state contains only `v1.<nonce>.<tag>`. `accountBindingKey(s)` returns internal Blob keys. The encrypted token envelope is `{ algorithm: "A256GCM", key_version, iv, ciphertext }` with the authentication tag included in `ciphertext`. AAD is the canonical UTF-8 string `growthwise-integrations-v1\ncredential-v1\n<business_id>\ninstagram\n<account_id>`.
+**Interfaces:** Implement the `createInstagramCrypto` factory from the file map. Configuration maps are versioned (`{ current: { id, key }, previous?: [...] }`). `createState()` returns `{ state, nonceHash, keyVersion }`; browser state contains only `v1.<nonce>.<tag>`. `accountBindingKey(s)` returns versioned database binding values. The encrypted token envelope is `{ algorithm: "A256GCM", key_version, iv, ciphertext }` with the authentication tag included in `ciphertext`. AAD is the canonical UTF-8 string `growthwise-instagram-database\ncredential-v1\n<business_id>\ninstagram\n<account_binding_key>`.
 
 - [ ] **Step 1: write RED tests with these exact names**
 
@@ -245,111 +180,90 @@ git commit -m "feat: add separated Instagram cryptography"
 
 ---
 
-### Task 3: One-use OAuth transaction storage (TDD)
+### Task 3: PostgreSQL schema and one-use OAuth transactions (TDD)
 
 **Files:**
+- Create: `netlify/database/migrations/*_instagram_oauth.sql`
 - Create: `netlify/functions/_instagram-store.mjs`
 - Create: `tests/publishing/instagram-store.test.mjs`
+- Modify: `package.json` and repository lockfile
 
-**Interfaces:** First implement only `instagramStore`, `transactionKey`, `createTransaction`, `readTransaction`, `beginTransaction`, `finishTransaction`, and `consumeStartRateLimit`. Store keys are constructed internally. `beginTransaction` strong-reads metadata, validates embedded/key tenant-independent transaction identity, rejects `now >= expires_at`, and uses `onlyIfMatch` to change only `pending` to `processing`. It returns the new record/ETag to the sole winner. Rate limiting stores only tenant, UTC minute bucket, count, and expiry—never an admin key, IP address, user agent, or state—and uses `onlyIfNew`/ETag retry to enforce a configured count across function instances.
+**Interfaces:** Use `getDatabase` from `@netlify/database`. Add `instagram_oauth_transactions` with `transaction_key` primary key; immutable non-null `business_id` and `return_destination_id`; constrained status; `expires_at`; timestamps and processing/consumed timestamps. Never persist raw state. Claim with the parameterized guarded `UPDATE ... WHERE transaction_key = $1 AND status = 'pending' AND expires_at > CURRENT_TIMESTAMP RETURNING ...`; zero rows fails closed.
 
-- [ ] **Step 1: add RED transaction tests**
-
-Add an in-memory conditional-store fake that models ETags and the verified SDK contract. Exact test names:
+- [ ] **Step 1: write RED persistence tests**
 
 ```text
-transaction create is onlyIfNew and stores a ten-minute tenant-bound pending record
-missing malformed and expired transactions cannot begin
-pending transaction transitions atomically to processing once
-replayed transaction is rejected before provider work
-concurrent beginTransaction calls produce exactly one winner
-finishTransaction requires the current ETag and a terminal status
-start rate limit atomically rejects attempts above the tenant minute limit
+pending OAuth transaction can be claimed exactly once
+expired transaction cannot be claimed
+consumed transaction cannot be claimed
+two simultaneous claim attempts produce exactly one logical winner
+callback replay fails before provider work
+tenant and return destination cannot be altered after transaction creation
 ```
 
-Run:
+Use an injected deterministic database adapter that models the SQL invariants; additionally assert query text uses placeholders and never contains fixture business IDs, state, codes, usernames, or tokens.
+
+- [ ] **Step 2: add migration and minimal adapter**
+
+Create constrained schema and parameterized queries. `createTransaction` retries only a derived-key primary-key collision with a newly generated state. The callback never accepts tenant/destination input. Error messages contain no row data.
+
+- [ ] **Step 3: verify and commit**
 
 ```bash
-node --test tests/publishing/instagram-store.test.mjs --test-name-pattern="transaction|beginTransaction|finishTransaction"
-```
-
-Expected RED: exports are missing.
-
-- [ ] **Step 2: implement transaction persistence**
-
-Use `getStore({ name: "growthwise-integrations-v1", consistency: "strong" })`; use `getWithMetadata` plus verified ETag conditional calls. Store `schema_version`, provider, nonce hash, immutable `business_id`, issued/expiry timestamps, status, the server-selected allowlisted return destination ID copied from the verified tenant registry, and optional encrypted/opaque PKCE verifier only if preflight verified PKCE. Never store raw state, admin key, code, provider response, caller path, or caller URL. Error types distinguish internal `not_found`, `expired`, `replayed`, `conflict`, and `corrupt` without including records.
-
-- [ ] **Step 3: verify GREEN and real contract regression**
-
-```bash
-node --test tests/publishing/instagram-store.test.mjs --test-name-pattern="transaction|beginTransaction|finishTransaction"
-node --test tests/preflight/netlify-blobs-contract.test.mjs
+node --test tests/publishing/instagram-store.test.mjs --test-name-pattern="transaction|claim|replay|tenant"
 git diff --check
-```
-
-Expected: 7 focused tests and 4 contract tests PASS.
-
-- [ ] **Step 4: commit**
-
-```bash
-git add netlify/functions/_instagram-store.mjs tests/publishing/instagram-store.test.mjs
+git add package.json package-lock.json netlify/database/migrations netlify/functions/_instagram-store.mjs tests/publishing/instagram-store.test.mjs
 git commit -m "feat: add one-use Instagram OAuth transactions"
 ```
 
 ---
 
-### Task 4: Encrypted credentials and unique account binding (TDD)
+### Task 4: Transactional encrypted credentials and unique account ownership (TDD)
 
 **Files:**
+- Modify: `netlify/database/migrations/*_instagram_oauth.sql`
 - Modify: `netlify/functions/_instagram-store.mjs`
 - Modify: `tests/publishing/instagram-store.test.mjs`
+- Create when a safe context exists: `tests/integration/instagram-database.test.mjs`
 
-**Interfaces:** Add the binding/credential methods in the file map. Credential key is exactly `business/<business_id>/integration/instagram/credential`. Reverse keys come only from `crypto.accountBindingKeys(accountId)`. Binding protocol is reserve (`pending`, `onlyIfNew`) → write encrypted credential (`pending`) → finalize binding (`active`, current ETag) → activate credential (`connected`, current ETag). `compensateReservation` deletes only a matching transaction/version reservation. Reads require caller tenant equality, embedded tenant equality, active reverse ownership, and decryptable matching AAD.
+**Interfaces:** `instagram_credentials` has `business_id` primary key, `account_binding_key UNIQUE NOT NULL`, encrypted credential payload, encryption-key version, status, expiration and safe identity metadata, and timestamps. `connectCredential` checks ownership and writes/reconnects on one checked-out `db.pool` client. It executes `BEGIN`, all parameterized ownership/credential statements, then `COMMIT`; on every failure it `ROLLBACK`s, and releases the client in `finally`. A conflict owned by another tenant fails closed.
 
 - [ ] **Step 1: add RED storage tests**
 
-Exact names:
-
 ```text
-encrypted credential round trip succeeds for its tenant and active binding
-plaintext token never appears in Blob serialization
-cross-tenant credential read is rejected before decryption
-wrong tenant or account AAD cannot decrypt a moved credential
-duplicate account binding to a second tenant is rejected
-concurrent account reservations produce exactly one owner
-reserve write finalize activates both records
-credential write failure compensates only its own reservation
-finalize or activate failure never produces Connected
-binding-secret migration checks both indexes and fails on ownership disagreement
+account_binding_key is unique across tenants
+same Instagram account cannot bind to tenant B when tenant A owns it
+credential creation and account ownership occur transactionally
+failed credential write does not leave a valid connection
+failed binding does not leave a valid credential
+reconnect by the owning tenant preserves ownership and replaces ciphertext
+cross-tenant credential reads fail closed
+encrypted credential round trip succeeds
+plaintext synthetic access token never appears in persisted record fields
+modified ciphertext or authentication tag cannot decrypt
+wrong tenant or account AAD cannot decrypt
+state-secret rotation does not affect account-binding keys
+transaction always releases its checked-out client
 ```
 
-Run:
+- [ ] **Step 2: implement minimal transactional binding**
 
-```bash
-node --test tests/publishing/instagram-store.test.mjs
-```
+Do not store plaintext provider identity/token material. Derive the unique binding key only with the dedicated binding secret. Do not use application check-then-write for uniqueness. A successful reconnect is allowed only for the existing `business_id` and binding; selecting another account is rejected until a separately authorized disconnect/rebind exists. Never log rows or query parameters.
 
-Expected RED: missing credential/binding methods.
-
-- [ ] **Step 2: implement minimal binding protocol**
-
-Validate every `business_id` as one key segment and every loaded record's embedded tenant. Require conditional writes at every status transition. Never list tenant prefixes to infer ownership. During binding-key rotation, dual-read all configured versions, reject conflicting owners, write/finalize the current version, and preserve previous indexes until the migration described in the runbook is verified. Return metadata/safe status; never return plaintext token from store APIs except the narrowly named internal decrypt method used by provider health.
-
-- [ ] **Step 3: verify GREEN and broad storage regression**
+- [ ] **Step 3: verify deterministic and optional real-database behavior**
 
 ```bash
 node --test tests/publishing/instagram-crypto.test.mjs tests/publishing/instagram-store.test.mjs
-node --test tests/preflight/netlify-blobs-contract.test.mjs
+node --test tests/integration/instagram-database.test.mjs
 git diff --check
-git diff -- netlify/functions/_instagram-store.mjs tests/publishing/instagram-store.test.mjs
 ```
 
-Expected: all crypto/store/contract tests PASS; serialized fake-store values contain none of the sentinel token.
+The integration command is **PASS** only against an explicitly configured isolated non-production PostgreSQL/Netlify Database context. If unavailable, report **NOT TESTABLE** and retain it as a pre-merge/deployment acceptance requirement; do not use production and do not fall back to Blobs.
 
 - [ ] **Step 4: commit**
 
 ```bash
-git add netlify/functions/_instagram-store.mjs tests/publishing/instagram-store.test.mjs
+git add netlify/database/migrations netlify/functions/_instagram-store.mjs tests/publishing/instagram-store.test.mjs tests/integration/instagram-database.test.mjs
 git commit -m "feat: store encrypted tenant Instagram credentials"
 ```
 
@@ -363,7 +277,7 @@ git commit -m "feat: store encrypted tenant Instagram credentials"
 - Create: `tests/publishing/instagram-oauth-provider.test.mjs`
 - Modify only if the provider contract requires configuration flags, never secrets: `clients/growthwise-dev.json`, `clients/dexters-hats.json`
 
-**Interfaces:** Use only the literal endpoints/scope/fields confirmed in Task 1. `buildAuthorizationUrl` receives `{ appId, callbackUri, state, codeChallenge? }`; it has no return-URL or business-ID argument. Provider requests use injected `fetchImpl`, `AbortSignal.timeout`, explicit response-byte limits, exact JSON schema validation, and authorization headers/body placement required by the verified contract. `verifyProfessionalIdentity` returns only normalized internal `{ accountId, username, name }`. `InstagramProviderError` carries a safe enum (`denied`, `exchange_failed`, `invalid_identity`, `temporarily_unavailable`) and no raw body/request.
+**Interfaces:** Use the approved literal endpoints/scope/fields from Task 1. `buildAuthorizationUrl` receives `{ appId, callbackUri, state }`; it has no PKCE, return-URL, or business-ID argument. Provider requests use injected `fetchImpl`, `AbortSignal.timeout`, explicit response-byte limits, exact JSON schema validation, and server-side secret placement required by the approved contract. `verifyProfessionalIdentity` returns only normalized internal `{ accountId, username, name }`. `InstagramProviderError` carries a safe enum (`denied`, `exchange_failed`, `invalid_identity`, `temporarily_unavailable`) and no raw body/request.
 
 - [ ] **Step 1: write RED tests**
 
@@ -382,7 +296,7 @@ empty ambiguous and wrong-shaped identity responses fail closed
 provider timeout and raw errors become safe normalized errors
 ```
 
-If preflight proves long-lived exchange unsupported for this flow, replace the named long-lived-exchange test with `unsupported long-lived exchange is disabled explicitly` and assert no exchange call occurs. If PKCE is unsupported, assert the authorization URL omits PKCE and record that verified decision; do not simulate unsupported parameters.
+Assert the authorization URL omits PKCE; do not add it by assumption. Use the approved long-lived exchange and refresh contracts. If later acceptance shows a concrete provider conflict, stop and update the design intentionally.
 
 Run:
 
@@ -506,21 +420,21 @@ successful callback encrypts binds and marks consumed_success
 successful callback redirects only to fixed connected hint
 growthwise-dev successful callback returns to the development integration page
 Dexter successful callback returns to the Dexter integration page
-partial reverse-binding writes never redirect connected
+rolled-back credential binding never redirects connected
 callback rejects duplicate unexpected query parameters and oversized query
 ```
 
 Run:
 
 ```bash
-node --test tests/publishing/instagram-oauth.test.mjs --test-name-pattern="callback|provider denial|code exchange|wrong Instagram|duplicate account|partial reverse"
+node --test tests/publishing/instagram-oauth.test.mjs --test-name-pattern="callback|provider denial|code exchange|wrong Instagram|duplicate account|rolled-back binding"
 ```
 
 Expected RED: callback module does not exist.
 
 - [ ] **Step 2: implement callback orchestration**
 
-Validate exact state grammar/HMAC, strong-read transaction, validate its destination ID against the server allowlist, and win `pending → processing` before provider work. Handle denial as `consumed_denied`. Exchange code server-side, perform verified long-lived exchange when supported, verify one professional identity, enforce duplicate binding, encrypt payload, execute reserve/write/finalize/activate, then mark `consumed_success`. Any terminal failure marks `consumed_failed` using the current ETag and redirects to the transaction destination's fixed `attention` URL; an unknown destination or storage ambiguity never redirects connected. Enforce time/size/schema limits in provider helper. Set no-store/no-referrer headers. Do not reflect raw query/provider errors.
+Validate exact state grammar/HMAC, atomically claim the unexpired pending transaction with the guarded SQL update, validate its immutable destination ID against the server allowlist, and obtain the sole returned row before provider work. Handle denial as `consumed_denied`. Exchange code server-side, perform the approved long-lived exchange, verify one professional identity, encrypt the payload, and transactionally enforce unique ownership plus credential write before marking `consumed_success`. Any terminal failure marks `consumed_failed` and redirects to the transaction destination's fixed `attention` URL; an unknown destination or database ambiguity never redirects connected. Enforce time/size/schema limits in provider helper. Set no-store/no-referrer headers. Do not reflect raw query/provider errors.
 
 - [ ] **Step 3: verify GREEN and all OAuth tests**
 
@@ -549,7 +463,7 @@ git commit -m "feat: complete one-use Instagram OAuth callback"
 - Modify: `tests/publishing/instagram-connection.test.mjs`
 - Modify only to add a non-secret fallback policy flag if required: `clients/growthwise-dev.json`, `clients/dexters-hats.json`
 
-**Interface:** Preserve authenticated `GET` and public `{ business_id, state, checked_at, account?: { username, name }, action? }`. Add injected `readCredential`, `readActiveBinding`, `decryptCredential`, provider verifier, and `legacyFallbackEnabled`. A stored record always takes precedence. The legacy environment references are considered only when no store record exists, deployment is explicitly development, and that tenant's fallback policy is explicitly enabled.
+**Interface:** Preserve authenticated `GET` and public `{ business_id, state, checked_at, account?: { username, name }, action? }`. Add injected `readCredential`, `decryptCredential`, provider verifier, and `legacyFallbackEnabled`. A stored database row always takes precedence. The legacy environment references are considered only when no row exists, deployment is explicitly development, and that tenant's fallback policy is explicitly enabled.
 
 - [ ] **Step 1: extend RED health tests**
 
@@ -563,7 +477,7 @@ expired or revoked credential returns Needs Attention
 pending corrupt undecryptable or mismatched credential returns Needs Attention
 stored bad credential never falls back to legacy token
 legacy development fallback remains available only when explicitly enabled
-cross-tenant credential or reverse binding fails closed
+cross-tenant credential or account binding fails closed
 connection response never contains account ID token ciphertext expiry or raw Meta error
 ```
 
@@ -579,7 +493,7 @@ Expected RED: stored credential dependencies/precedence are absent.
 
 - [ ] **Step 2: implement minimal migration**
 
-Check for any primary record before considering fallback. Verify status, active reverse binding, local expiry, decrypt with tenant/account AAD, call identity, and require exact stable ID. On success update only safe identity/`last_verified_at` with a conditional record write. Convert revoked/invalid-token to `needs_attention`; temporary provider failure returns safe **Needs Attention** without exposing details. Never silently rewrite account ownership.
+Check for any primary row before considering fallback. Query by authenticated tenant, verify status and binding-key/AAD context, check local expiry, decrypt, call identity, and require exact stable ID. On success update only safe identity/`last_verified_at` with a parameterized tenant-scoped statement. Convert revoked/invalid-token to `needs_attention`; temporary provider failure returns safe **Needs Attention** without exposing details. Never silently rewrite account ownership.
 
 - [ ] **Step 3: verify GREEN and legacy regressions**
 
@@ -775,13 +689,13 @@ From a clean checkout/worktree of the feature branch:
 
 ```bash
 npm install --ignore-scripts --no-audit --no-fund
-node --test tests/preflight/netlify-blobs-contract.test.mjs
+node --test tests/integration/instagram-database.test.mjs
 npm run test:instagram
 npm run test:publishing
 git diff --check origin/platform-v1...HEAD
 ```
 
-Record exact test counts as `PASS`, `FAIL`, or `NOT TESTABLE`. The Blob contract may not be marked PASS unless the real non-production semantics ran; `NOT TESTABLE` blocks the PR from implementation-ready status and becomes **DECISION NEEDED**. Every other suite must have zero failures/skips relevant to the feature.
+Record exact test counts as `PASS`, `FAIL`, or `NOT TESTABLE`. The database integration suite may be **NOT TESTABLE** when no explicitly configured isolated non-production context is available; record it as a required real-environment acceptance test before merge/deployment, without weakening or falling back. Every deterministic suite must have zero relevant failures/skips.
 
 - [ ] **Step 2: run repository leakage and forbidden-capability scans**
 
@@ -843,7 +757,7 @@ Push the feature branch and create a **draft** PR with base `platform-v1`. Inclu
 
 ## Commit sequence
 
-1. `build: verify and pin Netlify Blobs contract`
+1. `docs: move Instagram OAuth state to PostgreSQL`
 2. `feat: add separated Instagram cryptography`
 3. `feat: add one-use Instagram OAuth transactions`
 4. `feat: store encrypted tenant Instagram credentials`
@@ -862,8 +776,8 @@ Do not squash these during implementation review unless the reviewer explicitly 
 These are gates, not unresolved design placeholders:
 
 1. Paul must confirm the canonical GrowthWise Netlify origin if repository/read-only site evidence cannot prove it.
-2. Official current Meta documentation must confirm the identity-only contract, including PKCE and long-lived-token behavior; a material conflict returns to architecture review.
-3. A literal `@netlify/blobs` version must prove conditional-write/ETag/strong-consistency behavior in a real non-production context. Failure requires approval of a transactional alternative.
+2. Paul's approved first-party Meta Postman/provider contract unblocks implementation despite the Codex proxy. A material conflict found during later acceptance returns to architecture review; do not improvise PKCE or broader scopes.
+3. An isolated real PostgreSQL/Netlify Database context must prove transaction and unique-constraint behavior before merge/deployment. If unavailable in Codex, report **NOT TESTABLE**; never use production or fall back to Blobs.
 
 No implementation task requires Paul to create, copy, or paste an Instagram access token.
 
@@ -880,5 +794,5 @@ No implementation task requires Paul to create, copy, or paste an Instagram acce
 - [ ] No task requests publishing permission, calls publishing/container APIs, configures webhooks, or changes Auto City/Dexter legacy behavior.
 - [ ] The UI never treats the callback hint as connection truth and never receives a token/code/secret.
 - [ ] `instagram-dev.html` is a credential-free beta acceptance harness for `growthwise-dev`; it and Dexter mount the same component, while future SaaS tenants use authenticated context in the shared shell rather than static per-customer pages.
-- [ ] The dependency is pinned only after real semantic proof, and failure blocks implementation.
+- [ ] The implementation uses documented `@netlify/database` APIs, parameterized SQL, and one checked-out client per transaction; real integration acceptance is recorded separately when unavailable.
 - [ ] The final result is self-service connection and authoritative `Connected to @username`, with no manual token work by Paul.
