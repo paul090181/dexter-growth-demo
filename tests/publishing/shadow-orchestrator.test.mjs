@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { createMasterPackage } from "../../core/publishing/master-package/create.mjs";
+import { createAuditEvent } from "../../core/publishing/audit/events.mjs";
 import { runShadowPublishing } from "../../core/publishing/orchestration/shadow.mjs";
 import { automotiveToMasterInput } from "../../verticals/automotive/publishing-adapter/index.mjs";
 import { retailToMasterInput } from "../../verticals/retail/publishing-adapter/index.mjs";
@@ -54,6 +55,19 @@ test("tenant and authorization checks fail before channel work", async () => {
   await assert.rejects(
     runShadowPublishing({ businessId: "auto-city", role: "view_only", masterPackage: automotiveMaster, channelIds: ["website"] }),
     /not authorized/i,
+  );
+});
+
+test("audit events reject whitespace-only tenant identifiers", () => {
+  assert.throws(
+    () => createAuditEvent({
+      businessId: " \t ",
+      actor: { role: "owner_admin" },
+      action: "publish:create",
+      entityType: "publishing_channel_attempt",
+      entityId: "vehicle-1:website",
+    }),
+    /businessId is required/,
   );
 });
 

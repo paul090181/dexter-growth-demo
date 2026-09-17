@@ -16,7 +16,8 @@ const REQUIRED_FIELDS = [
 const SOURCE_OF_TRUTH_MODES = new Set(["growthwise", "external", "bidirectional"]);
 
 function missing(value) {
-  return value === undefined || value === null || value === "";
+  return value === undefined || value === null
+    || (typeof value === "string" && value.trim() === "");
 }
 
 export function validateMasterPackage(pkg) {

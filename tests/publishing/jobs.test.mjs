@@ -35,6 +35,17 @@ test("jobs contain their tenant scope and stable duplicate-protection key", () =
   assert.equal(job.idempotency_key, idempotencyKey(input));
 });
 
+test("jobs reject whitespace-only tenant identifiers", () => {
+  assert.throws(
+    () => createPublishingJob({ ...input, businessId: " \t " }),
+    /businessId is required/,
+  );
+  assert.throws(
+    () => transitionJob({ ...createPublishingJob(input), business_id: " \n " }, "Queued"),
+    /job\.business_id is required/,
+  );
+});
+
 test("temporary timeout and rate-limit failures retry only within the bound", () => {
   for (const error of [
     Object.assign(new Error("request timed out"), { code: "ETIMEDOUT" }),

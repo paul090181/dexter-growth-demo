@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 
 function required(value, name) {
-  if (value === undefined || value === null || value === "") {
+  if (value === undefined || value === null
+    || (typeof value === "string" && value.trim() === "")) {
     throw new TypeError(`${name} is required`);
   }
 }

@@ -17,7 +17,8 @@ const TRANSITIONS = Object.freeze({
 });
 
 function requireValue(value, name) {
-  if (value === undefined || value === null || value === "") {
+  if (value === undefined || value === null
+    || (typeof value === "string" && value.trim() === "")) {
     throw new TypeError(`${name} is required`);
   }
 }
@@ -56,7 +57,7 @@ export function createPublishingJob({
 }
 
 export function transitionJob(job, nextStatus, patch = {}) {
-  if (!job?.business_id) throw new TypeError("job.business_id is required");
+  requireValue(job?.business_id, "job.business_id");
   if (!JOB_STATUSES.includes(nextStatus)) throw new RangeError(`Unknown job status: ${nextStatus}`);
   if (patch.business_id !== undefined && patch.business_id !== job.business_id) {
     throw new Error("A job's business_id cannot be changed");

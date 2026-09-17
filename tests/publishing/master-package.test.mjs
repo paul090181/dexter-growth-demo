@@ -29,6 +29,14 @@ test("master packages require an explicit business scope", () => {
   assert.ok(result.errors.includes("business_id is required"));
 });
 
+test("direct validation rejects a whitespace-only business scope", () => {
+  const master = createMasterPackage({ ...input, business_id: "auto-city" });
+  const result = validateMasterPackage({ ...master, business_id: " \t\n " });
+
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.includes("business_id is required"));
+});
+
 test("creation normalizes strings, copies input, and preserves media ordering", () => {
   const master = createMasterPackage(input);
 
