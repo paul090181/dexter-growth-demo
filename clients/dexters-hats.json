@@ -19,7 +19,8 @@
   "integrations": {
     "facebook": "optional",
     "instagram": {
-      "token_env": "DEXTERS_HATS_META_ACCESS_TOKEN"
+      "token_env": "DEXTERS_HATS_INSTAGRAM_ACCESS_TOKEN",
+      "account_id_env": "DEXTERS_HATS_INSTAGRAM_ACCOUNT_ID"
     },
     "marketplace": "assisted",
     "square": "optional"

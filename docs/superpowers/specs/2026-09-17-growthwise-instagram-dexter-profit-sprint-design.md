@@ -20,7 +20,7 @@ Every shadow result and response continues to report `live_sent: false`; configu
 
 ## Reusable Instagram tenant architecture
 
-Instagram is a shared Meta integration, not Dexter-specific code. A server endpoint accepts an authenticated GrowthWise business context, looks up only that business's server-side connection reference, discovers the professional Instagram account through Meta's managed Pages, and returns a redacted status projection. The same endpoint and state model support `growth.wise1`, Dexter, and later clients without code changes or embedded account IDs.
+Instagram is a shared Meta integration, not Dexter-specific code. A server endpoint accepts an authenticated GrowthWise business context, looks up only that business's server-side Instagram Login credential and account-binding references, verifies the directly authenticated professional account, and returns a redacted status projection. A Facebook Page is not required merely to connect. The same endpoint and state model support `growth.wise1`, Dexter, and later clients without code changes or embedded account IDs. A mismatched, non-professional, or ambiguous account response fails closed rather than selecting an account.
 
 Initial states are:
 
@@ -32,7 +32,7 @@ Connection mutation requires an owner/admin and a later interactive Meta OAuth f
 
 ## `growth.wise1` test-account strategy
 
-`growth.wise1` is the first development/test account. Paul must make it a professional Business or Creator account, link it to a Facebook Page in Meta, configure the approved Meta app permissions and redirect URI, complete authorization using the future server-side OAuth entry point, and verify that GrowthWise reports the discovered username. No identifier is committed. Dexter later follows the identical flow while signed into the Meta user with access to his linked Page and professional Instagram account.
+`growth.wise1` is the first development/test account. Paul must make it a professional Business or Creator account, configure Instagram API with Instagram Login and the current `instagram_business_basic` permission plus redirect URI, complete authorization using the future server-side OAuth entry point, and verify that GrowthWise reports the authenticated username. No identifier is committed. Dexter later follows the identical direct Instagram professional-account flow.
 
 No real Instagram post is authorized in this sprint. A separately approved live test and explicit account confirmation are required before any publishing implementation or external mutation.
 

@@ -25,7 +25,7 @@
 **Interface:** `GET /.netlify/functions/instagram-connection?business_id=...`, authenticated with `X-GrowthWise-Key`; injected fetch/env dependencies for deterministic tests. It returns only `state`, safe discovered identity, `checked_at`, and remediation.
 
 **Red:** Test Not Connected, Connected discovery, Needs Attention, wrong tenant/key, unsupported mutations, and absence of token/raw Meta response.
-**Green:** Implement tenant allowlist/config lookup and read-only `/me/accounts` plus linked `instagram_business_account` discovery.
+**Green:** Implement tenant allowlist/config lookup and read-only Instagram Login `/me` verification with a server-side tenant/account binding; fail closed on mismatched or ambiguous context.
 **Commands:** `node --test tests/publishing/instagram-connection.test.mjs`; `npm run test:publishing`.
 **Commit:** `feat: add tenant-safe Instagram connection health`
 

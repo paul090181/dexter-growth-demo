@@ -47,16 +47,23 @@ export function createInstagramConnectionHandler({
 
     const checkedAt = now().toISOString();
     const credentialReference = client.integrations?.instagram?.token_env;
+    const accountReference = client.integrations?.instagram?.account_id_env;
     const accessToken = credentialReference ? env(credentialReference) : undefined;
     if (!accessToken) {
       return json(200, statusBody(businessId, "Not Connected", checkedAt, {
         action: "An owner must complete the secure Meta authorization flow.",
       }));
     }
+    const expectedAccountId = accountReference ? env(accountReference) : undefined;
+    if (!expectedAccountId) {
+      return json(200, statusBody(businessId, "Needs Attention", checkedAt, {
+        action: "Reconnect Instagram so GrowthWise can securely bind the professional account to this business.",
+      }));
+    }
 
     try {
-      const fields = "id,name,instagram_business_account{id,username,name}";
-      const response = await fetchImpl(`https://graph.facebook.com/${GRAPH_VERSION}/me/accounts?fields=${encodeURIComponent(fields)}`, {
+      const fields = "user_id,username,name";
+      const response = await fetchImpl(`https://graph.instagram.com/${GRAPH_VERSION}/me?fields=${encodeURIComponent(fields)}`, {
         method: "GET",
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -66,14 +73,15 @@ export function createInstagramConnectionHandler({
           action: "Reconnect Meta. The authorization may be expired or missing required permissions.",
         }));
       }
-      const account = graph?.data?.map((page) => page.instagram_business_account).find(Boolean);
-      if (!account?.username) {
+      const isSingleAccount = graph && typeof graph === "object" && !Array.isArray(graph) && !Array.isArray(graph.data);
+      const isExpectedAccount = String(graph?.user_id ?? "") === String(expectedAccountId);
+      if (!isSingleAccount || !isExpectedAccount || !graph?.username) {
         return json(200, statusBody(businessId, "Needs Attention", checkedAt, {
-          action: "Link a professional Instagram account to a Facebook Page you manage, then reconnect.",
+          action: "Reconnect the intended Instagram professional account for this GrowthWise business.",
         }));
       }
       return json(200, statusBody(businessId, "Connected", checkedAt, {
-        account: { username: account.username, name: account.name || account.username },
+        account: { username: graph.username, name: graph.name || graph.username },
       }));
     } catch {
       return json(200, statusBody(businessId, "Needs Attention", checkedAt, {

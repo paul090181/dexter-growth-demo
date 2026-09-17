@@ -15,7 +15,7 @@ GrowthWise now copies successful Dexter Square product creation into four indepe
 
 Implemented: shared configuration by `business_id`, server-only credential references, read-only professional-account discovery, redacted Not Connected / Connected / Needs Attention responses, caption/media preview, and shadow readiness blockers. `growth.wise1` is configured as a strategy—not a hard-coded ID—and must be discovered from Meta.
 
-Paul's exact steps and Dexter's same-flow onboarding are in `docs/INSTAGRAM_CONNECTION_RUNBOOK.md`. Paul must confirm professional status and Page linkage, prepare the Meta app, approve/implement secure OAuth, place any temporary development token only in server configuration, and run the redacted health check. Dexter later authorizes the same flow for his tenant without a code change. OAuth interaction, durable credential persistence, public media hosting, and every live publish remain blocked.
+Paul's exact steps and Dexter's same-flow onboarding are in `docs/INSTAGRAM_CONNECTION_RUNBOOK.md`. Paul must confirm professional status, prepare Instagram API with Instagram Login and `instagram_business_basic`, approve/implement secure OAuth, keep the temporary token and account binding only in server configuration, and run the redacted health check. No Facebook Page is required merely to connect. Dexter later authorizes the same flow for his tenant without a code change. OAuth interaction, durable credential persistence, public media hosting, and every live publish remain blocked.
 
 ## Dexter bridge
 
@@ -39,11 +39,11 @@ After either “Save to Square only” or “Add to Square & Promote” successf
 
 ## Testing
 
-* `node --test tests/publishing/instagram-connection.test.mjs`: **4 passed, 0 failed**.
+* `node --test tests/publishing/instagram-connection.test.mjs`: **5 passed, 0 failed**.
 * `node --test tests/publishing/channel-drafts.test.mjs`: **5 passed, 0 failed**.
 * `node --test tests/publishing/dexter-shadow-bridge.test.mjs`: **2 passed, 0 failed**.
 * `node --test tests/publishing/shadow-value.test.mjs`: **2 passed, 0 failed**.
-* Combined new/relevant focused suite: **13 passed, 0 failed**.
+* Combined new/relevant focused suite at initial handoff: **13 passed, 0 failed**; the later Instagram Login account-selection review adds focused fail-closed coverage.
 * `npm run test:publishing`: **49 passed, 2 failed to load** because `@netlify/blobs` was unavailable locally.
 * Runnable publishing suite excluding only the two Blob-importing files: **49 passed, 0 failed**.
 * `npm install --no-audit --no-fund`: **not runnable successfully in this environment**; npm registry returned HTTP 403 for `@netlify/blobs`.
@@ -60,7 +60,7 @@ Each persisted shadow run and response now records products processed, channels 
 
 ## Blockers
 
-* **Paul / Meta:** professional-account/Page linkage, app configuration, permissions/tester or review status, and interactive authorization.
+* **Paul / Meta:** professional-account status, Instagram Login app configuration, permissions/tester or review status, and interactive authorization.
 * **Architecture:** server OAuth state/callback and encrypted tenant credential lifecycle.
 * **Architecture:** durable tenant-isolated media hosting and delivery policy.
 * **Environment:** npm registry policy prevented installation of `@netlify/blobs`.
@@ -75,7 +75,7 @@ Each persisted shadow run and response now records products processed, channels 
 ## Recommended morning actions
 
 1. Review this report and the Instagram runbook; confirm no live action is expected.
-2. Confirm `growth.wise1` professional status and Facebook Page linkage.
+2. Confirm `growth.wise1` professional status and Instagram Login eligibility; a Facebook Page is not required for connection.
 3. Review Meta app products, redirect URI, least-privilege permissions, tester/app-review requirements, and token duration.
 4. Decide the OAuth credential and media-hosting architectures.
 5. Install dependencies in an allowed environment and rerun `npm run test:publishing`.
