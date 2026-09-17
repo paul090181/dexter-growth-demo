@@ -153,7 +153,7 @@ export function createInstagramCrypto({
       };
     },
 
-    decryptCredential({ businessId, accountId, encryptedToken }) {
+    decryptCredential({ businessId, accountId, accountBindingKey: storedBindingKey, encryptedToken }) {
       if (!encryptedToken || encryptedToken.algorithm !== "A256GCM") fail("CREDENTIAL_DECRYPT_FAILED");
       const version = credentials.find(({ id }) => id === encryptedToken.key_version);
       if (!version) fail("UNKNOWN_CREDENTIAL_KEY");
@@ -166,7 +166,10 @@ export function createInstagramCrypto({
           fail("CREDENTIAL_DECRYPT_FAILED");
         const body = combined.subarray(0, -GCM_TAG_BYTES);
         const tag = combined.subarray(-GCM_TAG_BYTES);
-        for (const accountBindingKey of accountBindingKeys(accountId)) {
+        const aadBindingKeys = storedBindingKey === undefined
+          ? accountBindingKeys(accountId)
+          : [requireSegment(storedBindingKey, "INVALID_CREDENTIAL_CONTEXT")];
+        for (const accountBindingKey of aadBindingKeys) {
           try {
             const decipher = createDecipheriv("aes-256-gcm", version.key, iv);
             decipher.setAAD(aad(businessId, accountBindingKey));

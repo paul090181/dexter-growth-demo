@@ -1,0 +1,123 @@
+import { createInstagramCrypto } from "./_instagram-crypto.mjs";
+import { resolveInstagramReturnDestination } from "./_instagram-clients.mjs";
+import {
+  configuredInstagramOAuth, exchangeAuthorizationCode, exchangeLongLivedToken,
+  verifyProfessionalIdentity, INSTAGRAM_IDENTITY_SCOPE,
+} from "./_instagram-oauth.mjs";
+import { instagramDatabase } from "./_instagram-store.mjs";
+
+const PATH = "/.netlify/functions/instagram-oauth-callback";
+const MAX_QUERY_BYTES = 8192;
+const DESTINATIONS = new Set(["growthwise-dev-integration", "dexter-integration"]);
+
+function env(name) { return globalThis.Netlify?.env?.get(name); }
+function versions(name) { return { current: { id: "v1", key: env(name) } }; }
+function defaultCrypto() {
+  return createInstagramCrypto({
+    stateSecrets: versions("GROWTHWISE_INSTAGRAM_OAUTH_STATE_SECRET"),
+    bindingSecrets: versions("GROWTHWISE_INSTAGRAM_ACCOUNT_BINDING_SECRET"),
+    credentialKeys: versions("GROWTHWISE_INSTAGRAM_CREDENTIAL_ENCRYPTION_KEY"),
+  });
+}
+
+const safeHeaders = { "cache-control": "no-store", pragma: "no-cache", "referrer-policy": "no-referrer" };
+function plain(status) {
+  return new Response("Instagram connection could not be completed.", {
+    status, headers: { ...safeHeaders, "content-type": "text/plain; charset=utf-8" },
+  });
+}
+function redirect(location) { return new Response(null, { status: 303, headers: { ...safeHeaders, location } }); }
+
+function parseCallback(request) {
+  if (request.method !== "GET") throw new Error("INVALID_CALLBACK");
+  const rawQuery = request.url.slice(request.url.indexOf("?") + 1);
+  if (/%(?![0-9A-Fa-f]{2})/.test(rawQuery)) throw new Error("INVALID_CALLBACK");
+  try { decodeURIComponent(rawQuery); } catch { throw new Error("INVALID_CALLBACK"); }
+  const url = new URL(request.url);
+  if (url.pathname !== PATH || url.hash || Buffer.byteLength(url.search, "utf8") > MAX_QUERY_BYTES) throw new Error("INVALID_CALLBACK");
+  const entries = [...url.searchParams];
+  if (entries.some(([key, value]) => !key || !value) || new Set(entries.map(([key]) => key)).size !== entries.length) throw new Error("INVALID_CALLBACK");
+  const keys = new Set(entries.map(([key]) => key));
+  const success = keys.size === 2 && keys.has("state") && keys.has("code");
+  const denialAllowed = new Set(["state", "error", "error_reason", "error_description"]);
+  const denial = keys.has("state") && keys.has("error") && url.searchParams.get("error") === "access_denied"
+    && [...keys].every((key) => denialAllowed.has(key));
+  if (!success && !denial) throw new Error("INVALID_CALLBACK");
+  return { url, state: url.searchParams.get("state"), code: success ? url.searchParams.get("code") : null, denied: denial };
+}
+
+export function createInstagramOAuthCallbackHandler(options = {}) {
+  const now = options.now ?? (() => new Date());
+  const config = options.config ?? (() => configuredInstagramOAuth());
+  const resolveDestination = options.resolveDestination ?? resolveInstagramReturnDestination;
+  const exchangeCode = options.exchangeCode ?? exchangeAuthorizationCode;
+  const exchangeLongLived = options.exchangeLongLived ?? exchangeLongLivedToken;
+  const verifyIdentity = options.verifyIdentity ?? verifyProfessionalIdentity;
+  const logger = options.logger ?? { warn() {} };
+  const safeWarn = () => { try { logger.warn("instagram_oauth_callback_failed"); } catch { /* logging cannot alter OAuth control flow */ } };
+  return async function instagramOAuthCallback(request) {
+    let input;
+    try { input = parseCallback(request); } catch { return plain(400); }
+
+    let crypto;
+    let transactionKey;
+    let settings;
+    try {
+      crypto = options.crypto ?? defaultCrypto();
+      transactionKey = crypto.transactionKey(input.state);
+      settings = config();
+      const canonical = new URL(settings.publicOrigin);
+      if (canonical.protocol !== "https:" || canonical.origin !== settings.publicOrigin
+        || canonical.pathname !== "/" || canonical.search || canonical.hash
+        || input.url.username || input.url.password
+        || input.url.origin !== canonical.origin || input.url.pathname !== PATH) throw new Error("INVALID_ORIGIN");
+    } catch { return plain(400); }
+    const store = options.store ?? instagramDatabase({ crypto });
+    let transaction;
+    try { transaction = await store.claimTransaction({ transactionKey }); } catch { return plain(400); }
+    if (!transaction) return plain(400);
+    if (!DESTINATIONS.has(transaction.return_destination_id)) {
+      try { await store.finishTransaction({ transactionKey, status: "consumed_failed", now: now() }); } catch { /* fail closed */ }
+      return plain(400);
+    }
+
+    const destination = (hint) => resolveDestination({
+      destinationId: transaction.return_destination_id, hint, publicOrigin: settings.publicOrigin,
+    });
+    if (input.denied) {
+      try {
+        await store.finishTransaction({ transactionKey, status: "consumed_denied", now: now() });
+        return redirect(destination("cancelled"));
+      } catch { return plain(500); }
+    }
+
+    try {
+      const short = await exchangeCode({ ...settings, code: input.code });
+      const long = await exchangeLongLived({ appSecret: settings.appSecret, accessToken: short.accessToken });
+      const identity = await verifyIdentity({ accessToken: long.accessToken });
+      if (!identity || identity.accountId !== short.accountId || typeof identity.username !== "string" || !identity.username) {
+        throw new Error("IDENTITY_MISMATCH");
+      }
+      const expiresAt = new Date(now().getTime() + long.expiresInSeconds * 1000);
+      await store.connectCredential({
+        businessId: transaction.business_id, accountId: identity.accountId,
+        payload: {
+          access_token: long.accessToken, account_id: identity.accountId,
+          token_type: long.tokenType, scope: INSTAGRAM_IDENTITY_SCOPE,
+        },
+        status: "active", tokenExpiresAt: expiresAt, username: identity.username,
+        displayName: identity.name ?? identity.username, lastVerifiedAt: now(),
+        transactionKey, consumedAt: now(),
+      });
+      return redirect(destination("connected"));
+    } catch {
+      safeWarn();
+      try {
+        await store.finishTransaction({ transactionKey, status: "consumed_failed", now: now() });
+        return redirect(destination("attention"));
+      } catch { return plain(500); }
+    }
+  };
+}
+
+export default createInstagramOAuthCallbackHandler();
