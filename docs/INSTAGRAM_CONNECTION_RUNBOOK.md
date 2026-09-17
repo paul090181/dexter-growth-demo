@@ -50,18 +50,18 @@ Do not reuse a value between these families. Record version identifiers and enco
 
 ## Database migration guardrails
 
-The OAuth security store is PostgreSQL-backed through `@netlify/database`; it must not use Netlify Blobs. The repository migration is under `netlify/database/migrations/` and creates:
+The OAuth security store is PostgreSQL-backed through `@netlify/database`; it must not use Netlify Blobs. The repository migration is `netlify/database/migrations/20260917173000_instagram-oauth/migration.sql`, using Netlify's required `<number>_<lowercase-slug>/migration.sql` layout, and creates:
 
 * `instagram_oauth_transactions`, including immutable tenant/return-destination identity and one-time status transitions; and
 * `instagram_credentials`, including one row per business, encrypted credential data, and a database-enforced unique account-binding key.
 
 Before any production deployment:
 
-1. Use an isolated, explicitly authorized non-production Netlify Database.
+1. Use an isolated, explicitly authorized Deploy Preview database branch. Netlify automatically applies the checked-in migration before the preview acceptance test runs.
 2. Review the migration and take the database backup/rollback precaution required by the current Netlify Database procedure.
-3. Apply the checked-in migration using Netlify's supported database migration workflow; do not paste ad-hoc SQL into production.
+3. Confirm the Deploy Preview migration completed automatically. The acceptance test must not apply migration SQL itself or drop application tables, triggers, or functions.
 4. Verify the primary key, unique account-binding constraint, status checks, and transaction-identity immutability in that isolated database.
-5. Run `node --test tests/integration/instagram-database.test.mjs` with only that isolated context configured. It must prove one winner for concurrent claims, rollback behavior, ownership uniqueness, and same-owner reconnect.
+5. Run `node --test tests/integration/instagram-database.test.mjs` with `CONTEXT=deploy-preview` and `INSTAGRAM_DATABASE_INTEGRATION=isolated-deploy-preview` in that preview context. It must prove one winner for concurrent claims, rollback behavior, database-enforced ownership uniqueness, encryption-at-rest, scoped cleanup, and same-owner reconnect.
 6. Record the exact migration revision and test evidence without recording rows, ciphertext, connection strings, or secrets.
 7. Only after review may the normal deployment process apply the same checked-in migration. This implementation task does not apply a migration or initialize a production database.
 

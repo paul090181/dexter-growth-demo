@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { createInstagramStore } from "../../netlify/functions/_instagram-store.mjs";
 import { createInstagramCrypto } from "../../netlify/functions/_instagram-crypto.mjs";
 
@@ -194,7 +194,7 @@ test("malformed generated state fails before inserting a transaction", async () 
 
 test("migration prevents tenant and return destination mutation", async () => {
   const migration = await readFile(
-    new URL("../../netlify/database/migrations/20260917173000_instagram_oauth.sql", import.meta.url),
+    new URL("../../netlify/database/migrations/20260917173000_instagram-oauth/migration.sql", import.meta.url),
     "utf8",
   );
   assert.match(migration, /NEW\.business_id IS DISTINCT FROM OLD\.business_id/);
@@ -355,8 +355,34 @@ test("failed OAuth success finalization rolls back the credential write", async 
 });
 
 test("credential migration enforces primary ownership and unique binding", async () => {
-  const migration = await readFile(new URL("../../netlify/database/migrations/20260917173000_instagram_oauth.sql", import.meta.url), "utf8");
+  const migrationUrl = new URL("../../netlify/database/migrations/20260917173000_instagram-oauth/migration.sql", import.meta.url);
+  const migration = await readFile(migrationUrl, "utf8");
+  assert.match(migrationUrl.pathname, /\/netlify\/database\/migrations\/\d+_[a-z0-9-]+\/migration\.sql$/);
   assert.match(migration, /business_id text PRIMARY KEY/);
   assert.match(migration, /account_binding_key text UNIQUE NOT NULL/);
   assert.match(migration, /encrypted_credential jsonb NOT NULL/);
+});
+
+test("database migrations use Netlify's numbered directory layout", async () => {
+  const migrationsUrl = new URL("../../netlify/database/migrations/", import.meta.url);
+  const entries = await readdir(migrationsUrl, { withFileTypes: true });
+  assert.ok(entries.length > 0);
+  for (const entry of entries) {
+    assert.equal(entry.isDirectory(), true, `${entry.name} must be a migration directory`);
+    assert.match(entry.name, /^\d+_[a-z0-9-]+$/);
+    assert.deepEqual(await readdir(new URL(`${entry.name}/`, migrationsUrl)), ["migration.sql"]);
+  }
+});
+
+test("preview schema inspection fails closed without unsafe missing-relation casts", async () => {
+  const acceptance = await readFile(
+    new URL("../integration/instagram-database.test.mjs", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(acceptance, /::regclass/);
+  assert.match(acceptance, /to_regclass\('public\.instagram_oauth_transactions'\)/);
+  assert.match(acceptance, /column_record\.attname = 'transaction_key'/);
+  assert.match(acceptance, /column_record\.attname = 'business_id'/);
+  assert.match(acceptance, /column_record\.attname = 'account_binding_key'/);
+  assert.ok((acceptance.match(/cardinality\(constraint_record\.conkey\) = 1/g) ?? []).length >= 3);
 });

@@ -109,7 +109,7 @@ Transactions expire after ten minutes. A scheduled or opportunistic cleanup may 
 
 ## Encrypted multi-tenant storage
 
-Use `@netlify/database` through `_instagram-store.mjs`, with migrations in `netlify/database/migrations/`. Every query is parameterized. Every multi-statement operation checks out one client from `db.pool`, performs `BEGIN` / `COMMIT` or `ROLLBACK` on that same client, and releases it in `finally`. Tests inject a database adapter; no unit test requires production Netlify access.
+Use `@netlify/database` through `_instagram-store.mjs`, with each migration in Netlify's required `netlify/database/migrations/<number>_<lowercase-slug>/migration.sql` layout. Every query is parameterized. Every multi-statement operation checks out one client from `db.pool`, performs `BEGIN` / `COMMIT` or `ROLLBACK` on that same client, and releases it in `finally`. Tests inject a database adapter; no unit test requires production Netlify access.
 
 The minimum schema is:
 
@@ -235,7 +235,7 @@ Before merge, run the focused OAuth/store/health suite, full `npm run test:publi
 
 ### Dependency reproducibility gate
 
-Implement the subsystem with current documented `@netlify/database` APIs and repository-supported migrations under `netlify/database/migrations/`. Do not initialize or mutate production during this task. Unit tests inject the adapter and deterministically exercise SQL/storage behavior. If an isolated real PostgreSQL/Netlify Database context is unavailable, report the integration suite as **NOT TESTABLE** rather than weakening the design or falling back to Blobs; real transaction/constraint verification remains required before merge/deployment.
+Implement the subsystem with current documented `@netlify/database` APIs and repository-supported migrations under `netlify/database/migrations/<number>_<lowercase-slug>/migration.sql`. Do not initialize or mutate production during this task. Unit tests inject the adapter and deterministically exercise SQL/storage behavior. Real acceptance runs only against an already-migrated isolated Deploy Preview database branch: it verifies schema and behavior, creates uniquely prefixed synthetic rows, deletes only those rows, and never applies DDL or drops application objects. If that context is unavailable, report the integration suite as **NOT TESTABLE** rather than weakening the design or falling back to Blobs; real transaction/constraint verification remains required before merge/deployment.
 
 ## Operations and observability
 
@@ -275,7 +275,7 @@ The anticipated exact repository files are:
 * `netlify/functions/instagram-oauth-callback.mjs` (new)
 * `netlify/functions/_instagram-oauth.mjs` (new shared state/exchange helpers)
 * `netlify/functions/_instagram-store.mjs` (new parameterized PostgreSQL transaction/credential adapter)
-* `netlify/database/migrations/*_instagram_oauth.sql` (new schema and constraints)
+* `netlify/database/migrations/<number>_<lowercase-slug>/migration.sql` (new schema and constraints)
 * `netlify/functions/_instagram-crypto.mjs` (new encryption/state primitives)
 * `netlify/functions/instagram-connection.mjs`
 * `clients/growthwise-dev.json`
