@@ -1230,7 +1230,7 @@ async function sendDexterPublishingShadow(form, created){
           price: form.price,
           quantity: form.quantity
         },
-        media: mediaUrl ? [{ id: 'product-hero', type: 'image', url: mediaUrl, role: 'hero', approved: true }] : [],
+        media: mediaUrl ? [{ id: 'product-hero', type: 'image', url: mediaUrl, role: 'hero', order: 0, approved: true }] : [],
         channels: ['facebook-page', 'facebook-marketplace', 'instagram', 'website']
       })
     });
