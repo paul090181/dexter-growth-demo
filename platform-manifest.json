@@ -5,5 +5,11 @@
   "rule": "one platform, industry modules, client configuration",
   "apps": ["automotive", "retail"],
   "clients": ["auto-city", "dexters-hats"],
+  "publishing_core": {
+    "version": "1.0-shadow",
+    "status": "shadow",
+    "live_actions_enabled": false,
+    "channels_registered": 11
+  },
   "production_paths_moved": false
 }
