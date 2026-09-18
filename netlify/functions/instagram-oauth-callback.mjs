@@ -53,11 +53,11 @@ export function createInstagramOAuthCallbackHandler(options = {}) {
   const exchangeCode = options.exchangeCode ?? exchangeAuthorizationCode;
   const exchangeLongLived = options.exchangeLongLived ?? exchangeLongLivedToken;
   const verifyIdentity = options.verifyIdentity ?? verifyProfessionalIdentity;
-  const logger = options.logger ?? { warn() {} };
-  const safeWarn = () => { try { logger.warn("instagram_oauth_callback_failed"); } catch { /* logging cannot alter OAuth control flow */ } };
+  const logger = options.logger ?? console;
+  const safeWarn = (stage) => { try { logger.warn("instagram_oauth_callback_failed", { stage }); } catch { /* logging cannot alter OAuth control flow */ } };
   return async function instagramOAuthCallback(request) {
     let input;
-    try { input = parseCallback(request); } catch { return plain(400); }
+    try { input = parseCallback(request); } catch { safeWarn("parse_callback"); return plain(400); }
 
     let crypto;
     let transactionKey;
@@ -71,13 +71,14 @@ export function createInstagramOAuthCallbackHandler(options = {}) {
         || canonical.pathname !== "/" || canonical.search || canonical.hash
         || input.url.username || input.url.password
         || input.url.origin !== canonical.origin || input.url.pathname !== PATH) throw new Error("INVALID_ORIGIN");
-    } catch { return plain(400); }
+    } catch { safeWarn("state_or_config"); return plain(400); }
     const store = options.store ?? instagramDatabase({ crypto });
     let transaction;
-    try { transaction = await store.claimTransaction({ transactionKey }); } catch { return plain(400); }
-    if (!transaction) return plain(400);
+    try { transaction = await store.claimTransaction({ transactionKey }); } catch { safeWarn("transaction_claim"); return plain(400); }
+    if (!transaction) { safeWarn("transaction_missing_or_replayed"); return plain(400); }
     if (!DESTINATIONS.has(transaction.return_destination_id)) {
       try { await store.finishTransaction({ transactionKey, status: "consumed_failed", now: now() }); } catch { /* fail closed */ }
+      safeWarn("invalid_return_destination");
       return plain(400);
     }
 
@@ -88,7 +89,7 @@ export function createInstagramOAuthCallbackHandler(options = {}) {
       try {
         await store.finishTransaction({ transactionKey, status: "consumed_denied", now: now() });
         return redirect(destination("cancelled"));
-      } catch { return plain(500); }
+      } catch { safeWarn("denial_finalize"); return plain(500); }
     }
 
     try {
@@ -112,11 +113,11 @@ export function createInstagramOAuthCallbackHandler(options = {}) {
       });
       return redirect(destination("connected"));
     } catch {
-      safeWarn();
+      safeWarn("provider_identity_or_storage");
       try {
         await store.finishTransaction({ transactionKey, status: "consumed_failed", now: now() });
         return redirect(destination("attention"));
-      } catch { return plain(500); }
+      } catch { safeWarn("failure_finalize"); return plain(500); }
     }
   };
 }
