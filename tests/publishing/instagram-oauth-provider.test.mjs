@@ -137,6 +137,19 @@ test("empty ambiguous and wrong-shaped identity responses fail closed", async ()
   }
 });
 
+test("provider HTTP failures retain only safe status metadata", async () => {
+  await assert.rejects(
+    exchangeAuthorizationCode({
+      appId: "1", appSecret: "secret", callbackUri: CALLBACK, code: "code",
+      fetchImpl: async () => response({ error: "RAW_PROVIDER_DETAIL" }, { status: 400 }),
+    }),
+    (error) => error instanceof InstagramProviderError
+      && error.code === "exchange_failed"
+      && error.httpStatus === 400
+      && !String(error).includes("RAW_PROVIDER_DETAIL"),
+  );
+});
+
 test("identity HTTP failures distinguish invalid credentials from transient provider availability", async () => {
   for (const status of [401, 403, 400]) {
     await assert.rejects(
