@@ -92,15 +92,19 @@ export function createInstagramOAuthCallbackHandler(options = {}) {
       } catch { safeWarn("denial_finalize"); return plain(500); }
     }
 
+    let failureStage = "provider_code_exchange";
     try {
       const short = await exchangeCode({ ...settings, code: input.code });
+      failureStage = "provider_long_lived_exchange";
       const long = await exchangeLongLived({ appSecret: settings.appSecret, accessToken: short.accessToken });
+      failureStage = "provider_identity_verify";
       const identity = await verifyIdentity({ accessToken: long.accessToken });
       if (!identity || typeof identity.accountId !== "string" || !identity.accountId
         || typeof identity.username !== "string" || !identity.username) {
         throw new Error("INVALID_IDENTITY");
       }
       const expiresAt = new Date(now().getTime() + long.expiresInSeconds * 1000);
+      failureStage = "credential_store";
       await store.connectCredential({
         businessId: transaction.business_id, accountId: identity.accountId,
         payload: {
@@ -113,7 +117,7 @@ export function createInstagramOAuthCallbackHandler(options = {}) {
       });
       return redirect(destination("connected"));
     } catch {
-      safeWarn("provider_identity_or_storage");
+      safeWarn(failureStage);
       try {
         await store.finishTransaction({ transactionKey, status: "consumed_failed", now: now() });
         return redirect(destination("attention"));
