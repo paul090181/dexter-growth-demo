@@ -146,6 +146,8 @@ For an application rollback:
 5. Preserve legacy fallback as development-only under its explicit flag; never turn it on to mask a bad stored record.
 6. Diagnose, test in an isolated context, and use the normal reviewed redeployment path. A rollback does not authorize production data mutation.
 
-## Remaining acceptance gate
+## Database acceptance evidence
 
-Until the integration test runs against an explicitly isolated PostgreSQL/Netlify Database, record real transactional behavior as **NOT TESTABLE** and block merge/deployment acceptance. The outstanding test must confirm concurrent one-time claim semantics, database-enforced cross-tenant uniqueness, complete rollback on failed credential/binding writes, migration compatibility, and same-owner reconnect. Deterministic unit tests are necessary but do not replace this real-database gate.
+On 2026-09-18, Deploy Preview #12 ran the temporary synthetic PostgreSQL acceptance harness against its isolated Netlify Database branch after the checked-in migration was applied. All six required checks passed: migration compatibility, concurrent one-time claim/replay rejection, cross-tenant ownership uniqueness, same-owner reconnect, transactional rollback, and encrypted persistence. The temporary acceptance function, UI, test, and enable flag were removed after this evidence was captured.
+
+The remaining manual milestone is identity-only OAuth acceptance with the professional tester account. That acceptance must not enable Instagram publishing, media containers, webhooks, messaging, or comment automation.
