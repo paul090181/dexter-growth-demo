@@ -10,7 +10,7 @@ const DEFAULT_MAX_RESPONSE_BYTES = 32 * 1024;
 const DEFAULT_TIMEOUT_MS = 10_000;
 
 export class InstagramProviderError extends Error {
-  constructor(code) {
+  constructor(code, { httpStatus = null } = {}) {
     const messages = {
       denied: "Instagram authorization was denied.",
       exchange_failed: "Instagram authorization exchange failed.",
@@ -21,6 +21,7 @@ export class InstagramProviderError extends Error {
     super(messages[code]);
     this.name = "InstagramProviderError";
     this.code = code;
+    this.httpStatus = Number.isInteger(httpStatus) && httpStatus >= 100 && httpStatus <= 599 ? httpStatus : null;
   }
 }
 
@@ -51,9 +52,9 @@ async function providerJson(url, init, { fetchImpl, maxResponseBytes, failureCod
   // or let an oversized/unreadable raw error body change that classification.
   if (!response.ok) {
     if (response.status === 429 || response.status >= 500) {
-      throw new InstagramProviderError("temporarily_unavailable");
+      throw new InstagramProviderError("temporarily_unavailable", { httpStatus: response.status });
     }
-    throw new InstagramProviderError(failureCode);
+    throw new InstagramProviderError(failureCode, { httpStatus: response.status });
   }
   let text;
   try { text = await readLimitedText(response, maxResponseBytes); } catch (error) {
