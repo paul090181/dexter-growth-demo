@@ -10,32 +10,36 @@ function request(method = "POST", key = ADMIN) {
   });
 }
 function handler(overrides = {}) {
-  const values = { CONTEXT: "deploy-preview", GROWTHWISE_DATABASE_ACCEPTANCE_ENABLED: "yes", GROWTHWISE_ADMIN_KEY: ADMIN, ...overrides };
+  const values = { GROWTHWISE_DATABASE_ACCEPTANCE_ENABLED: "yes", GROWTHWISE_ADMIN_KEY: ADMIN, ...overrides };
   return createInstagramDatabaseAcceptanceHandler({ env: name => values[name], run: async () => ({ ok: true, checks: [{ name: "migration_compatibility", status: "PASS" }] }) });
 }
+const preview = () => ({ deploy: { context: "deploy-preview", published: false } });
 
-test("acceptance harness is invisible outside the exact deploy-preview context", async () => {
-  for (const context of ["production", "branch-deploy", "dev", "", undefined]) {
-    assert.equal((await handler({ CONTEXT: context })(request())).status, 404);
+test("acceptance harness is invisible outside the exact deploy-preview runtime context", async () => {
+  for (const deployContext of ["production", "branch-deploy", "dev", "", undefined]) {
+    assert.equal((await handler()(request(), { deploy: { context: deployContext } })).status, 404);
   }
+  assert.equal((await handler()(request(), undefined)).status, 404);
+  assert.equal((await handler()(request(), {})).status, 404);
+  assert.equal((await handler()(request(), { deploy: {} })).status, 404);
 });
 
 test("acceptance harness requires POST, explicit enablement, and timing-safe admin authentication", async () => {
-  const get = await handler()(request("GET"));
+  const get = await handler()(request("GET"), preview());
   assert.equal(get.status, 405); assert.equal(get.headers.get("allow"), "POST");
-  assert.equal((await handler({ GROWTHWISE_DATABASE_ACCEPTANCE_ENABLED: "no" })(request())).status, 404);
-  assert.equal((await handler()(new Request("https://preview.example/.netlify/functions/instagram-database-acceptance", { method: "POST" }))).status, 401);
-  assert.equal((await handler()(request("POST", "wrong"))).status, 401);
-  assert.equal((await handler()(request())).status, 200);
+  assert.equal((await handler({ GROWTHWISE_DATABASE_ACCEPTANCE_ENABLED: "no" })(request(), preview())).status, 404);
+  assert.equal((await handler()(new Request("https://preview.example/.netlify/functions/instagram-database-acceptance", { method: "POST" }), preview())).status, 401);
+  assert.equal((await handler()(request("POST", "wrong"), preview())).status, 401);
+  assert.equal((await handler()(request(), preview())).status, 200);
 });
 
 test("acceptance response is safe and has no CORS or backend error details", async () => {
   const secret = "postgres://database.example/token-secret";
   const failing = createInstagramDatabaseAcceptanceHandler({
-    env: name => ({ CONTEXT: "deploy-preview", GROWTHWISE_DATABASE_ACCEPTANCE_ENABLED: "yes", GROWTHWISE_ADMIN_KEY: ADMIN })[name],
+    env: name => ({ GROWTHWISE_DATABASE_ACCEPTANCE_ENABLED: "yes", GROWTHWISE_ADMIN_KEY: ADMIN })[name],
     run: async () => { throw new Error(`syntax error at SQL ${secret}`); },
   });
-  const response = await failing(request()); const body = await response.text();
+  const response = await failing(request(), preview()); const body = await response.text();
   assert.equal(response.status, 503);
   assert.equal(response.headers.has("access-control-allow-origin"), false);
   assert.doesNotMatch(body, /postgres:|token-secret|syntax error|SQL/i);
