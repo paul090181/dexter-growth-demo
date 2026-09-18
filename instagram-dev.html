@@ -25,6 +25,11 @@
       const response = await fetch("/.netlify/functions/instagram-database-acceptance", {
         method: "POST", headers: { "X-GrowthWise-Key": input.value },
       });
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.toLowerCase().includes("application/json")) {
+        status.textContent = "Database acceptance is unavailable in this environment.";
+        return;
+      }
       const result = await response.json();
       status.textContent = "";
       for (const check of Array.isArray(result.checks) ? result.checks : []) {
@@ -32,7 +37,7 @@
         item.textContent = `${check.name}: ${check.status}`;
         status.append(item);
       }
-      if (!response.ok && status.childElementCount === 0) status.textContent = "Acceptance could not run.";
-    } catch { status.textContent = "Acceptance could not run."; }
+      if (!response.ok && status.childElementCount === 0) status.textContent = "Database acceptance is unavailable in this environment.";
+    } catch { status.textContent = "Database acceptance is unavailable in this environment."; }
   });
 </script></body></html>
