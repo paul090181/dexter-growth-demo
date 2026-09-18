@@ -259,6 +259,22 @@ test("provider denial consumes the transaction and redirects cancelled safely", 
   assert.equal(fixture.calls.finish[0].status, "consumed_denied"); assert.equal(fixture.calls.exchange, 0);
 });
 
+test("callback logs provider status without raw provider details", async () => {
+  const logs = [];
+  const fixture = callbackFixture({
+    exchangeCode: async () => {
+      const error = new Error("RAW_PROVIDER_DETAIL");
+      error.httpStatus = 400;
+      throw error;
+    },
+    logger: { warn: (...values) => logs.push(values) },
+  });
+  const response = await fixture.handler(callbackRequest("state=v1.valid.tag&code=ok"));
+  assert.equal(response.status, 303);
+  assert.deepEqual(logs, [["instagram_oauth_callback_failed", { stage: "provider_code_exchange", provider_status: 400 }]]);
+  assert.doesNotMatch(JSON.stringify(logs), /RAW_PROVIDER_DETAIL/);
+});
+
 test("code exchange error consumes failed and redirects attention safely", async () => {
   const fixture = callbackFixture(); const response = await fixture.handler(callbackRequest("state=v1.valid.tag&code=fail"));
   assert.equal(response.status, 303); assert.equal(response.headers.get("location"), `${ORIGIN}/instagram-dev.html?instagram=attention`);
