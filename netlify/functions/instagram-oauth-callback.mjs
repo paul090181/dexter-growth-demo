@@ -54,7 +54,13 @@ export function createInstagramOAuthCallbackHandler(options = {}) {
   const exchangeLongLived = options.exchangeLongLived ?? exchangeLongLivedToken;
   const verifyIdentity = options.verifyIdentity ?? verifyProfessionalIdentity;
   const logger = options.logger ?? console;
-  const safeWarn = (stage) => { try { logger.warn("instagram_oauth_callback_failed", { stage }); } catch { /* logging cannot alter OAuth control flow */ } };
+  const safeWarn = (stage, providerStatus = null) => {
+    try {
+      const details = { stage };
+      if (Number.isInteger(providerStatus) && providerStatus >= 100 && providerStatus <= 599) details.provider_status = providerStatus;
+      logger.warn("instagram_oauth_callback_failed", details);
+    } catch { /* logging cannot alter OAuth control flow */ }
+  };
   return async function instagramOAuthCallback(request) {
     let input;
     try { input = parseCallback(request); } catch { safeWarn("parse_callback"); return plain(400); }
@@ -116,8 +122,8 @@ export function createInstagramOAuthCallbackHandler(options = {}) {
         transactionKey, consumedAt: now(),
       });
       return redirect(destination("connected"));
-    } catch {
-      safeWarn(failureStage);
+    } catch (error) {
+      safeWarn(failureStage, error?.httpStatus);
       try {
         await store.finishTransaction({ transactionKey, status: "consumed_failed", now: now() });
         return redirect(destination("attention"));
