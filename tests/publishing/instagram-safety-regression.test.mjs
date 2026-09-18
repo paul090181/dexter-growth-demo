@@ -78,6 +78,11 @@ test("development harness contains no growth.wise1 allowlist account ID token or
   assert.doesNotMatch(source, /growth\.wise1|access[_-]?token|account[_-]?id|app[_-]?secret|provider[_-]?credential/i);
 });
 
+test("temporary database acceptance harness is removed from the development UI", async () => {
+  const source = await read("instagram-dev.html");
+  assert.doesNotMatch(source, /TEMPORARY ACCEPTANCE HARNESS|instagram-database-acceptance|Run database acceptance/);
+});
+
 test("development and Dexter pages import the same connection component once", async () => {
   for (const file of ["instagram-dev.html", "index.html"]) {
     const matches = (await read(file)).match(/(?:\.\/)?assets\/instagram-connection\.mjs/g) ?? [];
