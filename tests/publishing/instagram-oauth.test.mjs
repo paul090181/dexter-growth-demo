@@ -194,6 +194,18 @@ function callbackRequest(query, options = {}) {
   return new Request(`${ORIGIN}/.netlify/functions/instagram-oauth-callback?${query}`, { method: options.method ?? "GET" });
 }
 
+test("callback diagnostics log only safe stage codes", async () => {
+  const logs = [];
+  const fixture = callbackFixture({ logger: { warn: (...values) => logs.push(values) } });
+  const response = await fixture.handler(callbackRequest("state=bad&code=ok"));
+  assert.equal(response.status, 400);
+  assert.deepEqual(logs, [["instagram_oauth_callback_failed", { stage: "state_or_config" }]]);
+  const serialized = JSON.stringify(logs);
+  for (const value of ["SENTINEL_SECRET_DO_NOT_LEAK", "SENTINEL_SHORT_TOKEN", "derived-key", "v1.valid.tag"]) {
+    assert.equal(serialized.includes(value), false);
+  }
+});
+
 test("callback rejects missing duplicate malformed and bad-HMAC state before exchange", async () => {
   for (const query of ["code=ok", "state=v1.valid.tag&state=again&code=ok", "state=bad&code=ok", "state=v1.valid.tag", "state=v1.valid.tag&code=%ZZ", "state=v1.valid.tag&code=%C3%28"]) {
     const { handler, calls } = callbackFixture();
@@ -259,7 +271,7 @@ test("provider raw error and sentinel secrets do not appear in response headers 
   const response = await fixture.handler(callbackRequest("state=v1.valid.tag&code=fail"));
   const location = response.headers.get("location");
   assert.equal(location, `${ORIGIN}/instagram-dev.html?instagram=attention`);
-  assert.deepEqual(logs, [["instagram_oauth_callback_failed"]]);
+  assert.deepEqual(logs, [["instagram_oauth_callback_failed", { stage: "provider_identity_or_storage" }]]);
   const serialized = JSON.stringify({ headers: [...response.headers], location, body: await response.text(), logs });
   for (const value of ["SENTINEL_PROVIDER_RAW", "SENTINEL_SECRET_DO_NOT_LEAK", "SENTINEL_SHORT_TOKEN", "derived-key"]) assert.equal(serialized.includes(value), false);
 });
