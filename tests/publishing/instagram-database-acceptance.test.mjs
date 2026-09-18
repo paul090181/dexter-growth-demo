@@ -61,5 +61,5 @@ test("temporary Android UI sends the typed key only as X-GrowthWise-Key and rend
   assert.match(html, /instagram-database-acceptance/);
   assert.match(html, /headers: \{ "X-GrowthWise-Key": input\.value \}/);
   assert.match(html, /item\.textContent = `\$\{check\.name\}: \$\{check\.status\}`/);
-  assert.doesNotMatch(html, /NETLIFY_DB_URL|postgres(?:ql)?:\/\//i);
+  assert.match(html, /Database acceptance is unavailable in this environment\\./);\n  assert.match(html, /content-type/);\n  assert.doesNotMatch(html, /NETLIFY_DB_URL|postgres(?:ql)?:\/\//i);
 });
