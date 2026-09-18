@@ -1,0 +1,4 @@
+# TEMPORARY: enable the Instagram database acceptance harness only for Deploy Previews.
+# Remove this block when the temporary harness is removed before merge.
+[context.deploy-preview.environment]
+  GROWTHWISE_DATABASE_ACCEPTANCE_ENABLED = "yes"
