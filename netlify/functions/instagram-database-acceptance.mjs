@@ -97,8 +97,8 @@ export function createInstagramDatabaseAcceptanceHandler(options = {}) {
     const { getDatabase } = await import("@netlify/database");
     return runDatabaseAcceptance({ pool: getDatabase().pool });
   });
-  return async function handler(request) {
-    if (getEnv("CONTEXT") !== "deploy-preview") return new Response(null, { status: 404 });
+  return async function handler(request, context) {
+    if (context?.deploy?.context !== "deploy-preview") return new Response(null, { status: 404 });
     if (request.method !== "POST") return json(405, { error: "Method not allowed." }, { allow: "POST" });
     if (getEnv("GROWTHWISE_DATABASE_ACCEPTANCE_ENABLED") !== "yes") return new Response(null, { status: 404 });
     if (!safeEqual(request.headers.get("x-growthwise-key"), getEnv("GROWTHWISE_ADMIN_KEY"))) return json(401, { error: "Invalid GrowthWise access code." });
