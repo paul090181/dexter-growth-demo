@@ -1,11 +1,11 @@
 # GrowthWise Instagram OAuth preflight
 
 **Date:** 2026-09-17
-**Status:** approved inputs recorded; real isolated database acceptance remains environment-dependent
+**Status:** approved inputs recorded; isolated Netlify Database acceptance passed on 2026-09-18; manual Instagram OAuth acceptance remains
 
 ## Branch and safety boundary
 
-Implementation continues only on `feat/growthwise-instagram-oauth` from the requested merge `2c4644af8bd915dadc0450f3394b55c91c0bea3c`. It must not deploy, merge, modify `main`, mutate Meta configuration, enable publishing/webhooks, or change the protected Auto City/Facebook files.
+Implementation continues only on `feat/growthwise-instagram-oauth-replacement` from the `platform-v1` baseline `2c4644af8bd915dadc0450f3394b55c91c0bea3c`. It must not deploy, merge, modify `main`, mutate Meta configuration, enable publishing/webhooks, or change the protected Auto City/Facebook files.
 
 ## Canonical GrowthWise origin
 
@@ -59,4 +59,6 @@ Migrations live under `netlify/database/migrations/`. No production database may
 
 ## Real database acceptance
 
-If an explicitly configured isolated non-production PostgreSQL/Netlify Database context exists, run the real integration suite there. Otherwise report it as **NOT TESTABLE** in this environment and retain it as a required acceptance test before merge/deployment. Do not weaken the implementation and do not fall back to Netlify Blobs.
+Deploy Preview #12 provided an isolated non-production Netlify Database branch with migration `20260917173000_instagram-oauth` applied. On 2026-09-18, the temporary synthetic acceptance harness passed all required checks: migration compatibility, one-time concurrent claim/replay rejection, cross-tenant ownership uniqueness, same-owner reconnect, transactional rollback, and encrypted persistence. After capture of this result, the temporary acceptance function, UI, test, and enable flag were removed.
+
+This evidence closes the real-database acceptance gate. It does not authorize production deployment or live Instagram publishing. Manual identity-only OAuth acceptance remains required.
