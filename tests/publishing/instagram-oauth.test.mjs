@@ -271,7 +271,7 @@ test("provider raw error and sentinel secrets do not appear in response headers 
   const response = await fixture.handler(callbackRequest("state=v1.valid.tag&code=fail"));
   const location = response.headers.get("location");
   assert.equal(location, `${ORIGIN}/instagram-dev.html?instagram=attention`);
-  assert.deepEqual(logs, [["instagram_oauth_callback_failed", { stage: "provider_identity_or_storage" }]]);
+  assert.deepEqual(logs, [["instagram_oauth_callback_failed", { stage: "provider_code_exchange" }]]);
   const serialized = JSON.stringify({ headers: [...response.headers], location, body: await response.text(), logs });
   for (const value of ["SENTINEL_PROVIDER_RAW", "SENTINEL_SECRET_DO_NOT_LEAK", "SENTINEL_SHORT_TOKEN", "derived-key"]) assert.equal(serialized.includes(value), false);
 });
