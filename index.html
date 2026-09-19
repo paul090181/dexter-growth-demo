@@ -295,6 +295,11 @@
           </span>
           <span>›</span>
         </button>
+        <div class="content-card" aria-labelledby="instagram-settings-title">
+          <div class="tag">INTEGRATIONS</div>
+          <h2 id="instagram-settings-title">Instagram</h2>
+          <div id="instagram-connection"></div>
+        </div>
       </section>
 
       
@@ -1698,6 +1703,14 @@ loadLiveSquareData().then(()=>{
 
 
 
+</script>
+<script type="module">
+  import { mountInstagramConnection } from "./assets/instagram-connection.mjs";
+  mountInstagramConnection({
+    root: document.querySelector("#instagram-connection"),
+    businessId: "dexters-hats",
+    getAdminKey: () => sessionStorage.getItem("growthwise_admin_key") || "",
+  });
 </script>
 </body>
 </html>
