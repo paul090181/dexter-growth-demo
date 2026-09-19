@@ -50,6 +50,11 @@ export function createInstagramConnectionHandler(options = {}) {
   const verifyIdentity = options.verifyIdentity
     ?? ((input) => verifyProfessionalIdentity({ ...input, fetchImpl: options.fetchImpl ?? fetch }));
   const legacyFallbackEnabled = options.legacyFallbackEnabled ?? defaultLegacyFallback;
+  const logger = options.logger ?? console;
+  const safeWarn = (stage) => {
+    try { logger.warn("instagram_connection_health", { stage }); }
+    catch { /* logging cannot alter health control flow */ }
+  };
 
   return async function instagramConnectionHandler(request) {
     if (request.method !== "GET") return json(405, { error: "Method not allowed" });
@@ -111,8 +116,10 @@ export function createInstagramConnectionHandler(options = {}) {
           account: { username: identity.username, name: identity.name ?? identity.username },
         }));
       }
+      safeWarn("credential_not_found");
     } catch {
       // A stored row or an ambiguous storage failure must never activate legacy credentials.
+      safeWarn("credential_read_or_decrypt_failed");
       return attention(businessId, checkedAt, ACTIONS.retry);
     }
 
