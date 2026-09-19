@@ -40,6 +40,15 @@ function stored(overrides = {}) {
   assert.equal((await handler(request("growthwise-dev", { method: "POST" }))).status, 405);
 });
 
+test("missing OAuth credential emits only safe health stage", async () => {
+  const logs = [];
+  const body = await (await createInstagramConnectionHandler(base({
+    logger: { warn: (...values) => logs.push(values) },
+  }))(request())).json();
+  assert.equal(body.state, "Not Connected");
+  assert.deepEqual(logs, [["instagram_connection_health", { stage: "credential_not_found" }]]);
+});
+
 test("no OAuth credential and no approved fallback returns Not Connected", async () => {
   const body = await (await createInstagramConnectionHandler(base())(request())).json();
   assert.equal(body.state, "Not Connected");
