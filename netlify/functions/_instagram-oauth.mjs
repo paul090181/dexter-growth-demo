@@ -128,8 +128,13 @@ export function configuredInstagramOAuth({ env = (name) => globalThis.Netlify?.e
 }
 
 export async function exchangeAuthorizationCode({ appId, appSecret, callbackUri: redirectUri, code, fetchImpl = fetch, maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES }) {
-  const body = new URLSearchParams({ client_id: requireText(appId, "app ID"), client_secret: requireText(appSecret, "app secret"), grant_type: "authorization_code", redirect_uri: requireText(redirectUri, "callback URI"), code: requireText(code, "authorization code") });
-  const json = await providerJson(INSTAGRAM_TOKEN_ENDPOINT, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: body.toString() }, { fetchImpl, maxResponseBytes, failureCode: "exchange_failed" });
+  const body = new FormData();
+  body.set("client_id", requireText(appId, "app ID"));
+  body.set("client_secret", requireText(appSecret, "app secret"));
+  body.set("grant_type", "authorization_code");
+  body.set("redirect_uri", requireText(redirectUri, "callback URI"));
+  body.set("code", requireText(code, "authorization code"));
+  const json = await providerJson(INSTAGRAM_TOKEN_ENDPOINT, { method: "POST", body }, { fetchImpl, maxResponseBytes, failureCode: "exchange_failed" });
   const accountId = normalizedProviderId(json?.user_id);
   if (!objectWithRequiredFields(json, ["access_token", "user_id"]) || typeof json.access_token !== "string" || json.access_token.length === 0 || accountId === undefined) {
     throw new InstagramProviderError("exchange_failed");
