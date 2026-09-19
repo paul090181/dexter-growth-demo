@@ -63,9 +63,13 @@ test("code exchange sends secrets server-side and enforces response size and sch
   assert.deepEqual(token, { accessToken: "SYNTHETIC_SHORT_TOKEN", accountId: "42" });
   assert.equal(request.url, "https://api.instagram.com/oauth/access_token");
   assert.equal(request.init.method, "POST");
-  const form = new URLSearchParams(request.init.body);
-  assert.equal(form.get("client_secret"), "SYNTHETIC_APP_SECRET");
-  assert.equal(form.get("code"), "SYNTHETIC_CODE");
+  assert.ok(request.init.body instanceof FormData);
+  assert.equal(request.init.body.get("client_id"), "123");
+  assert.equal(request.init.body.get("client_secret"), "SYNTHETIC_APP_SECRET");
+  assert.equal(request.init.body.get("grant_type"), "authorization_code");
+  assert.equal(request.init.body.get("redirect_uri"), CALLBACK);
+  assert.equal(request.init.body.get("code"), "SYNTHETIC_CODE");
+  assert.equal(request.init.headers, undefined);
   await assert.rejects(exchangeAuthorizationCode({ appId: "1", appSecret: "x", callbackUri: CALLBACK, code: "c", maxResponseBytes: 10, fetchImpl: async () => response("x".repeat(11)) }), InstagramProviderError);
   await assert.rejects(exchangeAuthorizationCode({ appId: "1", appSecret: "x", callbackUri: CALLBACK, code: "c", fetchImpl: async () => response({ access_token: "x", extra: true }) }), /exchange failed/i);
   for (const userId of ["", " 42", -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
