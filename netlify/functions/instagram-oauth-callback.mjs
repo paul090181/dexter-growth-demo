@@ -2,7 +2,7 @@ import { createInstagramCrypto } from "./_instagram-crypto.mjs";
 import { resolveInstagramReturnDestination } from "./_instagram-clients.mjs";
 import {
   configuredInstagramOAuth, exchangeAuthorizationCode, exchangeLongLivedToken,
-  verifyProfessionalIdentity, INSTAGRAM_IDENTITY_SCOPE,
+  verifyProfessionalIdentity, INSTAGRAM_AUTHORIZATION_SCOPE,
 } from "./_instagram-oauth.mjs";
 import { instagramDatabase } from "./_instagram-store.mjs";
 
@@ -117,7 +117,7 @@ export function createInstagramOAuthCallbackHandler(options = {}) {
         businessId: transaction.business_id, accountId: identity.accountId,
         payload: {
           access_token: long.accessToken, account_id: identity.accountId,
-          token_type: long.tokenType, scope: INSTAGRAM_IDENTITY_SCOPE,
+          token_type: long.tokenType, scope: INSTAGRAM_AUTHORIZATION_SCOPE,
         },
         status: "active", tokenExpiresAt: expiresAt, username: identity.username,
         displayName: identity.name ?? identity.username, lastVerifiedAt: now(),
