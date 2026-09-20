@@ -90,3 +90,11 @@ test("Dexter workflow headings float like the automotive pilot", () => {
   assert.match(html, />Ask AI</);
   assert.match(html, /workflow-nav-btn/);
 });
+
+test("Orders refreshes and searches the same Square inventory used elsewhere", () => {
+  assert.match(retailOps, /window\.loadLiveSquareData/);
+  assert.match(retailOps, /p\.description/);
+  assert.match(retailOps, /growthwise:inventory-updated/);
+  assert.match(html, /RECENT_SQUARE_PRODUCTS_KEY/);
+  assert.match(html, /mergeRecentSquareProducts/);
+});
