@@ -56,11 +56,11 @@ test("unknown return destination and unsafe hint fail closed", () => {
   assert.throws(() => resolveInstagramReturnDestination({ destinationId: "dexter-integration", hint: "connected", publicOrigin: "http://example.test" }), /origin/i);
 });
 
-test("code exchange sends secrets server-side and enforces response size and schema", async () => {
+test("code exchange sends secrets server-side and enforces response size and token schema", async () => {
   let request;
   const fetchImpl = async (url, init) => { request = { url, init }; return response({ access_token: "SYNTHETIC_SHORT_TOKEN", user_id: 42 }); };
   const token = await exchangeAuthorizationCode({ appId: "123", appSecret: "SYNTHETIC_APP_SECRET", callbackUri: CALLBACK, code: "SYNTHETIC_CODE", fetchImpl });
-  assert.deepEqual(token, { accessToken: "SYNTHETIC_SHORT_TOKEN", accountId: "42" });
+  assert.deepEqual(token, { accessToken: "SYNTHETIC_SHORT_TOKEN" });
   assert.equal(request.url, "https://api.instagram.com/oauth/access_token");
   assert.equal(request.init.method, "POST");
   assert.ok(request.init.body instanceof FormData);
@@ -71,22 +71,26 @@ test("code exchange sends secrets server-side and enforces response size and sch
   assert.equal(request.init.body.get("code"), "SYNTHETIC_CODE");
   assert.equal(request.init.headers, undefined);
   await assert.rejects(exchangeAuthorizationCode({ appId: "1", appSecret: "x", callbackUri: CALLBACK, code: "c", maxResponseBytes: 10, fetchImpl: async () => response("x".repeat(11)) }), InstagramProviderError);
-  await assert.rejects(exchangeAuthorizationCode({ appId: "1", appSecret: "x", callbackUri: CALLBACK, code: "c", fetchImpl: async () => response({ access_token: "x", extra: true }) }), /exchange failed/i);
-  for (const userId of ["", " 42", -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
-    await assert.rejects(exchangeAuthorizationCode({ appId: "1", appSecret: "x", callbackUri: CALLBACK, code: "c", fetchImpl: async () => response({ access_token: "x", user_id: userId }) }), /exchange failed/i);
+  for (const body of [{}, { user_id: "42" }, { access_token: "" }, { access_token: 42 }]) {
+    await assert.rejects(exchangeAuthorizationCode({ appId: "1", appSecret: "x", callbackUri: CALLBACK, code: "c", fetchImpl: async () => response(body) }), /exchange failed/i);
   }
 });
 
-test("code exchange accepts provider metadata but returns only required normalized fields", async () => {
-  const result = await exchangeAuthorizationCode({
-    appId: "1", appSecret: "secret", callbackUri: CALLBACK, code: "code",
-    fetchImpl: async () => response({
-      access_token: "SYNTHETIC_SHORT_TOKEN", user_id: "42",
-      permissions: ["instagram_business_basic"], provider_internal: "DO_NOT_PROPAGATE",
-    }),
-  });
-  assert.deepEqual(result, { accessToken: "SYNTHETIC_SHORT_TOKEN", accountId: "42" });
-  assert.doesNotMatch(JSON.stringify(result), /permissions|provider_internal|DO_NOT_PROPAGATE/);
+test("code exchange treats provider account metadata as non-authoritative and returns only the short-lived token", async () => {
+  for (const userId of [undefined, "", " 42", -1, 1.5, Number.MAX_SAFE_INTEGER + 1, "17841400000000000"]) {
+    const payload = {
+      access_token: "SYNTHETIC_SHORT_TOKEN",
+      permissions: ["instagram_business_basic"],
+      provider_internal: "DO_NOT_PROPAGATE",
+    };
+    if (userId !== undefined) payload.user_id = userId;
+    const result = await exchangeAuthorizationCode({
+      appId: "1", appSecret: "secret", callbackUri: CALLBACK, code: "code",
+      fetchImpl: async () => response(payload),
+    });
+    assert.deepEqual(result, { accessToken: "SYNTHETIC_SHORT_TOKEN" });
+    assert.doesNotMatch(JSON.stringify(result), /permissions|provider_internal|DO_NOT_PROPAGATE|17841400000000000/);
+  }
 });
 
 test("verified supported long-lived exchange normalizes token expiry", async () => {
