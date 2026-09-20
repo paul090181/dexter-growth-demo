@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0e1b2b" />
   <title>Dexter Growth Assistant — Pilot</title>
-  <style>*{box-sizing:border-box}html,body{margin:0;background:#edf0f3;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#14202c}body{min-height:100vh}.phone-shell{max-width:520px;margin:0 auto;min-height:100vh;background:#fff;position:relative;padding-bottom:88px;box-shadow:0 0 50px rgba(0,0,0,.08)}.topbar{position:sticky;top:0;z-index:8;background:rgba(255,255,255,.96);backdrop-filter:blur(16px);display:flex;justify-content:space-between;align-items:center;padding:18px 20px 14px;border-bottom:1px solid #edf0f2}.brand{font-weight:800;letter-spacing:-.02em}.eyebrow,.tag{font-size:11px;letter-spacing:.12em;font-weight:800;color:#99742d}.icon-btn{border:0;width:40px;height:40px;border-radius:12px;background:#0e1b2b;color:#fff;font-weight:900}.screen{display:none;padding:20px}.screen.active{display:block}.hero{background:#0e1b2b;color:#fff;padding:24px;border-radius:22px;margin-bottom:18px}.hero h1{font-size:29px;line-height:1.07;margin:8px 0 12px;letter-spacing:-.035em}.hero p{opacity:.78;line-height:1.45;margin:0}.stack{display:grid;gap:12px}.opportunity{display:grid;grid-template-columns:44px 1fr;gap:12px;border:1px solid #e5e8ec;border-radius:18px;padding:16px;background:#fff;box-shadow:0 8px 24px rgba(14,27,43,.045)}.opportunity h3{margin:5px 0 7px;font-size:18px}.opportunity p{margin:0 0 12px;color:#586472;line-height:1.4}.rank{width:38px;height:38px;border-radius:50%;background:#f4ead4;color:#8a6220;display:flex;align-items:center;justify-content:center;font-weight:900}.primary,.ghost{border:0;border-radius:13px;padding:13px 15px;font-weight:800;font-size:15px;cursor:pointer}.primary{background:#0e1b2b;color:#fff;width:100%}.ghost{background:#f1f3f5;color:#17222e}.small{width:auto;padding:10px 12px}.ask-card{width:100%;margin-top:15px;border:0;border-radius:18px;background:#f5ead1;padding:17px;display:grid;grid-template-columns:42px 1fr 18px;text-align:left;align-items:center;gap:9px}.ask-card strong,.ask-card small{display:block}.ask-card small{margin-top:4px;color:#6a5b40}.ask-icon{font-size:24px}.section-head{display:flex;gap:12px;align-items:center;margin-bottom:18px}.section-head h2{margin:2px 0 0}.back{width:40px;height:40px;border-radius:13px;border:1px solid #e0e4e8;background:#fff;font-size:26px}.photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.caption{font-size:12px;font-weight:800;margin:0 0 7px;color:#65717d}.product-img{width:100%;aspect-ratio:1/1.15;object-fit:cover;border-radius:15px;border:1px solid #e5e8ec}.form-card,.content-card,.publish-card,.answer-card,.notice,.chat-intro{margin-top:14px;border:1px solid #e4e7ea;border-radius:18px;padding:17px;background:#fff}.form-card label{display:block;font-size:12px;font-weight:800;color:#596673;margin-bottom:12px}.form-card input{width:100%;margin-top:6px;border:1px solid #d8dde2;border-radius:12px;padding:12px;font-size:15px}.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}.generated.hidden,.modal.hidden{display:none}.success-line{margin-top:16px;background:#e8f5ea;color:#285e32;border-radius:12px;padding:11px 13px;font-weight:800}.content-card h3{margin:7px 0 0}.content-card p{line-height:1.52;color:#4b5966}.publish-card h3{margin:0 0 10px}.check{display:flex;gap:10px;padding:9px 0;font-weight:700}.check input{transform:scale(1.25)}.chips{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.chip{border:1px solid #dce1e5;background:#fff;border-radius:999px;padding:10px 12px;font-weight:700}.chat-intro,.notice{background:#f7f8fa;color:#596673;line-height:1.45}.answer-card{min-height:160px}.answer-card h3{margin-top:7px}.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}.metric{background:#0e1b2b;color:white;padding:18px;border-radius:17px;min-height:126px;display:flex;flex-direction:column;justify-content:space-between}.metric strong{font-size:32px}.metric span{font-size:13px;opacity:.82}.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(520px,100%);height:75px;background:rgba(255,255,255,.97);backdrop-filter:blur(16px);border-top:1px solid #e7eaed;display:grid;grid-template-columns:repeat(4,1fr);z-index:9;padding-bottom:max(4px,env(safe-area-inset-bottom))}.nav{border:0;background:transparent;color:#6d7883;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}.nav span{font-size:22px}.nav small{font-size:11px}.nav.active{color:#0e1b2b}.modal{position:fixed;inset:0;background:rgba(4,12,20,.62);display:flex;align-items:center;justify-content:center;padding:22px;z-index:20}.modal-card{max-width:420px;background:#fff;border-radius:24px;padding:25px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.25)}.modal-icon{width:62px;height:62px;border-radius:50%;margin:0 auto 12px;background:#e7f3e9;color:#2f6d39;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900}.modal-card p{color:#586472;line-height:1.5}@media(max-width:390px){.hero h1{font-size:25px}.photo-grid{grid-template-columns:1fr}.two-col{grid-template-columns:1fr}}
+  <style>*{box-sizing:border-box}html,body{margin:0;background:#edf0f3;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#14202c}body{min-height:100vh}.phone-shell{max-width:520px;margin:0 auto;min-height:100vh;background:#fff;position:relative;padding-bottom:88px;box-shadow:0 0 50px rgba(0,0,0,.08)}.topbar{position:sticky;top:0;z-index:8;background:rgba(255,255,255,.96);backdrop-filter:blur(16px);display:flex;justify-content:space-between;align-items:center;padding:18px 20px 14px;border-bottom:1px solid #edf0f2}.brand{font-weight:800;letter-spacing:-.02em}.eyebrow,.tag{font-size:11px;letter-spacing:.12em;font-weight:800;color:#99742d}.icon-btn{border:0;width:40px;height:40px;border-radius:12px;background:#0e1b2b;color:#fff;font-weight:900}.screen{display:none;padding:20px}.screen.active{display:block}.hero{background:#0e1b2b;color:#fff;padding:24px;border-radius:22px;margin-bottom:18px}.hero h1{font-size:29px;line-height:1.07;margin:8px 0 12px;letter-spacing:-.035em}.hero p{opacity:.78;line-height:1.45;margin:0}.stack{display:grid;gap:12px}.opportunity{display:grid;grid-template-columns:44px 1fr;gap:12px;border:1px solid #e5e8ec;border-radius:18px;padding:16px;background:#fff;box-shadow:0 8px 24px rgba(14,27,43,.045)}.opportunity h3{margin:5px 0 7px;font-size:18px}.opportunity p{margin:0 0 12px;color:#586472;line-height:1.4}.rank{width:38px;height:38px;border-radius:50%;background:#f4ead4;color:#8a6220;display:flex;align-items:center;justify-content:center;font-weight:900}.primary,.ghost{border:0;border-radius:13px;padding:13px 15px;font-weight:800;font-size:15px;cursor:pointer}.primary{background:#0e1b2b;color:#fff;width:100%}.ghost{background:#f1f3f5;color:#17222e}.small{width:auto;padding:10px 12px}.ask-card{width:100%;margin-top:15px;border:0;border-radius:18px;background:#f5ead1;padding:17px;display:grid;grid-template-columns:42px 1fr 18px;text-align:left;align-items:center;gap:9px}.ask-card strong,.ask-card small{display:block}.ask-card small{margin-top:4px;color:#6a5b40}.ask-icon{font-size:24px}.section-head{display:flex;gap:12px;align-items:center;margin-bottom:18px}.section-head h2{margin:2px 0 0}.back{width:40px;height:40px;border-radius:13px;border:1px solid #e0e4e8;background:#fff;font-size:26px}.photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.caption{font-size:12px;font-weight:800;margin:0 0 7px;color:#65717d}.product-img{width:100%;aspect-ratio:1/1.15;object-fit:cover;border-radius:15px;border:1px solid #e5e8ec}.form-card,.content-card,.publish-card,.answer-card,.notice,.chat-intro{margin-top:14px;border:1px solid #e4e7ea;border-radius:18px;padding:17px;background:#fff}.form-card label{display:block;font-size:12px;font-weight:800;color:#596673;margin-bottom:12px}.form-card input{width:100%;margin-top:6px;border:1px solid #d8dde2;border-radius:12px;padding:12px;font-size:15px}.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}.generated.hidden,.modal.hidden{display:none}.success-line{margin-top:16px;background:#e8f5ea;color:#285e32;border-radius:12px;padding:11px 13px;font-weight:800}.success-line.attention{background:#fff4e8;color:#8a5725}.content-card h3{margin:7px 0 0}.content-card p{line-height:1.52;color:#4b5966}.publish-card h3{margin:0 0 10px}.check{display:flex;gap:10px;padding:9px 0;font-weight:700}.check input{transform:scale(1.25)}.chips{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}.chip{border:1px solid #dce1e5;background:#fff;border-radius:999px;padding:10px 12px;font-weight:700}.chat-intro,.notice{background:#f7f8fa;color:#596673;line-height:1.45}.answer-card{min-height:160px}.answer-card h3{margin-top:7px}.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}.metric{background:#0e1b2b;color:white;padding:18px;border-radius:17px;min-height:126px;display:flex;flex-direction:column;justify-content:space-between}.metric strong{font-size:32px}.metric span{font-size:13px;opacity:.82}.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(520px,100%);height:75px;background:rgba(255,255,255,.97);backdrop-filter:blur(16px);border-top:1px solid #e7eaed;display:grid;grid-template-columns:repeat(4,1fr);z-index:9;padding-bottom:max(4px,env(safe-area-inset-bottom))}.nav{border:0;background:transparent;color:#6d7883;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}.nav span{font-size:22px}.nav small{font-size:11px}.nav.active{color:#0e1b2b}.modal{position:fixed;inset:0;background:rgba(4,12,20,.62);display:flex;align-items:center;justify-content:center;padding:22px;z-index:20}.modal-card{max-width:420px;background:#fff;border-radius:24px;padding:25px;text-align:center;box-shadow:0 24px 60px rgba(0,0,0,.25)}.modal-icon{width:62px;height:62px;border-radius:50%;margin:0 auto 12px;background:#e7f3e9;color:#2f6d39;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900}.modal-card p{color:#586472;line-height:1.5}@media(max-width:390px){.hero h1{font-size:25px}.photo-grid{grid-template-columns:1fr}.two-col{grid-template-columns:1fr}}
 .square-live{margin:0 0 16px;border:1px solid #d7e8dc;background:#eef8f1;border-radius:16px;padding:13px 15px;display:flex;align-items:center;gap:10px;color:#285c36;font-weight:800}
 .square-dot{width:10px;height:10px;border-radius:50%;background:#3b8f50;box-shadow:0 0 0 4px rgba(59,143,80,.12);flex:0 0 auto}
 .square-live small{display:block;font-weight:600;color:#5b6f61;margin-top:2px}
@@ -622,7 +622,7 @@
         </div>
 
         <div class="generated hidden" id="generated">
-          <div class="success-line">✓ Product workflow complete</div>
+          <div class="success-line" id="workflowResultTitle">✓ Product workflow complete</div>
           <div class="content-card">
             <div class="tag">PRODUCT</div>
             <h3 id="websiteTitle">New Product</h3>
@@ -1183,7 +1183,7 @@ function renderProductIntakeResults(data){
       return `<div class="intake-result-card">
         <strong>${escapeHtml(name)}</strong>
         <div class="intake-result-meta">${details || 'Product details found'}${checks ? `<br><b>Please confirm:</b> ${checks}` : ''}</div>
-        <button type="button" data-intake-index="${index}">Use this product</button>
+        ${productIntakeProducts.length > 1 ? `<button type="button" data-intake-index="${index}">Use this product</button>` : ''}
       </div>`;
     }).join('');
 
@@ -1196,6 +1196,13 @@ function renderProductIntakeResults(data){
 function applyIntakeProduct(index){
   const product = productIntakeProducts[index];
   if(!product) return;
+
+  document.getElementById('generated').classList.add('hidden');
+  const workflowResult = document.getElementById('workflowResultTitle');
+  workflowResult.textContent = '✓ Product workflow complete';
+  workflowResult.classList.remove('attention');
+  document.getElementById('saveSquareBtn').classList.remove('hidden');
+  document.getElementById('addAndPromoteBtn').textContent = 'Create & Publish';
 
   document.getElementById('brandInput').value = product.brand || '';
   document.getElementById('productNameInput').value = product.product_name || '';
@@ -1227,7 +1234,7 @@ function applyIntakeProduct(index){
 
   const fullName = [product.brand, product.product_name].filter(Boolean).join(' ') || 'New Product';
   document.getElementById('websiteTitle').textContent = fullName;
-  document.getElementById('generated').classList.remove('hidden');
+  document.getElementById('generated').classList.add('hidden');
 
   const quickApprove = document.getElementById('quickSquareApproveBtn');
   const missingPanel = document.getElementById('missingDataPanel');
@@ -1673,7 +1680,7 @@ async function analyzeNewProductWithAI(){
       document.getElementById('productNameInput').value.trim()
     ].filter(Boolean).join(' ') || 'New Product';
     document.getElementById('websiteTitle').textContent = fullName;
-    document.getElementById('generated').classList.remove('hidden');
+    document.getElementById('generated').classList.add('hidden');
     sessionStorage.setItem('growthwise_admin_key', adminKey);
     if(adminKeyInput) adminKeyInput.value = '';
 
@@ -1704,7 +1711,7 @@ function buildNewProductCaption(){
   const caption = lines.join('\n\n');
   document.getElementById('newProductCaption').value = caption;
   document.getElementById('websiteTitle').textContent = fullName;
-  document.getElementById('generated').classList.remove('hidden');
+  document.getElementById('generated').classList.add('hidden');
   return caption;
 }
 
@@ -2342,10 +2349,11 @@ async function loadLiveSquareData(key = sessionStorage.getItem('growthwise_admin
     renderInventory(products, data.summary || {}, data.generated_at || null);
     if(growthwiseSalesSnapshot) void loadRetailAiIdeas(key);
 
-    const product =
-      products.find(p => /GrowthWise Test Porkpie/i.test(p.item_name || '')) ||
-      products[products.length - 1] ||
-      products[0];
+    const product = [...products].sort((a,b)=>{
+      const aTime = Date.parse(a.updated_at || '') || 0;
+      const bTime = Date.parse(b.updated_at || '') || 0;
+      return bTime - aTime;
+    })[0] || products[0];
 
     const location = data.location?.name || 'Square location';
     const itemCount = data.summary?.item_count ?? products.length;
@@ -2360,7 +2368,6 @@ async function loadLiveSquareData(key = sessionStorage.getItem('growthwise_admin
       document.getElementById('homeProductName').textContent = name;
       document.getElementById('homeProductLive').innerHTML =
         `<span class="live-value">${price}</span> · <span class="live-value">${qty} in stock</span> · synced with Square just now`;
-      document.getElementById('websiteTitle').textContent = name;
 
       detail.textContent = `${data.summary?.variation_count ?? products.length} products · ${data.summary?.total_units_in_stock ?? 0} units in stock · updated just now`;
 
