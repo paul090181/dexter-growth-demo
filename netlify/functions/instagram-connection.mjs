@@ -74,6 +74,7 @@ export function createInstagramConnectionHandler(options = {}) {
       store ??= instagramDatabase();
       const row = await (options.readCredential ?? store.readCredential)({ businessId });
       if (row) {
+        safeWarn("credential_found");
         if (row.business_id !== businessId || row.status !== "active") return attention(businessId, checkedAt);
         const expiresAt = new Date(row.token_expires_at);
         if (row.token_expires_at == null || !Number.isFinite(expiresAt.getTime())
