@@ -14,7 +14,7 @@ test("Dexter inline application scripts remain syntactically valid", () => {
 });
 
 test("camera-first intake and unified publishing controls are present", () => {
-  assert.match(html, /SCAN → REVIEW → PUBLISH/);
+  assert.match(html, /<h2>Add New Products<\/h2>/);
   assert.match(html, /id="productIntakeCameraInput"/);
   assert.match(html, /id="productIntakeGalleryInput"/);
   assert.match(html, /id="newProductFacebookChannel"/);
