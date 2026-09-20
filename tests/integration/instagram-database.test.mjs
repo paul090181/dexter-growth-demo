@@ -35,6 +35,7 @@ test("already-migrated Deploy Preview database satisfies the OAuth persistence c
   const accountId = `${runPrefix}professional-account`;
   const syntheticTokenOne = `${runPrefix}token-one`;
   const syntheticTokenTwo = `${runPrefix}token-two`;
+  const syntheticTokenThree = `${runPrefix}token-three`;
   const store = createInstagramStore({ getPool: async () => pool, crypto: integrationCrypto() });
   let installedSchema = null;
 
@@ -95,7 +96,7 @@ test("already-migrated Deploy Preview database satisfies the OAuth persistence c
       credentials_exists: true,
       transaction_primary_key: true,
       credential_primary_key: true,
-      credential_unique: true,
+      credential_unique: false,
       identity_immutable: true,
     });
 
@@ -133,29 +134,27 @@ test("already-migrated Deploy Preview database satisfies the OAuth persistence c
       lastVerifiedAt: new Date(),
     };
     const first = await store.connectCredential({ ...credential, businessId: tenantA });
-    await assert.rejects(
-      store.connectCredential({ ...credential, businessId: tenantB }),
-      /ACCOUNT_ALREADY_CONNECTED/,
+    const shared = await store.connectCredential({
+      ...credential,
+      businessId: tenantB,
+      payload: { account_id: accountId, access_token: syntheticTokenTwo },
+    });
+    assert.equal(shared.business_id, tenantB);
+    assert.equal(shared.account_binding_key, first.account_binding_key);
+    assert.notDeepEqual(shared.encrypted_credential, first.encrypted_credential);
+    assert.equal(
+      (await store.readDecryptedCredential({ businessId: tenantA, accountId })).payload.access_token,
+      syntheticTokenOne,
     );
-    assert.equal(await store.readCredential({ businessId: tenantB }), null);
-
-    // Exercise the database constraint directly (without application-level
-    // preflight) to prove the unique binding, rather than only the store lock.
-    await assert.rejects(
-      pool.query(`
-        INSERT INTO instagram_credentials
-          (business_id, account_binding_key, encrypted_credential, encryption_key_version, status)
-        SELECT $1, account_binding_key, encrypted_credential, encryption_key_version, status
-        FROM instagram_credentials WHERE business_id = $2
-      `, [tenantB, tenantA]),
-      (error) => error?.code === "23505"
-        && error?.constraint === "instagram_credentials_account_binding_key_key",
+    assert.equal(
+      (await store.readDecryptedCredential({ businessId: tenantB, accountId })).payload.access_token,
+      syntheticTokenTwo,
     );
 
     const second = await store.connectCredential({
       ...credential,
       businessId: tenantA,
-      payload: { account_id: accountId, access_token: syntheticTokenTwo },
+      payload: { account_id: accountId, access_token: syntheticTokenThree },
     });
     assert.equal(second.business_id, tenantA);
     assert.equal(second.account_binding_key, first.account_binding_key);
@@ -180,6 +179,13 @@ test("already-migrated Deploy Preview database satisfies the OAuth persistence c
     assert.equal(persisted.rows.length, 1);
     assert.equal(JSON.stringify(persisted.rows[0]).includes(syntheticTokenOne), false);
     assert.equal(JSON.stringify(persisted.rows[0]).includes(syntheticTokenTwo), false);
+    assert.equal(JSON.stringify(persisted.rows[0]).includes(syntheticTokenThree), false);
+    const persistedShared = await pool.query(
+      "SELECT business_id, encrypted_credential FROM instagram_credentials WHERE business_id = $1",
+      [tenantB],
+    );
+    assert.equal(persistedShared.rows.length, 1);
+    assert.equal(JSON.stringify(persistedShared.rows[0]).includes(syntheticTokenTwo), false);
   } finally {
     // Cleanup is deliberately row-scoped to this random acceptance-run prefix.
     // It never drops or alters application objects and cannot select other tenants.
