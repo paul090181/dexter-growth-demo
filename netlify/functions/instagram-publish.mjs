@@ -2,10 +2,9 @@ import growthwiseDev from "../../clients/growthwise-dev.json" with { type: "json
 import dextersHats from "../../clients/dexters-hats.json" with { type: "json" };
 import { createInstagramCrypto } from "./_instagram-crypto.mjs";
 import { instagramDatabase } from "./_instagram-store.mjs";
-import { verifyProfessionalIdentity } from "./_instagram-oauth.mjs";
+import { verifyProfessionalIdentity, INSTAGRAM_CONTENT_PUBLISH_SCOPE } from "./_instagram-oauth.mjs";
 import { stageInstagramImage } from "./_instagram-media-store.mjs";
 import {
-  INSTAGRAM_CONTENT_PUBLISH_SCOPE,
   createInstagramImageContainer,
   publishInstagramContainer,
   InstagramPublishError,
