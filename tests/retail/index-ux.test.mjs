@@ -78,3 +78,15 @@ test("GrowthWise one-stop retail shell exposes Orders and Money", () => {
   assert.match(html, /assets\/retail-ops\.mjs/);
   assert.match(html, /GROWTHWISE RESTOCK ASSISTANT/);
 });
+
+test("Dexter workflow headings float like the automotive pilot", () => {
+  assert.match(html, /workflow-quick-nav-shell/);
+  assert.match(html, /position:fixed/);
+  assert.match(html, /Add Products/);
+  assert.match(html, />Promote</);
+  assert.match(html, />Inventory</);
+  assert.match(html, />Orders</);
+  assert.match(html, />Money</);
+  assert.match(html, />Ask AI</);
+  assert.match(html, /workflow-nav-btn/);
+});
