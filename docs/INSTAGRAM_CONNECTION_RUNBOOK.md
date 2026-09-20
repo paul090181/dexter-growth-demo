@@ -98,6 +98,9 @@ If the callback is replayed, only the first valid pending transaction may reach 
 
 ## Dexter acceptance through the reusable component
 
+For Deploy Preview acceptance, the Dexter page's current beta unlock also loads Square sandbox data. Ensure the preview context has the existing `SQUARE_SANDBOX_TOKEN` available to Functions before testing; otherwise the page can report a generic server-configuration error before the Instagram flow is attempted.
+
+
 Dexter uses the same UI component and endpoints—never a Dexter-specific OAuth implementation.
 
 1. Confirm Dexter's selected Instagram account is professional and eligible for GrowthWise Social testing.
