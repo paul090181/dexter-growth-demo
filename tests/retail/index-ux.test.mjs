@@ -162,3 +162,11 @@ test("Lead Assistant can unlock inline without leaving the workflow", () => {
   assert.match(html, /id="retailLeadUnlockKey"/);
   assert.match(html, /id="retailLeadUnlockBtn"/);
 });
+
+test("workflow header shows all seven actions in a fixed 4-over-3 grid", () => {
+  assert.match(html, /grid-template-columns:repeat\(12,minmax\(0,1fr\)\)/);
+  assert.match(html, /workflow-quick-nav button\{[\s\S]*grid-column:span 3/);
+  assert.match(html, /workflow-quick-nav button:nth-child\(n\+5\)\{grid-column:span 4\}/);
+  assert.match(html, /padding-top:calc\(104px \+ env\(safe-area-inset-top,0px\)\)/);
+  assert.doesNotMatch(html, /activeWorkflowNav\?\.scrollIntoView/);
+});
