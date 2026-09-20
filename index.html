@@ -1178,6 +1178,174 @@ let newProductCleanImageDataUrl = '';
 let newProductPromotionImageDataUrl = '';
 let newProductPromotionImageKind = 'original';
 
+let productIntakeProducts = [];
+let productIntakePromotion = null;
+
+async function intakeImageDataUrl(file){
+  const dataUrl = await new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>resolve(String(reader.result || ''));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+  const image = await new Promise((resolve, reject)=>{
+    const img = new Image();
+    img.onload = ()=>resolve(img);
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+  const maxEdge = 2400;
+  const scale = Math.min(1, maxEdge / Math.max(image.width, image.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.9);
+}
+
+function intakeConfidenceLabel(value){
+  return value === 'high' ? 'High confidence' : value === 'medium' ? 'Check a few details' : 'Needs review';
+}
+
+function renderProductIntakeResults(data){
+  productIntakeProducts = Array.isArray(data.products) ? data.products : [];
+  productIntakePromotion = data.promotion || null;
+  const box = document.getElementById('productIntakeResults');
+  if(!box) return;
+
+  const summary = escapeHtml(data.summary || 'GrowthWise found product information.');
+  const notes = (data.uncertainty_notes || []).map(n=>`<li>${escapeHtml(n)}</li>`).join('');
+  box.innerHTML =
+    `<div class="intake-result-card"><strong>${summary}</strong>${notes ? `<ul class="intake-result-meta">${notes}</ul>` : ''}</div>` +
+    productIntakeProducts.map((p,index)=>{
+      const name = [p.brand,p.product_name].filter(Boolean).join(' ') || `Product ${index+1}`;
+      const details = [
+        p.style_sku && `SKU/style: ${p.style_sku}`,
+        p.upc && `UPC: ${p.upc}`,
+        p.color && `Color: ${p.color}`,
+        p.size && `Size: ${p.size}`,
+        p.price && `${p.price_type === 'retail' ? 'Retail' : p.price_type === 'wholesale' ? 'Cost/wholesale' : 'Price'}: ${p.price}`,
+        p.quantity && `Qty: ${p.quantity}`,
+        intakeConfidenceLabel(p.confidence)
+      ].filter(Boolean).map(escapeHtml).join(' · ');
+      const checks = (p.needs_confirmation || []).map(escapeHtml).join(', ');
+      return `<div class="intake-result-card">
+        <strong>${escapeHtml(name)}</strong>
+        <div class="intake-result-meta">${details || 'Product details found'}${checks ? `<br><b>Please confirm:</b> ${checks}` : ''}</div>
+        <button type="button" data-intake-index="${index}">Use this product</button>
+      </div>`;
+    }).join('');
+
+  box.classList.remove('hidden');
+  box.querySelectorAll('[data-intake-index]').forEach(btn=>{
+    btn.addEventListener('click',()=>applyIntakeProduct(Number(btn.dataset.intakeIndex)));
+  });
+}
+
+function applyIntakeProduct(index){
+  const product = productIntakeProducts[index];
+  if(!product) return;
+
+  document.getElementById('brandInput').value = product.brand || '';
+  document.getElementById('productNameInput').value = product.product_name || '';
+  document.getElementById('styleSkuInput').value = product.style_sku || '';
+  document.getElementById('upcInput').value = product.upc || '';
+  document.getElementById('colorInput').value = product.color || '';
+  document.getElementById('sizeInput').value = product.size || '';
+  document.getElementById('descriptionInput').value = product.description || '';
+
+  const qty = Number(product.quantity);
+  if(product.quantity !== '' && Number.isInteger(qty) && qty >= 0){
+    document.getElementById('inventoryInput').value = String(qty);
+  }
+
+  if(product.price_type === 'retail' && product.price && Number.isFinite(Number(product.price))){
+    document.getElementById('priceInput').value = Number(product.price).toFixed(2);
+  }else if(product.price_type === 'wholesale' && product.price){
+    document.getElementById('priceInput').value = '';
+  }
+
+  if(productIntakePromotion){
+    const copy = productIntakePromotion.instagram_caption || productIntakePromotion.facebook_caption || '';
+    document.getElementById('newProductCaption').value = copy;
+    const idea = document.getElementById('newProductPromoIdea');
+    idea.innerHTML = `<strong>${escapeHtml(productIntakePromotion.headline || 'AI promotion idea')}</strong>
+      <span>${escapeHtml(productIntakePromotion.why_this_idea || productIntakePromotion.angle || 'Based on the scanned product information.')}</span>`;
+  }
+
+  const fullName = [product.brand, product.product_name].filter(Boolean).join(' ') || 'New Product';
+  document.getElementById('websiteTitle').textContent = fullName;
+  document.getElementById('generated').classList.remove('hidden');
+
+  const status = document.getElementById('productIntakeStatus');
+  status.className = 'create-status ok';
+  if(product.price_type === 'wholesale' && product.price){
+    status.textContent = `✓ Product details filled. GrowthWise found a wholesale/cost price of ${product.price}, so it left retail price blank for you to confirm.`;
+  }else{
+    status.textContent = '✓ Product details filled. Review only the highlighted/uncertain information before publishing.';
+  }
+}
+
+async function runProductIntake(files){
+  const chosen = [...(files || [])].filter(file=>file?.type?.startsWith('image/')).slice(0,4);
+  if(!chosen.length) return;
+
+  const key = sessionStorage.getItem('growthwise_admin_key') || '';
+  if(!key){
+    openModal('Unlock GrowthWise first', 'Return Home and enter the beta access key once. Then GrowthWise can scan product tags and order forms.');
+    return;
+  }
+
+  const status = document.getElementById('productIntakeStatus');
+  const results = document.getElementById('productIntakeResults');
+  status.className = 'create-status loading';
+  status.textContent = chosen.length > 1 ? `Reading ${chosen.length} images…` : 'Reading product details…';
+  results.classList.add('hidden');
+
+  try{
+    const mode = document.getElementById('productIntakeMode').value || 'auto';
+    const images = [];
+    for(const file of chosen) images.push(await intakeImageDataUrl(file));
+
+    if(mode !== 'order_form' && chosen.length === 1){
+      handleNewProductPhoto(chosen[0], false);
+    }
+
+    const response = await fetch('/.netlify/functions/product-intake', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-GrowthWise-Key': key
+      },
+      body: JSON.stringify({ images, mode })
+    });
+    const data = await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error || `Product scan failed (HTTP ${response.status}).`);
+
+    renderProductIntakeResults(data);
+    status.className = 'create-status ok';
+    status.textContent = data.products.length === 1
+      ? '✓ GrowthWise found one product. Tap Use this product to fill the form.'
+      : `✓ GrowthWise found ${data.products.length} products/lines. Pick the one you want to add now.`;
+
+    if(data.products.length === 1) applyIntakeProduct(0);
+  }catch(err){
+    console.error('GrowthWise Intake AI failed:', err);
+    status.className = 'create-status error';
+    status.textContent = err.message || 'GrowthWise could not read that scan.';
+  }finally{
+    document.getElementById('productIntakeCameraInput').value = '';
+    document.getElementById('productIntakeGalleryInput').value = '';
+  }
+}
+
+document.getElementById('productIntakeCameraInput').addEventListener('change', (event)=>{
+  runProductIntake(event.target.files);
+});
+document.getElementById('productIntakeGalleryInput').addEventListener('change', (event)=>{
+  runProductIntake(event.target.files);
+});
+
 const newProductGalleryInput = document.getElementById('newProductGalleryInput');
 const newProductCameraInput = document.getElementById('newProductCameraInput');
 const newProductPhotoWrap = document.getElementById('newProductPhotoWrap');
@@ -1185,7 +1353,7 @@ const newProductPhotoPreview = document.getElementById('newProductPhotoPreview')
 const newProductPhotoStatus = document.getElementById('newProductPhotoStatus');
 const newProductAiResult = document.getElementById('newProductAiResult');
 
-function handleNewProductPhoto(file){
+function handleNewProductPhoto(file, autoAnalyze=true){
   if(!file) return;
   if(!file.type || !file.type.startsWith('image/')){
     openModal('Choose a photo', 'Please select a JPG, PNG or other image file.');
@@ -1206,7 +1374,7 @@ function handleNewProductPhoto(file){
 
     // If the beta is already unlocked, start the AI draft automatically from the new photo.
     const cachedKey = sessionStorage.getItem('growthwise_admin_key') || '';
-    if(cachedKey){
+    if(cachedKey && autoAnalyze){
       setTimeout(()=>analyzeNewProductWithAI(), 50);
     }
   };
@@ -1334,6 +1502,10 @@ async function analyzeNewProductWithAI(){
     }
     if(data.description) document.getElementById('descriptionInput').value = data.description;
     if(data.facebook_caption) document.getElementById('newProductCaption').value = data.facebook_caption;
+    const idea = document.getElementById('newProductPromoIdea');
+    if(idea){
+      idea.innerHTML = `<strong>Feature this new arrival</strong><span>${escapeHtml(data.uncertainty_note || 'GrowthWise prepared product copy from the visible photo details. Review it once, then publish to your selected channels.')}</span>`;
+    }
 
     const fullName = [
       document.getElementById('brandInput').value.trim(),
