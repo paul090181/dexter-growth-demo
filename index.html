@@ -126,6 +126,8 @@
 .intake-actions label{display:flex;align-items:center;justify-content:center;border-radius:13px;padding:13px 10px;font-weight:850;cursor:pointer;text-align:center}
 .intake-primary{background:#0e1b2b;color:#fff}.intake-secondary{background:#eef1f3;color:#17222e}
 .intake-results{margin-top:12px}.intake-results.hidden{display:none}
+.product-packet-tip{margin-top:12px;border-radius:14px;padding:12px;background:#eef4f6;line-height:1.4}.product-packet-tip strong,.product-packet-tip span{display:block}.product-packet-tip span{font-size:13px;color:#5e6b76;margin-top:3px}
+.product-packet{margin-top:12px;border:1px solid #e0e5e8;border-radius:15px;padding:12px;background:#fff}.product-packet.hidden{display:none}.product-packet-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.product-packet-head strong{font-size:13px;color:#33414e}.product-packet-head button{border:0;background:transparent;color:#8a672b;font-weight:800}.product-packet-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:10px 0}.product-packet-thumb{aspect-ratio:1/1;border-radius:11px;overflow:hidden;background:#eef1f3;position:relative}.product-packet-thumb img{width:100%;height:100%;object-fit:cover}.product-packet-thumb button{position:absolute;right:3px;top:3px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(20,28,36,.82);color:#fff;font-size:14px;line-height:22px;padding:0}.product-packet .primary{width:100%}
 .intake-result-card{border:1px solid #e2e6e9;border-radius:14px;padding:12px;margin-top:9px;background:#fff}
 .intake-result-card strong{display:block;color:#17222e}.intake-result-meta{font-size:12px;color:#67727d;margin-top:5px;line-height:1.45}
 .intake-result-card button{margin-top:10px;border:0;border-radius:11px;padding:10px 12px;font-weight:850;background:#eef1f3;color:#17222e}
@@ -449,22 +451,36 @@
           <h3>Point the camera. Skip the typing.</h3>
           <p>Scan the product, its tag, box label, or an order form. GrowthWise reads what it can, fills the product record, and asks you only about anything uncertain.</p>
 
-          <label class="intake-mode-label" for="productIntakeMode">What are you scanning?</label>
+          <label class="intake-mode-label" for="productIntakeMode">What are you adding?</label>
           <select id="productIntakeMode" class="intake-mode">
-            <option value="auto">Let GrowthWise decide</option>
-            <option value="product">Product / packaging</option>
-            <option value="tag">Tag / label</option>
+            <option value="product" selected>One product from photos</option>
             <option value="order_form">Order form / invoice</option>
           </select>
+
+          <div class="product-packet-tip" id="productPacketTip">
+            <strong>Best results: take 2–3 pictures.</strong>
+            <span>Start with the product, then photograph the tag/label and barcode or box. GrowthWise combines them into one Square item.</span>
+          </div>
 
           <input id="productIntakeCameraInput" type="file" accept="image/*" capture="environment" hidden />
           <input id="productIntakeGalleryInput" type="file" accept="image/*" multiple hidden />
           <div class="intake-actions">
-            <label class="intake-primary" for="productIntakeCameraInput">📷 Scan with camera</label>
+            <label class="intake-primary" for="productIntakeCameraInput">📷 Take a photo</label>
             <label class="intake-secondary" for="productIntakeGalleryInput">▧ Choose photo(s)</label>
           </div>
+
+          <div class="product-packet hidden" id="productIntakePacket">
+            <div class="product-packet-head">
+              <strong id="productPacketCount">0 of 4 photos</strong>
+              <button type="button" id="clearProductPacketBtn">Clear</button>
+            </div>
+            <div class="product-packet-grid" id="productPacketGrid"></div>
+            <button type="button" class="primary" id="analyzeProductPacketBtn">Build product from photos</button>
+          </div>
+
           <div class="create-status hidden" id="productIntakeStatus"></div>
           <div class="intake-results hidden" id="productIntakeResults"></div>
+          <button type="button" class="primary hidden" id="quickSquareApproveBtn" style="margin-top:12px">Approve &amp; Add to Square</button>
         </div>
 
         <div class="photo-studio" style="margin-top:14px">
@@ -578,7 +594,7 @@
           </div>
 
           <button class="primary" id="addAndPromoteBtn" style="margin-top:14px">Create &amp; Publish</button>
-          <button class="ghost button-gap" id="saveSquareBtn" style="width:100%">Save to Square only</button>
+          <button class="ghost button-gap" id="saveSquareBtn" style="width:100%">Approve &amp; Add to Square</button>
           <div class="create-status hidden" id="createStatus"></div>
         </div>
 
