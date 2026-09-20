@@ -105,7 +105,7 @@ export default async (request) => {
     product.description && `Known description: ${product.description}`,
   ].filter(Boolean).join("\n") : "No specific product was matched.";
 
-  const instructions = `You are GrowthWise Retail's customer lead assistant for ${business.name}. Draft concise, natural customer replies using only supplied business and product facts. Never invent price, stock, size, color, material, store hours, shipping eligibility/cost, return terms, custom-order availability, discounts, holds, restock dates, delivery dates, or promotions. If a selected product has a numeric inventory quantity above 0, you may say it is currently showing in stock, but avoid promising future availability. If inventory is 0, say it is currently showing out of stock and offer to check alternatives. Never create or approve a discount, accept a negotiated price, promise a hold, promise shipping, approve a return/refund, promise a custom order, or resolve a complaint. Those require human review. For low-risk factual questions, decision may be auto_reply. For requests needing a business decision or verification, use auto_reply_then_review with a safe acknowledgement. Nothing will be auto-sent during this pilot.`;
+  const instructions = `You are GrowthWise Retail's customer lead assistant for ${business.name}. Draft concise, natural customer replies using only supplied business and product facts. Never invent price, stock, size, color, material, store hours, shipping eligibility/cost, return terms, custom-order availability, discounts, holds, restock dates, delivery dates, or promotions. Before using any selected product facts, compare the customer's wording with the selected product. Set product_match to matched only when the customer's described item is reasonably consistent with the selected product. Use mismatch when they clearly conflict, uncertain when the customer appears to reference a product but you cannot confidently tell whether the selected product is the same item, and no_product when no product was selected. If product_match is mismatch or uncertain, do not use the selected product's price, inventory, SKU, UPC, description, or other facts in the customer reply. Instead ask a short clarifying question that helps identify the correct product, such as asking for the product name/style or a photo. If a selected product has a numeric inventory quantity above 0 and product_match is matched, you may say it is currently showing in stock, but avoid promising future availability. If inventory is 0 and product_match is matched, say it is currently showing out of stock and offer to check alternatives. Never create or approve a discount, accept a negotiated price, promise a hold, promise shipping, approve a return/refund, promise a custom order, or resolve a complaint. Those require human review. For low-risk factual questions, decision may be auto_reply. For requests needing a business decision or verification, use auto_reply_then_review with a safe acknowledgement. Nothing will be auto-sent during this pilot.`;
   const prompt = [
     `Business: ${business.name}`, business.location && `Location: ${business.location}`, business.hours && `Known hours: ${business.hours}`,
     business.shipping_policy && `Known shipping policy: ${business.shipping_policy}`, business.return_policy && `Known return policy: ${business.return_policy}`,
@@ -120,11 +120,12 @@ export default async (request) => {
       text: { verbosity: "low", format: { type: "json_schema", name: "growthwise_retail_lead", strict: true, schema: {
         type: "object", additionalProperties: false,
         properties: {
-          intent: { type: "string", enum: ["availability","price","product_details","size_color","store_visit","shipping","discount","hold","return_refund","custom_order","complaint","other"] },
+          intent: { type: "string", enum: ["product_clarification","availability","price","product_details","size_color","store_visit","shipping","discount","hold","return_refund","custom_order","complaint","other"] },
+          product_match: { type: "string", enum: ["matched","uncertain","mismatch","no_product"] },
           risk_level: { type: "string", enum: ["low","medium","high"] },
           decision: { type: "string", enum: ["auto_reply","auto_reply_then_review","review_required"] },
           reply: { type: "string" }, reason: { type: "string" }, follow_up_action: { type: "string" }
-        }, required: ["intent","risk_level","decision","reply","reason","follow_up_action"]
+        }, required: ["intent","product_match","risk_level","decision","reply","reason","follow_up_action"]
       } } }
     })
   });
@@ -133,6 +134,9 @@ export default async (request) => {
   let result; try { result = JSON.parse(extractOutputText(data)); } catch { return json(502, { error: "GrowthWise returned an unreadable reply." }); }
 
   let intent = clean(result.intent, 80) || "other";
+  let productMatch = ["matched","uncertain","mismatch","no_product"].includes(result.product_match)
+    ? result.product_match
+    : (product ? "uncertain" : "no_product");
   let risk = clean(result.risk_level, 40) || "medium";
   let decision = ["auto_reply","auto_reply_then_review"].includes(result.decision) ? result.decision : "review_required";
   let reply = clean(result.reply, 1800), reason = clean(result.reason, 1200), followUp = clean(result.follow_up_action, 1200);
@@ -143,7 +147,18 @@ export default async (request) => {
   const custom = hasAny(message, [/custom/,/special\s+order/,/order\s+one/]);
   const complaint = hasAny(message, [/complaint/,/angry/,/upset/,/terrible/,/unacceptable/,/rip[ -]?off/,/scam/,/wrong\s+item/]);
 
-  if (discount) {
+  if (productMatch === "mismatch" || productMatch === "uncertain") {
+    intent="product_clarification";
+    risk="low";
+    decision="auto_reply";
+    reply = customerName
+      ? `Hi ${customerName}, just to make sure I'm checking the right item, which product are you asking about? You can send the name or style, or a photo, and I'll check the current price and availability.`
+      : "Just to make sure I'm checking the right item, which product are you asking about? You can send the name or style, or a photo, and I'll check the current price and availability.";
+    reason = productMatch === "mismatch"
+      ? "The customer's message appears inconsistent with the selected product, so GrowthWise will not use that product's price or inventory."
+      : "GrowthWise could not confidently confirm that the selected product is the item the customer means.";
+    followUp = "Wait for the customer to identify the product, then match the correct Square item before answering product-specific questions.";
+  } else if (discount) {
     intent="discount"; risk="medium"; decision="auto_reply_then_review";
     const verifiedFacts = productFactLead(product, message);
     reply = verifiedFacts
@@ -193,7 +208,7 @@ export default async (request) => {
      ${automationMode},${automationClass},${wouldAutoSend},${deliveryAction},${automationReason})`;
 
   return json(200, {
-    ok: true, id, model, intent, risk_level: risk, decision, reply, reason, follow_up_action: followUp,
+    ok: true, id, model, intent, product_match: productMatch, risk_level: risk, decision, reply, reason, follow_up_action: followUp,
     automation_mode: automationMode,
     automation_class: automationClass,
     would_auto_send: wouldAutoSend,
