@@ -144,3 +144,14 @@ test("Dexter pilot exposes a persistent Retail Lead Assistant", () => {
   assert.match(html, /RECENT CUSTOMER QUESTIONS/);
   assert.match(html, /assets\/retail-leads\.mjs/);
 });
+
+test("Lead Assistant includes Smart Auto shadow-mode pilot controls", () => {
+  assert.match(html, /SMART AUTO PILOT/);
+  assert.match(html, /Learn first\. Automate second\./);
+  assert.match(html, /Shadow Mode/);
+  assert.match(html, /Live Smart Auto/);
+  assert.match(html, /No customer messages are being sent automatically/);
+  assert.match(html, /SAFE AUTO/);
+  assert.match(html, /AUTO ACK \+ DEXTER/);
+  assert.match(html, /HUMAN ONLY/);
+});
