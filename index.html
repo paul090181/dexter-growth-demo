@@ -244,6 +244,12 @@
 .lead-history-details{margin-top:11px}.lead-history-details summary{font-size:12px;font-weight:850;color:#53616d;cursor:pointer}.lead-assistant-actions,.lead-reply-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .lead-result-box{border:1px solid #dce5ea;border-radius:15px;background:#f9fbfc;padding:13px;margin-top:12px}.lead-result-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.lead-decision{font-size:9px;font-weight:950;border-radius:999px;padding:6px 8px}.lead-decision.safe{background:#e8f5ea;color:#285e32}.lead-decision.review{background:#fff5dd;color:#725817}.lead-decision.human{background:#fbecea;color:#8c3f35}.lead-intent{font-size:11px;color:#687580;margin-top:7px}.lead-reason{margin-top:9px;background:#eef2f4;border-radius:10px;padding:9px;font-size:11px;line-height:1.4;color:#566570}.lead-next{font-size:11px;color:#52616d;line-height:1.45;margin-top:10px}
 .retail-lead-card{border:1px solid #dfe5e9;border-radius:13px;padding:11px;margin-top:8px;background:#fbfcfd}.retail-lead-card-top{display:flex;justify-content:space-between;gap:8px}.retail-lead-card-top span{font-size:9px;font-weight:900;text-transform:uppercase;background:#edf1f4;border-radius:999px;padding:4px 6px}.retail-lead-card small{color:#6f7b84}.retail-lead-card p{font-size:11px;color:#52616d;line-height:1.4;margin:7px 0}.retail-lead-card-actions{display:flex;gap:7px}.retail-lead-card-actions button{border:0;border-radius:9px;background:#e9eef1;padding:8px 9px;font-size:10px;font-weight:850}
+
+.smart-auto-card{background:linear-gradient(180deg,#f9fbfc,#f3f7f9)}.lead-smart-head{display:flex;justify-content:space-between;gap:12px}.lead-smart-head h3{margin:5px 0}.lead-smart-head p{margin:0;color:#66737e;line-height:1.45}.smart-shadow-badge{height:max-content;border-radius:999px;background:#0e1b2b;color:#fff;padding:6px 8px;font-size:9px;font-weight:950;white-space:nowrap}
+.smart-mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px}.smart-mode-grid button{border:1px solid #d7e0e5;border-radius:12px;background:#fff;padding:11px;text-align:left}.smart-mode-grid button strong,.smart-mode-grid button small{display:block}.smart-mode-grid button strong{font-size:12px}.smart-mode-grid button small{font-size:10px;color:#6b7781;line-height:1.35;margin-top:3px}.smart-mode-grid button.active{background:#0e1b2b;border-color:#0e1b2b;color:#fff}.smart-mode-grid button.active small{color:#d7e0e6}.smart-mode-grid button.locked{grid-column:1/-1;background:#f2f4f5;color:#89939a}
+.smart-auto-rules{display:grid;gap:7px;margin-top:12px}.smart-rule{border-radius:11px;padding:10px 11px}.smart-rule strong,.smart-rule span{display:block}.smart-rule strong{font-size:10px}.smart-rule span{font-size:10px;line-height:1.4;margin-top:3px}.smart-rule.safe{background:#e8f5ea;color:#285e32}.smart-rule.review{background:#fff5dd;color:#725817}.smart-rule.human{background:#fbecea;color:#8c3f35}
+.smart-auto-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:12px}.smart-auto-stats div{border:1px solid #dde5e9;background:#fff;border-radius:11px;padding:10px;text-align:center}.smart-auto-stats strong{display:block;font-size:19px}.smart-auto-stats span{font-size:9px;color:#6b7781;text-transform:uppercase;font-weight:850}.smart-auto-notice{margin-top:11px;border:1px dashed #cfd9df;border-radius:11px;padding:10px;color:#596a76;font-size:11px;line-height:1.4}
+.lead-automation-decision{margin-top:9px;border-radius:11px;padding:10px 11px;font-size:11px;font-weight:800;line-height:1.4}.lead-automation-decision.hidden{display:none}.lead-automation-decision.safe{background:#e8f5ea;color:#285e32}.lead-automation-decision.review{background:#fff5dd;color:#725817}.lead-automation-decision.human{background:#fbecea;color:#8c3f35}
 </style>
 
 
@@ -927,6 +933,48 @@
           </div>
         </div>
 
+        <div class="lead-assistant-card smart-auto-card">
+          <div class="lead-smart-head">
+            <div>
+              <div class="tag">SMART AUTO PILOT</div>
+              <h3>Learn first. Automate second.</h3>
+              <p>Shadow Mode lets GrowthWise decide what it <em>would</em> send automatically while Dexter still reviews and sends every real message.</p>
+            </div>
+            <span class="smart-shadow-badge" id="retailLeadModeBadge">SHADOW MODE</span>
+          </div>
+
+          <div class="smart-mode-grid">
+            <button type="button" data-lead-mode="draft_only">
+              <strong>Draft Only</strong>
+              <small>GrowthWise writes. Dexter sends.</small>
+            </button>
+            <button type="button" data-lead-mode="shadow" class="active">
+              <strong>Shadow Mode</strong>
+              <small>Recommended pilot · records what would automate</small>
+            </button>
+            <button type="button" class="locked" disabled>
+              <strong>Live Smart Auto 🔒</strong>
+              <small>Unlock later after real-message testing + inbox connection</small>
+            </button>
+          </div>
+
+          <div class="smart-auto-rules">
+            <div class="smart-rule safe"><strong>SAFE AUTO</strong><span>Verified price, current stock, product facts, simple store-visit replies.</span></div>
+            <div class="smart-rule review"><strong>AUTO ACK + DEXTER</strong><span>Discounts, holds, shipping, custom orders and other decisions.</span></div>
+            <div class="smart-rule human"><strong>HUMAN ONLY</strong><span>Returns/refunds or anything GrowthWise cannot verify safely.</span></div>
+          </div>
+
+          <div class="smart-auto-stats">
+            <div><strong id="retailLeadSafeCount">0</strong><span>safe auto</span></div>
+            <div><strong id="retailLeadAckCount">0</strong><span>ack + review</span></div>
+            <div><strong id="retailLeadHumanCount">0</strong><span>human only</span></div>
+          </div>
+
+          <div class="smart-auto-notice" id="retailLeadAutomationNotice">
+            No customer messages are being sent automatically. Shadow Mode is observation only.
+          </div>
+        </div>
+
         <div class="lead-assistant-card">
           <div class="tag">GROWTHWISE RETAIL LEAD ASSISTANT</div>
           <h3>Paste the customer's message. GrowthWise helps with the reply.</h3>
@@ -980,6 +1028,7 @@
             </div>
             <div id="retailLeadIntent" class="lead-intent"></div>
             <div id="retailLeadReason" class="lead-reason"></div>
+            <div id="retailLeadAutomationDecision" class="lead-automation-decision hidden"></div>
             <label>Suggested customer reply
               <textarea id="retailLeadReply"></textarea>
             </label>
