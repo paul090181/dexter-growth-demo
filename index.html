@@ -367,11 +367,20 @@
         </div>
 
         <div class="promo-card">
-          <div class="tag">INSTAGRAM / SHORT CAPTION</div>
+          <div class="tag">INSTAGRAM</div>
           <div class="promo-preview" id="instagramPromoText"></div>
           <div class="copy-row">
             <button type="button" class="copy-primary" id="copyInstagramPromo">Copy caption</button>
-            <button type="button" class="copy-secondary" id="previewPromoBtn">Preview approval</button>
+          </div>
+          <div class="fb-publish-tools">
+            <label for="instagramCaptionEditor">Final Instagram caption — review before publishing</label>
+            <textarea id="instagramCaptionEditor" class="fb-caption-editor" maxlength="2200"></textarea>
+            <div class="fb-publish-actions">
+              <button type="button" class="preview" id="previewInstagramPostBtn">Preview</button>
+              <button type="button" class="publish" id="publishInstagramPostBtn">Post to Instagram</button>
+            </div>
+            <p class="fb-publish-note">GrowthWise will not publish automatically. You must review the caption and photo, tap Post to Instagram, and confirm the live post.</p>
+            <div class="fb-publish-status hidden" id="instagramPublishStatus"></div>
           </div>
         </div>
 
@@ -706,6 +715,7 @@ function renderPromotion(day){
   document.getElementById('facebookPromoText').textContent = p.facebook;
   document.getElementById('facebookCaptionEditor').value = p.facebook;
   document.getElementById('instagramPromoText').textContent = p.instagram;
+  document.getElementById('instagramCaptionEditor').value = p.instagram;
   document.getElementById('promoMeasurement').textContent = p.measurement;
 }
 
@@ -725,20 +735,11 @@ document.getElementById('copyFacebookPromo').addEventListener('click',()=>{
   copyPromotionText(document.getElementById('facebookCaptionEditor').value, 'Facebook post copied to your clipboard.');
 });
 document.getElementById('copyInstagramPromo').addEventListener('click',()=>{
-  copyPromotionText(promotionTemplates[activePromotionDay].instagram, 'Instagram caption copied to your clipboard.');
+  copyPromotionText(document.getElementById('instagramCaptionEditor').value, 'Instagram caption copied to your clipboard.');
 });
 document.getElementById('copyOfferPromo').addEventListener('click',()=>{
   copyPromotionText(promotionTemplates[activePromotionDay].offerOnly, 'Offer wording copied to your clipboard.');
 });
-document.getElementById('previewPromoBtn').addEventListener('click',()=>{
-  const p = promotionTemplates[activePromotionDay];
-  openModal(
-    `${p.title} ready for review`,
-    `GrowthWise prepared the offer and social copy. The next production step will be Dexter review → approve → publish to connected channels.`
-  );
-});
-
-
 let selectedPromotionImageDataUrl = '';
 
 const promoPhotoInput = document.getElementById('promoPhotoInput');
@@ -872,8 +873,120 @@ document.getElementById('useCleanPhotoBtn').addEventListener('click', ()=>{
   selectedPromotionImageDataUrl = output.src;
   openModal(
     'Promotion image selected ✓',
-    'This cleaned product photo is selected for the Facebook post. Review the caption above, then tap Post to Facebook when you are ready.'
+    'This cleaned product photo is selected for your social posts. Review each channel caption before publishing.'
   );
+});
+
+const instagramCaptionEditor = document.getElementById('instagramCaptionEditor');
+const publishInstagramPostBtn = document.getElementById('publishInstagramPostBtn');
+const previewInstagramPostBtn = document.getElementById('previewInstagramPostBtn');
+const instagramPublishStatus = document.getElementById('instagramPublishStatus');
+
+function setInstagramPublishStatus(kind, message){
+  instagramPublishStatus.className = `fb-publish-status ${kind}`;
+  instagramPublishStatus.textContent = message;
+}
+
+async function promotionImageForInstagram(){
+  let dataUrl = selectedPromotionImageDataUrl;
+  if(!dataUrl && selectedPromotionFile){
+    dataUrl = await optimizePhotoForUpload(selectedPromotionFile);
+  }
+  if(!dataUrl) return '';
+
+  const image = await new Promise((resolve, reject)=>{
+    const img = new Image();
+    img.onload = ()=>resolve(img);
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+  const maxEdge = 1600;
+  const scale = Math.min(1, maxEdge / Math.max(image.width, image.height));
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(image, 0, 0, width, height);
+  return canvas.toDataURL('image/jpeg', 0.9);
+}
+
+previewInstagramPostBtn.addEventListener('click', ()=>{
+  const caption = instagramCaptionEditor.value.trim();
+  if(!caption){
+    openModal('Add an Instagram caption first', 'Review or enter the caption before previewing the post.');
+    return;
+  }
+  const hasPhoto = Boolean(selectedPromotionImageDataUrl || selectedPromotionFile);
+  openModal(
+    hasPhoto ? 'Instagram post preview — photo + caption' : 'Instagram post preview — photo still needed',
+    caption
+  );
+});
+
+publishInstagramPostBtn.addEventListener('click', async ()=>{
+  const adminKey = sessionStorage.getItem('growthwise_admin_key') || '';
+  const caption = instagramCaptionEditor.value.trim();
+
+  if(!adminKey){
+    openModal('GrowthWise access key needed', 'Return Home and unlock the beta with your admin key first.');
+    return;
+  }
+  if(!caption){
+    openModal('Caption required', 'Review or enter the Instagram caption before publishing.');
+    return;
+  }
+  if(!selectedPromotionImageDataUrl && !selectedPromotionFile){
+    openModal('Photo required', 'Choose a product photo before publishing to Instagram.');
+    return;
+  }
+
+  const confirmed = window.confirm('Publish this reviewed photo + caption to the connected Instagram account now?');
+  if(!confirmed) return;
+
+  publishInstagramPostBtn.disabled = true;
+  publishInstagramPostBtn.textContent = 'Publishing…';
+  setInstagramPublishStatus('loading', 'Preparing the approved image and sending the reviewed post to Instagram…');
+
+  try{
+    const imageDataUrl = await promotionImageForInstagram();
+    const response = await fetch('/.netlify/functions/instagram-publish', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-GrowthWise-Key': adminKey
+      },
+      body: JSON.stringify({
+        business_id: 'dexters-hats',
+        caption,
+        image_data_url: imageDataUrl,
+        reviewed: true
+      })
+    });
+    const data = await response.json().catch(()=>({}));
+    if(!response.ok){
+      if(data.code === 'PUBLISHING_PERMISSION_REQUIRED'){
+        throw new Error('Instagram is connected for identity, but publishing permission still needs approval. Go Home, tap Reconnect Instagram, allow access, then return here.');
+      }
+      if(data.code === 'INSTAGRAM_PUBLISH_AMBIGUOUS'){
+        throw new Error('Instagram did not confirm the final publish. Check the Instagram account before trying again so you do not create a duplicate post.');
+      }
+      throw new Error(data.error || `Instagram publish failed (HTTP ${response.status}).`);
+    }
+    setInstagramPublishStatus('ok', `Published to @${data.account?.username || 'the connected Instagram account'} ✓`);
+    openModal(
+      'Instagram post published ✓',
+      `GrowthWise published the reviewed photo and caption to @${data.account?.username || 'the connected Instagram account'}.`
+    );
+  }catch(err){
+    console.error('Instagram publishing failed:', err);
+    setInstagramPublishStatus('error', err.message || 'Could not publish to Instagram.');
+    openModal('Could not publish to Instagram', err.message || 'Please try again.');
+  }finally{
+    publishInstagramPostBtn.disabled = false;
+    publishInstagramPostBtn.textContent = 'Post to Instagram';
+  }
 });
 
 const facebookCaptionEditor = document.getElementById('facebookCaptionEditor');
