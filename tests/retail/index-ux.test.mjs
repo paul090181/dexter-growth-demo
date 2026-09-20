@@ -138,10 +138,10 @@ test("Dexter can capture pilot feedback and share GrowthWise referrals", () => {
 
 test("Dexter pilot exposes a persistent Retail Lead Assistant", () => {
   assert.match(html, /data-nav="leads"/);
-  assert.match(html, /<h2>Lead Assistant<\/h2>/);
+  assert.match(html, /<h2>GrowthWise Inbox<\/h2>/);
   assert.match(html, /Instagram DMs, Facebook messages, texts, website questions/);
   assert.match(html, /Draft Customer Reply/);
-  assert.match(html, /RECENT CUSTOMER QUESTIONS/);
+  assert.match(html, /GROWTHWISE INBOX/);
   assert.match(html, /assets\/retail-leads\.mjs/);
 });
 
