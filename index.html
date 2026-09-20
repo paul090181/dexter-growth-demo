@@ -161,8 +161,8 @@
 .money-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.money-card{border:1px solid #e2e6e9;border-radius:16px;padding:14px;background:#fff;min-height:100px;display:flex;flex-direction:column;justify-content:space-between}.money-card span{font-size:12px;color:#6b7680}.money-card strong{font-size:23px;color:#17222e}.vendor-spend-list{display:grid;gap:8px;margin-top:10px}.vendor-spend-row{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #edf0f2;padding:8px 0}.vendor-spend-row:last-child{border-bottom:0}.vendor-spend-row span{color:#5d6974}
 @media(max-width:390px){.ops-summary{grid-template-columns:1fr}.money-grid{grid-template-columns:1fr 1fr}.po-draft-line-fields,.po-tracking{grid-template-columns:1fr}}
 
-/* Persistent GrowthWise workflow navigation — mirrors the automotive pilot */
-.phone-shell{padding-top:calc(60px + env(safe-area-inset-top,0px))}
+/* Persistent GrowthWise workflow navigation — all seven actions always visible */
+.phone-shell{padding-top:calc(104px + env(safe-area-inset-top,0px))}
 .topbar{position:relative;top:auto;z-index:1}
 .workflow-quick-nav-shell{
   position:fixed;
@@ -178,30 +178,30 @@
   box-shadow:0 6px 18px rgba(14,27,43,.10);
 }
 .workflow-quick-nav{
-  display:flex;
+  display:grid;
+  grid-template-columns:repeat(12,minmax(0,1fr));
   gap:6px;
-  overflow-x:auto;
-  scrollbar-width:none;
-  -webkit-overflow-scrolling:touch;
-  overscroll-behavior-x:contain;
+  width:100%;
+  overflow:visible;
 }
-.workflow-quick-nav::-webkit-scrollbar{display:none}
 .workflow-quick-nav button{
-  flex:0 0 auto;
-  min-width:92px;
+  grid-column:span 3;
+  width:100%;
+  min-width:0;
   border:1px solid #aebbc5;
   background:#dfe6eb;
   color:#233342;
   border-radius:11px;
-  padding:9px 10px;
+  padding:9px 4px;
   font-size:10px;
   line-height:1.15;
   font-weight:950;
-  letter-spacing:.01em;
+  letter-spacing:0;
   cursor:pointer;
   white-space:nowrap;
   box-shadow:0 3px 9px rgba(14,27,43,.10);
 }
+.workflow-quick-nav button:nth-child(n+5){grid-column:span 4}
 .workflow-quick-nav button.active{
   background:#0e1b2b;
   color:#fff;
@@ -212,10 +212,12 @@
   outline:3px solid rgba(14,27,43,.18);
   outline-offset:2px;
 }
-.screen{scroll-margin-top:74px}
+.screen{scroll-margin-top:116px}
 @media(max-width:360px){
-  .workflow-quick-nav-shell{padding-left:8px;padding-right:8px}
-  .workflow-quick-nav button{min-width:86px;padding:9px 8px;font-size:9.5px}
+  .phone-shell{padding-top:calc(100px + env(safe-area-inset-top,0px))}
+  .workflow-quick-nav-shell{padding-left:7px;padding-right:7px}
+  .workflow-quick-nav{gap:5px}
+  .workflow-quick-nav button{padding:8px 2px;font-size:9px}
 }
 
 .instagram-first-task{grid-column:1/-1;background:#0e1b2b!important;border-color:#0e1b2b!important;min-height:112px!important}
@@ -1312,8 +1314,6 @@ function show(id){
   screens.forEach(s=>s.classList.toggle('active',s.id===id));
   navs.forEach(n=>n.classList.toggle('active',n.dataset.nav===id));
   workflowNavs.forEach(n=>n.classList.toggle('active',n.dataset.nav===id));
-  const activeWorkflowNav=workflowNavs.find(n=>n.dataset.nav===id);
-  activeWorkflowNav?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
   window.scrollTo({top:0,behavior:'smooth'});
 }
 document.querySelectorAll('[data-nav]').forEach(el=>{
