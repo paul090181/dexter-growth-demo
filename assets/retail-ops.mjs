@@ -97,4 +97,33 @@ function renderSearch(){
   const root=$("#poProductSearchResults"); if(!root) return;
   const q=($("#poProductSearch").value||"").trim().toLowerCase();
   const found=products.filter(p=>!q||[p.item_name,p.variation_name,p.sku,p.upc].filter(Boolean).join(" ").toLowerCase().includes(q)).slice(0,10);
-  root.innerHTML=found.length?found.map(p=>`<button type="button" class="po-search-item" data-product="${esc(p.variation_id)}"><strong>${esc(p.item_name)}</strong><small>${p.price?"$"+esc(p.price):"No retail price"} · ${Number(p.quantity||0)} in stock${p.variation_name&&p.variation_name!=="Default"?" · "+esc(p
+  root.innerHTML=found.length?found.map(p=>`<button type="button" class="po-search-item" data-product="${esc(p.variation_id)}"><strong>${esc(p.item_name)}</strong><small>${p.price?"$"+esc(p.price):"No retail price"} · ${Number(p.quantity||0)} in stock${p.variation_name&&p.variation_name!=="Default"?" · "+esc(p.variation_name):""}</small></button>`).join(""):'<div class="inventory-empty">No matching Square products.</div>';
+  root.querySelectorAll("[data-product]").forEach(b=>b.onclick=()=>{const p=products.find(x=>x.variation_id===b.dataset.product);if(p)addLine(p,1);});
+}
+function addLine(product,qty){const x=draft.find(l=>l.product.variation_id===product.variation_id);if(x)x.qty+=Math.max(1,Number(qty)||1);else draft.push({product,qty:Math.max(1,Number(qty)||1),cost:""});$("#poProductSearch").value="";renderDraft();renderSearch();}
+function renderDraft(){
+  const root=$("#poDraftLines"); if(!root) return;
+  root.innerHTML=draft.length?draft.map((l,i)=>`<div class="po-draft-line"><div class="po-draft-line-head"><strong>${esc(l.product.item_name)}</strong><button data-remove="${i}">Remove</button></div><div class="po-draft-line-fields"><label>Quantity<input type="number" min="1" step="1" inputmode="numeric" value="${l.qty}" data-qty="${i}"></label><label>Wholesale cost each<input type="number" min="0" step="0.01" inputmode="decimal" value="${esc(l.cost)}" placeholder="0.00" data-cost="${i}"></label></div></div>`).join(""):'<div class="inventory-empty">Choose products above to build this order.</div>';
+  root.querySelectorAll("[data-remove]").forEach(b=>b.onclick=()=>{draft.splice(Number(b.dataset.remove),1);renderDraft();});
+  root.querySelectorAll("[data-qty]").forEach(i=>i.oninput=()=>{draft[Number(i.dataset.qty)].qty=Math.max(1,Math.floor(Number(i.value)||1));totalDraft();});
+  root.querySelectorAll("[data-cost]").forEach(i=>i.oninput=()=>{draft[Number(i.dataset.cost)].cost=i.value;totalDraft();}); totalDraft();
+}
+function totalDraft(){const sub=draft.reduce((n,l)=>n+(Number(l.cost)||0)*l.qty,0), ship=Number($("#poShipping").value||0), tax=Number($("#poTax").value||0);$("#poDraftTotal").textContent=money(sub+(Number.isFinite(ship)?ship:0)+(Number.isFinite(tax)?tax:0));}
+
+async function saveDraft(){
+  const adminKey=key(), status=$("#purchaseOrderStatus"), vendor=$("#poVendorName").value.trim();
+  if(!adminKey){tell("Unlock GrowthWise first","Return Home and unlock GrowthWise before saving a purchase order.");return;}
+  if(!vendor){status.className="create-status error";status.textContent="Enter the wholesaler or vendor name.";return;}
+  if(!draft.length){status.className="create-status error";status.textContent="Add at least one product to this order.";return;}
+  if(draft.some(l=>l.cost===""||!Number.isFinite(Number(l.cost))||Number(l.cost)<0)){status.className="create-status error";status.textContent="Enter the wholesale unit cost for every product.";return;}
+  const button=$("#savePurchaseOrderBtn");button.disabled=true;button.textContent="Saving…";
+  try{
+    const r=await fetch(`/.netlify/functions/retail-orders?business_id=${BUSINESS_ID}`,{method:"POST",headers:{"Content-Type":"application/json","X-GrowthWise-Key":adminKey},body:JSON.stringify({vendor_name:vendor,vendor_contact:$("#poVendorContact").value.trim(),expected_at:$("#poExpectedDate").value||null,shipping:Number($("#poShipping").value||0),tax:Number($("#poTax").value||0),notes:$("#poNotes").value.trim(),lines:draft.map(l=>({square_item_id:l.product.item_id,square_variation_id:l.product.variation_id,item_name:l.product.item_name,variation_name:l.product.variation_name,sku:l.product.sku,upc:l.product.upc,quantity_ordered:l.qty,unit_cost:Number(l.cost),retail_price:l.product.price}))})});
+    const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||"Could not save purchase order.");
+    draft=[];["#poVendorName","#poVendorContact","#poExpectedDate","#poShipping","#poTax","#poNotes"].forEach(s=>$(s).value="");renderDraft();showComposer(false);await loadOrders(adminKey);tell("Purchase order saved ✓",`${data.order.po_number} is ready. Mark it Sent / Ordered after the wholesaler receives the order.`);
+  }catch(e){status.className="create-status error";status.textContent=e.message||"GrowthWise could not save the purchase order.";}finally{button.disabled=false;button.textContent="Save Draft";}
+}
+
+async function advance(id,status){
+  const body={id,status};
+  if(status==
