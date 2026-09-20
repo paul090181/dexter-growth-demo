@@ -14,6 +14,56 @@ function showStatus(kind, message){
   box.className=`create-status ${kind}`; box.textContent=message;
 }
 
+function renderLeadUnlock(){
+  const box=$("#retailLeadUnlock");
+  if(!box) return;
+  box.classList.toggle("hidden", Boolean(key()));
+}
+
+function showUnlockStatus(kind,message){
+  const box=$("#retailLeadUnlockStatus");
+  if(!box) return;
+  box.className=`lead-inline-unlock-status ${kind}`;
+  box.textContent=message;
+}
+
+async function unlockLeads(){
+  const input=$("#retailLeadUnlockKey");
+  const btn=$("#retailLeadUnlockBtn");
+  const supplied=(input?.value||"").trim();
+  if(!supplied){ input?.focus(); return; }
+
+  if(btn){ btn.disabled=true; btn.textContent="Checking…"; }
+  showUnlockStatus("loading","Checking GrowthWise and loading Square products…");
+
+  try{
+    const r=await fetch("/.netlify/functions/square-data",{
+      method:"GET",
+      headers:{"X-GrowthWise-Key":supplied},
+      cache:"no-store"
+    });
+    const data=await r.json().catch(()=>({}));
+    if(r.status===401) throw new Error("GrowthWise access key was not accepted.");
+    if(!r.ok) throw new Error(data.error||`Could not load Square products (HTTP ${r.status}).`);
+
+    sessionStorage.setItem("growthwise_admin_key",supplied);
+    products=Array.isArray(data.products)?data.products:[];
+    window.growthwiseInventoryProducts=products;
+    window.dispatchEvent(new CustomEvent("growthwise:inventory-updated",{detail:{products,summary:data.summary||{},generated_at:data.generated_at||null}}));
+    window.dispatchEvent(new Event("growthwise:admin-key-ready"));
+
+    if(input) input.value="";
+    renderLeadUnlock();
+    renderProductSearch();
+    await Promise.all([loadAutomationSettings(),loadLeads()]);
+    showStatus("ok","✓ GrowthWise unlocked. Square products are ready and your example is still here.");
+  }catch(e){
+    showUnlockStatus("error",e.message||"GrowthWise could not unlock this Lead Assistant.");
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent="Unlock"; }
+  }
+}
+
 function decisionLabel(decision){
   if(decision==="auto_reply") return "LOW-RISK REPLY";
   if(decision==="auto_reply_then_review") return "REPLY + DEXTER REVIEW";
@@ -197,14 +247,17 @@ function loadSample(){
 
 export function mountRetailLeads(){
   products=Array.isArray(window.growthwiseInventoryProducts)?window.growthwiseInventoryProducts:[];
+  renderLeadUnlock();
   $("#retailLeadProductSearch")?.addEventListener("input",renderProductSearch);
+  $("#retailLeadUnlockBtn")?.addEventListener("click",unlockLeads);
+  $("#retailLeadUnlockKey")?.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();unlockLeads();}});
   $("#retailLeadRunBtn")?.addEventListener("click",runLead);
   $("#retailLeadSampleBtn")?.addEventListener("click",loadSample);
   $("#retailLeadCopyBtn")?.addEventListener("click",copyReply);
   $("#retailLeadShareBtn")?.addEventListener("click",shareReply);
   document.querySelectorAll("[data-lead-mode]").forEach(btn=>btn.addEventListener("click",()=>saveAutomationMode(btn.dataset.leadMode)));
   window.addEventListener("growthwise:inventory-updated",e=>{products=Array.isArray(e.detail?.products)?e.detail.products:[];renderProductSearch();});
-  window.addEventListener("growthwise:admin-key-ready",()=>{loadAutomationSettings();loadLeads();});
-  document.querySelectorAll('[data-nav="leads"]').forEach(btn=>btn.addEventListener("click",()=>{products=Array.isArray(window.growthwiseInventoryProducts)?window.growthwiseInventoryProducts:products;renderProductSearch();loadAutomationSettings();loadLeads();}));
+  window.addEventListener("growthwise:admin-key-ready",()=>{renderLeadUnlock();loadAutomationSettings();loadLeads();});
+  document.querySelectorAll('[data-nav="leads"]').forEach(btn=>btn.addEventListener("click",()=>{products=Array.isArray(window.growthwiseInventoryProducts)?window.growthwiseInventoryProducts:products;renderLeadUnlock();renderProductSearch();loadAutomationSettings();loadLeads();}));
   renderProductSearch(); renderLeads(); renderAutomationMode(); renderAutomationStats(); if(key()){loadAutomationSettings();loadLeads();}
 }
