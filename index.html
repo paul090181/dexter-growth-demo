@@ -435,6 +435,17 @@
             <p>Use the original photo or let GrowthWise prepare a clean-background version.</p>
           </div>
 
+          <div class="recent-photo-library hidden" id="recentPromotionPhotoLibrary">
+            <div class="recent-photo-head">
+              <div>
+                <strong>Recent Product Photos</strong>
+                <small>Reuse a photo already saved by GrowthWise</small>
+              </div>
+            </div>
+            <div class="recent-photo-grid" id="recentPromotionPhotoGrid"></div>
+            <p class="recent-photo-note">Tap a recent photo to use it for this promotion.</p>
+          </div>
+
           <div class="photo-preview-wrap" id="promoPhotoPreviewWrap">
             <div class="photo-preview-frame">
               <img id="promoPhotoPreview" alt="Selected product preview" />
@@ -1244,6 +1255,7 @@ const PRODUCT_PHOTO_DB = 'growthwise-product-photos-v1';
 const PRODUCT_PHOTO_STORE = 'photos';
 const PRODUCT_PHOTO_LIMIT = 30;
 let recentProductPhotoUrls = [];
+let recentPromotionPhotoUrls = [];
 
 function openProductPhotoDb(){
   return new Promise((resolve,reject)=>{
@@ -1300,6 +1312,7 @@ async function saveProductPhotoToDevice(file, source='product'){
   }
   await pruneProductPhotoLibrary();
   await renderRecentProductPhotos();
+  await renderRecentPromotionPhotos();
   return record.id;
 }
 
@@ -1334,6 +1347,7 @@ async function clearSavedProductPhotos(){
     db.close();
   }
   await renderRecentProductPhotos();
+  await renderRecentPromotionPhotos();
 }
 
 async function savedProductPhoto(id){
@@ -1348,6 +1362,55 @@ async function savedProductPhoto(id){
   }finally{
     db.close();
   }
+}
+
+async function renderRecentPromotionPhotos(){
+  const library = document.getElementById('recentPromotionPhotoLibrary');
+  const grid = document.getElementById('recentPromotionPhotoGrid');
+  if(!library || !grid) return;
+
+  for(const url of recentPromotionPhotoUrls) URL.revokeObjectURL(url);
+  recentPromotionPhotoUrls = [];
+
+  let records = [];
+  try{
+    records = await productPhotoRecords();
+  }catch{
+    library.classList.add('hidden');
+    return;
+  }
+
+  if(!records.length){
+    grid.innerHTML = '';
+    library.classList.add('hidden');
+    return;
+  }
+
+  library.classList.remove('hidden');
+  grid.innerHTML = records.slice(0,12).map(record=>{
+    const url = URL.createObjectURL(record.blob);
+    recentPromotionPhotoUrls.push(url);
+    return `<button type="button" class="recent-photo-item" data-promo-recent-photo-id="${escapeHtml(record.id)}" aria-label="Use saved photo for promotion">
+      <img src="${url}" alt="Recent GrowthWise product photo" />
+    </button>`;
+  }).join('');
+
+  grid.querySelectorAll('[data-promo-recent-photo-id]').forEach(button=>{
+    button.addEventListener('click', async ()=>{
+      try{
+        const record = await savedProductPhoto(button.dataset.promoRecentPhotoId);
+        if(!record) throw new Error('That saved photo is no longer available.');
+        const file = new File([record.blob], record.name || 'growthwise-saved-photo.jpg', {
+          type: record.type || record.blob.type || 'image/jpeg',
+          lastModified: record.created_at || Date.now(),
+        });
+        handlePromotionPhoto(file);
+        promoPhotoStatus.textContent = '✓ Recent product photo selected for this promotion.';
+      }catch(err){
+        openModal('Could not reuse photo', err.message || 'GrowthWise could not load that saved photo.');
+      }
+    });
+  });
 }
 
 async function renderRecentProductPhotos(){
@@ -1747,6 +1810,7 @@ document.getElementById('clearRecentProductPhotosBtn').addEventListener('click',
   }
 });
 void renderRecentProductPhotos();
+void renderRecentPromotionPhotos();
 document.getElementById('productIntakeMode').addEventListener('change', ()=>{
   const mode = document.getElementById('productIntakeMode').value;
   const tip = document.getElementById('productPacketTip');
