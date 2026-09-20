@@ -8,9 +8,17 @@ export const INSTAGRAM_IDENTITY_SCOPE = "instagram_business_basic";
 
 const DEFAULT_MAX_RESPONSE_BYTES = 32 * 1024;
 const DEFAULT_TIMEOUT_MS = 10_000;
+const SAFE_PROVIDER_REASONS = new Set([
+  "network_error",
+  "http_error",
+  "response_too_large",
+  "response_read_error",
+  "invalid_json",
+  "missing_fields",
+]);
 
 export class InstagramProviderError extends Error {
-  constructor(code, { httpStatus = null } = {}) {
+  constructor(code, { httpStatus = null, reason = null } = {}) {
     const messages = {
       denied: "Instagram authorization was denied.",
       exchange_failed: "Instagram authorization exchange failed.",
@@ -22,6 +30,7 @@ export class InstagramProviderError extends Error {
     this.name = "InstagramProviderError";
     this.code = code;
     this.httpStatus = Number.isInteger(httpStatus) && httpStatus >= 100 && httpStatus <= 599 ? httpStatus : null;
+    this.reason = SAFE_PROVIDER_REASONS.has(reason) ? reason : null;
   }
 }
 
@@ -46,22 +55,22 @@ async function providerJson(url, init, { fetchImpl, maxResponseBytes, failureCod
   try {
     response = await fetchImpl(url, { ...init, signal: init.signal ?? AbortSignal.timeout(DEFAULT_TIMEOUT_MS) });
   } catch {
-    throw new InstagramProviderError("temporarily_unavailable");
+    throw new InstagramProviderError("temporarily_unavailable", { reason: "network_error" });
   }
   // Provider status is authoritative for failure class. Do not parse, buffer,
   // or let an oversized/unreadable raw error body change that classification.
   if (!response.ok) {
     if (response.status === 429 || response.status >= 500) {
-      throw new InstagramProviderError("temporarily_unavailable", { httpStatus: response.status });
+      throw new InstagramProviderError("temporarily_unavailable", { httpStatus: response.status, reason: "http_error" });
     }
-    throw new InstagramProviderError(failureCode, { httpStatus: response.status });
+    throw new InstagramProviderError(failureCode, { httpStatus: response.status, reason: "http_error" });
   }
   let text;
   try { text = await readLimitedText(response, maxResponseBytes); } catch (error) {
-    if (error === RESPONSE_TOO_LARGE) throw new InstagramProviderError(failureCode);
-    throw new InstagramProviderError("temporarily_unavailable");
+    if (error === RESPONSE_TOO_LARGE) throw new InstagramProviderError(failureCode, { reason: "response_too_large" });
+    throw new InstagramProviderError("temporarily_unavailable", { reason: "response_read_error" });
   }
-  try { return JSON.parse(text); } catch { throw new InstagramProviderError(failureCode); }
+  try { return JSON.parse(text); } catch { throw new InstagramProviderError(failureCode, { reason: "invalid_json" }); }
 }
 
 const RESPONSE_TOO_LARGE = Symbol("response-too-large");
@@ -137,7 +146,7 @@ export async function exchangeAuthorizationCode({ appId, appSecret, callbackUri:
   const json = await providerJson(INSTAGRAM_TOKEN_ENDPOINT, { method: "POST", body }, { fetchImpl, maxResponseBytes, failureCode: "exchange_failed" });
   const accountId = normalizedProviderId(json?.user_id);
   if (!objectWithRequiredFields(json, ["access_token", "user_id"]) || typeof json.access_token !== "string" || json.access_token.length === 0 || accountId === undefined) {
-    throw new InstagramProviderError("exchange_failed");
+    throw new InstagramProviderError("exchange_failed", { reason: "missing_fields" });
   }
   return { accessToken: json.access_token, accountId };
 }
