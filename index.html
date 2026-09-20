@@ -2922,6 +2922,10 @@ function formatInventoryUpdated(iso){
 
 function renderInventory(products = [], summary = {}, generatedAt = null){
   growthwiseInventoryProducts = Array.isArray(products) ? products : [];
+  window.growthwiseInventoryProducts = growthwiseInventoryProducts;
+  window.dispatchEvent(new CustomEvent('growthwise:inventory-updated', {
+    detail: { products: growthwiseInventoryProducts, summary, generatedAt }
+  }));
 
   const totalProducts = summary.variation_count ?? growthwiseInventoryProducts.length;
   const totalUnits = summary.total_units_in_stock ?? growthwiseInventoryProducts.reduce(
@@ -3153,6 +3157,8 @@ async function loadLiveSalesData(key = sessionStorage.getItem('growthwise_admin_
     }
 
     growthwiseSalesSnapshot = data;
+    window.growthwiseSalesSnapshot = data;
+    window.dispatchEvent(new CustomEvent('growthwise:sales-updated', { detail: data }));
     void loadRetailAiIdeas(key);
 
     const summary = data.summary || {};
@@ -3230,6 +3236,11 @@ liveAdminKeyInput.addEventListener('keydown', e=>{
   if(e.key === 'Enter') growthwiseUnlockSquare(e);
 });
 
+window.renderInventory = renderInventory;
+window.loadLiveSquareData = loadLiveSquareData;
+window.loadLiveSalesData = loadLiveSalesData;
+window.openGrowthWiseModal = openModal;
+
 loadLiveSquareData().then(()=>{
   const key = sessionStorage.getItem('growthwise_admin_key') || '';
   if(key) loadLiveSalesData(key);
@@ -3237,6 +3248,10 @@ loadLiveSquareData().then(()=>{
 
 
 
+</script>
+<script type="module">
+  import { mountRetailOps } from "./assets/retail-ops.mjs";
+  mountRetailOps();
 </script>
 <script type="module">
   import { mountInstagramConnection } from "./assets/instagram-connection.mjs";
