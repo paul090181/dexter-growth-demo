@@ -203,6 +203,7 @@
             }
 
             sessionStorage.setItem('growthwise_admin_key', key);
+            window.dispatchEvent(new Event('growthwise:admin-key-ready'));
             if(input) input.value = '';
             unlockBox?.classList.add('hidden');
 
