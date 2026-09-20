@@ -20,7 +20,7 @@ This phase connects and verifies identity only. It does **not** grant GrowthWise
 
 * `instagram-connection.mjs` is a read-only, admin-key-protected health endpoint. It resolves a token and expected account ID through names stored in client JSON, calls the Instagram `/me` identity endpoint, and returns only safe state/identity fields. It already fails closed for an absent binding, a mismatched account, or an ambiguous response.
 * `growthwise-dev.json` and `dexters-hats.json` point to tenant-specific token/account-ID environment variables. This is acceptable for a short development bridge but does not scale to self-service tenants.
-* Publishing Core already uses Netlify Blobs named `growthwise-publishing-v1` and may continue doing so. Netlify Blobs' last-write-wins behavior and lack of built-in concurrency control are not sufficient for security-critical OAuth replay prevention or cross-tenant account ownership. By Paul's approved architecture amendment, the new Instagram OAuth subsystem instead uses Netlify Database/PostgreSQL and SQL transactions; this decision does not alter Publishing Core.
+* Publishing Core already uses Netlify Blobs named `growthwise-publishing-v1` and may continue doing so. Netlify Blobs' last-write-wins behavior and lack of built-in concurrency control are not sufficient for security-critical OAuth replay prevention, transactional credential writes, or tenant isolation. By Paul's approved architecture amendment, the new Instagram OAuth subsystem instead uses Netlify Database/PostgreSQL and SQL transactions; this decision does not alter Publishing Core.
 * The temporary security boundary is `GROWTHWISE_ADMIN_KEY`, supplied as `X-GrowthWise-Key`; the current browser keeps the entered key in session storage. It is not tenant-aware user authentication. This design uses it only because owner/session redesign is explicitly out of scope and requires replacement before broad production availability.
 * Dexter's current Square/Facebook behavior and the existing Facebook publishing function are independent legacy paths and must remain unchanged.
 
@@ -32,7 +32,7 @@ This phase connects and verifies identity only. It does **not** grant GrowthWise
 4. Use a 256-bit random opaque nonce plus an HMAC tag as `state`, backed by a ten-minute, one-use server record. The HMAC is defense in depth; no claims in browser state are trusted.
 5. Encrypt the entire token payload with AES-256-GCM before persistence. Tenant and record identity are authenticated as additional authenticated data (AAD).
 6. Make the OAuth credential store the primary lookup. Preserve the current environment-reference lookup only as an explicitly enabled development fallback during migration.
-7. A professional Instagram account may be actively bound to only one GrowthWise business. A `UNIQUE NOT NULL` constraint on its independently keyed account fingerprint and a SQL transaction enforce that invariant without application-level check-then-write logic.
+7. A professional Instagram account may be authorized independently for multiple GrowthWise businesses. `business_id` remains the credential primary key, so every business has its own encrypted credential row and OAuth lifecycle. The independently keyed account fingerprint remains non-null and verifies account identity, but it is intentionally not unique across tenants.
 
 ## Configuration and redirect URI
 
@@ -86,7 +86,7 @@ Processing order:
 4. If Meta reports denial, atomically finish the record as `consumed_denied`, record only a normalized reason category, and redirect with a safe cancellation status. Never include Meta's raw description.
 5. Exchange the authorization code from the server with the app ID, app secret, and exact callback URI. Put credentials in the provider-required HTTPS request body/header, not application logs or GrowthWise URLs. Apply a short timeout, response-size limits, expected content type/schema checks, and generic error mapping.
 6. Where Instagram supports it, exchange the initial short-lived token for a long-lived user token server-side. Verify identity using the resulting token in an `Authorization` header and the minimum identity fields. Require one professional Instagram identity with non-empty stable account ID and username. Never accept an account identifier from the browser or client JSON as the new binding.
-7. In one database transaction, derive the account-binding key, enforce its unique ownership, and insert or update the owning tenant's encrypted credential. If another tenant owns the key, the unique-constraint conflict fails closed and the transaction rolls back; no partial credential or ownership state remains. Reconnection by the existing owner follows the explicitly tested update path.
+7. In one database transaction, derive the account-binding key and insert or update only the transaction's authenticated tenant credential. The same account-binding key may appear on another tenant's row after that tenant independently completes OAuth. Cross-tenant reads and writes remain forbidden, and any partial credential write rolls back. Reconnection by the same business follows the explicitly tested update path.
 8. Mark the transaction `consumed_success` only after the binding/credential database transaction commits, or `consumed_failed` after a terminal denial/exchange/identity/storage failure. Store no authorization code. Retain only minimal expiry/audit metadata and delete terminal transactions after a short operational retention window.
 9. Redirect with `303` to a fixed, server-selected GrowthWise settings path, for example `/settings/integrations?instagram=connected` or `?instagram=cancelled|attention`. The query carries only a small allowlisted status. It never contains `business_id`, state, code, provider error text, account ID, username, or token. The page then calls the authenticated health endpoint for authoritative display.
 
@@ -103,7 +103,7 @@ The transaction record is authoritative. HMAC validation alone never authorizes 
 | State replayed / callback invoked twice | The atomic guarded SQL update returns a row to exactly one caller. Every later call gets zero rows and performs no provider call or credential write. It returns the same generic invalid/expired-flow outcome, not the prior result. |
 | `business_id` changed in the browser | Start validates it before creation. Callback ignores all caller tenant input and uses the immutable transaction tenant. If any duplicated tenant field or stored record/key mismatch exists, fail closed and quarantine the record. |
 | Concurrent callbacks | The database's atomic guarded update, not in-memory flags, provides the one winner across function instances. |
-| Database transaction unavailable or ambiguous | Do not release OAuth. Never fall back to Blobs or best-effort read/write for replay prevention or ownership uniqueness. |
+| Database transaction unavailable or ambiguous | Do not release OAuth. Never fall back to Blobs or best-effort read/write for replay prevention, credential atomicity, or tenant isolation. |
 
 Transactions expire after ten minutes. A scheduled or opportunistic cleanup may remove terminal/expired records after 24 hours; cleanup is not part of authorization correctness.
 
@@ -114,7 +114,7 @@ Use `@netlify/database` through `_instagram-store.mjs`, with each migration in N
 The minimum schema is:
 
 * `instagram_oauth_transactions`: `transaction_key` primary key; immutable non-null `business_id` and `return_destination_id`; constrained non-null `status`; non-null `expires_at`; `created_at`, `updated_at`, and optional `processing_started_at` / `consumed_at`. The derived transaction key is sufficient; raw browser state is forbidden.
-* `instagram_credentials`: `business_id` primary key; `account_binding_key` unique and non-null; encrypted credential payload; encryption key version; constrained credential status; token-expiration metadata; safe username/display metadata; `created_at`, `updated_at`, and `last_verified_at`.
+* `instagram_credentials`: `business_id` primary key; `account_binding_key` non-null but intentionally non-unique across businesses; encrypted credential payload; encryption key version; constrained credential status; token-expiration metadata; safe username/display metadata; `created_at`, `updated_at`, and `last_verified_at`.
 
 The encrypted plaintext is a small versioned JSON object containing sensitive provider identity/token material required by the implementation, including the verified stable account ID, access token, token type/scope, and lifecycle facts. Access tokens are never plaintext columns. A fresh 96-bit IV is mandatory for every AES-256-GCM encryption, including reconnects and refreshes. AAD is the canonical, versioned context `growthwise-instagram-database\ncredential-v1\n<business_id>\ninstagram\n<account_binding_key>`; moving ciphertext to another tenant/account fails authentication. Decryption/tag/schema failure returns **Needs Attention**, emits only a redacted event, and never falls back silently.
 
@@ -177,7 +177,7 @@ Migration does not alter `facebook-post.mjs`, Dexter Square behavior, Publishing
 | CSRF / login CSRF | Authenticate start, require same origin, random server-backed state, HMAC it, and bind immutable tenant/expiry. Callback without a valid pending record does nothing. |
 | OAuth code interception | Exact HTTPS callback, code used only server-side, ten-minute state, one consumer, no code in final URL, and no-referrer/no-store. A stolen code without transaction state cannot bind. PKCE is not improvised without a concrete provider contract. |
 | Replay / duplicate callback | Atomic pending-to-processing compare-and-set. All later callbacks perform zero exchange/write work. |
-| Cross-tenant access | Explicit client allowlist, parameterized tenant predicates, transaction-derived tenant, primary/unique constraints, and AES-GCM tenant/account AAD on every read/write. |
+| Cross-tenant access | Explicit client allowlist, parameterized tenant predicates, transaction-derived tenant, the business primary key, and AES-GCM tenant/account AAD on every read/write. |
 | State-secret rotation affecting durable bindings | State HMAC and account-binding HMAC use independent secrets. Rotating `GROWTHWISE_INSTAGRAM_OAUTH_STATE_SECRET` may invalidate pending flows but cannot change existing `account_binding_key` values; the binding secret follows its own controlled migration. |
 | Token/app-secret leakage | Server environment and encrypted storage only; authorization headers/request bodies; allowlisted telemetry; generic errors; response tests and repository secret scans. |
 | Logs and observability | Log correlation ID, normalized event, tenant-safe identifier if policy permits, and status only. Never log URLs containing OAuth callback queries, request bodies/headers, provider bodies, ciphertext, code, state nonce, token, or secret. Configure platform access-log query redaction where available. |
@@ -185,7 +185,7 @@ Migration does not alter `facebook-post.mjs`, Dexter Square behavior, Publishing
 | Open redirect / host spoofing | Fixed configured origin and paths; no caller `return_to`; do not trust Host/forwarded headers. |
 | Credential theft/tampering | AES-256-GCM, random IV per write, versioned server-only key, AAD tenant/record binding, minimal decrypt scope, and authenticated-decryption failure to Needs Attention. Key rotation is versioned and re-encrypts after successful decrypt. |
 | Compromised/expired credentials | Local expiry checks, verified refresh, identity pinning, revocation mapping, no mutation use, Needs Attention plus reconnect. |
-| Duplicate account across tenants | A dedicated-secret account-binding key has a database `UNIQUE` constraint. A connection transaction rejects a conflicting owner and rolls back completely; no tenant can steal or silently rebind it. |
+| Same account across tenants | Allowed only after each tenant independently completes OAuth. Each business gets a separate encrypted credential row; tenant predicates and AES-GCM AAD prevent one tenant from reading, overwriting, or decrypting another tenant's credential. |
 | Malicious provider response | Time/size/schema limits, exact identity cardinality/type checks, stable-ID pinning, generic mapping, and no raw reflection. |
 | Excessive attempts | Rate-limit starts by coarse client signal and tenant, callbacks by transaction; limits must not require logging secrets. Generic errors avoid tenant/state enumeration. |
 
@@ -214,9 +214,9 @@ Tests must inject clock, RNG, environment, store, crypto wrapper where useful, a
 * AES-256-GCM credential round trip recovers the original token only for the matching tenant/AAD; wrong key, modified tag/ciphertext, reused/mismatched record metadata, and cross-tenant read fail.
 * Persisted database fields contain no plaintext synthetic token. Fresh writes use different IV/ciphertext.
 * A credential cannot be read through another tenant ID, including crafted key segments.
-* The same Instagram account cannot bind to two tenants; concurrent transactional attempts yield one owner through the unique constraint.
-* Account-binding derivation uses `GROWTHWISE_INSTAGRAM_ACCOUNT_BINDING_SECRET`, never the OAuth state secret; rotating the state secret leaves the same account binding key and duplicate-account protection intact.
-* Binding-secret rotation tests cover a versioned migration, collision detection across old/new keyed values, and fail-closed behavior on ownership disagreement; the old binding secret is not retired until every active row is migrated and verified.
+* The same Instagram account can bind independently to two tenants, producing separate encrypted rows keyed by each `business_id`.
+* Account-binding derivation uses `GROWTHWISE_INSTAGRAM_ACCOUNT_BINDING_SECRET`, never the OAuth state secret; rotating the state secret leaves account identity derivation unchanged.
+* Binding-secret rotation tests cover versioned key recognition and tenant-scoped decrypt/reconnect behavior; the old binding secret is not retired until every active row that depends on it is migrated and verified.
 * A failed binding or credential statement rolls back, leaves no valid partial connection, and never produces Connected.
 * Token, authorization code, app secret, state nonce, provider raw errors, and account ID never appear in response bodies/headers/redirects, safe errors, captured logger calls, frontend assets, fixtures, or snapshots. Use sentinel secrets for assertions.
 
