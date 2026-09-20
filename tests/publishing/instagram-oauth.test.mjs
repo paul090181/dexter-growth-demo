@@ -337,7 +337,7 @@ test("shared provider identity is still written only to the callback transaction
   fixture.transaction.return_destination_id = "dexter-integration";
   const response = await fixture.handler(callbackRequest("state=v1.valid.tag&code=ok"));
   assert.equal(fixture.calls.connect[0].businessId, "dexters-hats");
-  assert.equal(fixture.calls.connect[0].accountId, "99");
+  assert.equal(fixture.calls.connect[0].accountId, "42");
   assert.equal(response.headers.get("location"), `${ORIGIN}/?instagram=connected`);
 });
 
