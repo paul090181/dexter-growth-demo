@@ -1032,6 +1032,10 @@ document.getElementById('publishPromotionBtn').addEventListener('click', async (
     openModal('Check Instagram before retrying', 'A previous final publish was uncertain. Check the Instagram account first so you do not create a duplicate.');
     return;
   }
+  if(wantsInstagram && !promotionPublishedChannels.has('instagram')){
+    const instagramReady = await ensureInstagramPublishingReady(adminKey);
+    if(!instagramReady) return;
+  }
 
   const targets = [
     wantsFacebook && !promotionPublishedChannels.has('facebook') ? 'Facebook' : '',
@@ -1810,6 +1814,31 @@ async function sendDexterPublishingShadow(form, created){
   }
 }
 
+async function ensureInstagramPublishingReady(adminKey){
+  try{
+    const response = await fetch('/.netlify/functions/instagram-connection?business_id=dexters-hats', {
+      method: 'GET',
+      headers: { 'X-GrowthWise-Key': adminKey },
+      cache: 'no-store'
+    });
+    const data = await response.json().catch(()=>({}));
+    if(response.ok && data.state === 'Connected') return true;
+
+    show('settings');
+    openModal(
+      'Reconnect Instagram first',
+      'Instagram is selected, but GrowthWise is not ready to publish there yet. Reconnect Instagram in Connected Apps, or turn Instagram off and continue with the other channels.'
+    );
+    return false;
+  }catch{
+    openModal(
+      'Instagram check unavailable',
+      'GrowthWise could not verify Instagram right now. Nothing has been created or posted. Try again, or turn Instagram off to continue with the other channels.'
+    );
+    return false;
+  }
+}
+
 async function publishNewProductToFacebook(form, message){
   const imageDataUrl = newProductPromotionImageDataUrl || newProductImageDataUrl;
   const response = await fetch('/.netlify/functions/facebook-post', {
@@ -1934,6 +1963,12 @@ saveSquareBtn.addEventListener('click', async ()=>{
     void sendDexterPublishingShadow(form, created);
     setCreateStatus('ok', `✓ ${created.name || form.productName} created in Square at ${created.price || form.price.toFixed(2)} with ${created.quantity ?? form.quantity} in stock.`);
     document.getElementById('websiteTitle').textContent = created.name || [form.brand, form.productName].filter(Boolean).join(' ');
+    const workflowResult = document.getElementById('workflowResultTitle');
+    workflowResult.textContent = '✓ Added to Square';
+    workflowResult.classList.remove('attention');
+    document.getElementById('generated').classList.remove('hidden');
+    saveSquareBtn.classList.add('hidden');
+    document.getElementById('quickSquareApproveBtn').classList.add('hidden');
     sessionStorage.setItem('growthwise_admin_key', form.adminKey);
     form.adminKeyInput.value = '';
     await loadLiveSquareData(form.adminKey);
@@ -1970,6 +2005,10 @@ addAndPromoteBtn.addEventListener('click', async ()=>{
   if(useInstagram && state.instagramAmbiguous && !state.instagram){
     openModal('Check Instagram before retrying', 'The previous final Instagram publish was uncertain. Check the account before retrying so GrowthWise does not create a duplicate post.');
     return;
+  }
+  if(useInstagram && !state.instagram){
+    const instagramReady = await ensureInstagramPublishingReady(form.adminKey);
+    if(!instagramReady) return;
   }
 
   const remaining = [
