@@ -575,6 +575,9 @@
                 <input id="sizeInput" placeholder="Optional" autocomplete="off" />
               </label>
             </div>
+            <label>Material
+              <input id="materialInput" placeholder="Optional" autocomplete="off" />
+            </label>
             <label>Description
               <textarea id="descriptionInput" placeholder="GrowthWise will draft this from the scan/photo."></textarea>
             </label>
@@ -1252,6 +1255,7 @@ function applyIntakeProduct(index){
   document.getElementById('upcInput').value = product.upc || '';
   document.getElementById('colorInput').value = product.color || '';
   document.getElementById('sizeInput').value = product.size || '';
+  document.getElementById('materialInput').value = product.material || '';
   document.getElementById('descriptionInput').value = product.description || '';
 
   const qty = Number(product.quantity);
@@ -1563,10 +1567,15 @@ function getNewProductForm(){
   const priceText = document.getElementById('priceInput').value.trim();
   const quantityText = document.getElementById('inventoryInput').value.trim();
   const description = document.getElementById('descriptionInput').value.trim();
+  const sku = document.getElementById('styleSkuInput').value.trim();
+  const upc = document.getElementById('upcInput').value.trim();
+  const color = document.getElementById('colorInput').value.trim();
+  const size = document.getElementById('sizeInput').value.trim();
+  const material = document.getElementById('materialInput').value.trim();
   const adminKeyInput = document.getElementById('adminKeyInput');
   const adminKey = adminKeyInput.value || sessionStorage.getItem('growthwise_admin_key') || '';
   return {
-    brand, productName, priceText, quantityText, description, adminKey,
+    brand, productName, priceText, quantityText, description, sku, upc, color, size, material, adminKey,
     price: Number(priceText), quantity: Number(quantityText), adminKeyInput
   };
 }
@@ -1591,6 +1600,11 @@ async function createProductInSquare(form){
       brand: form.brand,
       productName: form.productName,
       description: form.description,
+      sku: form.sku,
+      upc: form.upc,
+      color: form.color,
+      size: form.size,
+      material: form.material,
       price: form.price,
       quantity: form.quantity
     })
