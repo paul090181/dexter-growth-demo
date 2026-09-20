@@ -72,6 +72,12 @@ export default async (request) => {
   const brand = String(body.brand || "").trim();
   const productName = String(body.productName || "").trim();
   const description = String(body.description || "").trim();
+  const sku = String(body.sku || "").trim().slice(0, 120);
+  const upcRaw = String(body.upc || "").trim();
+  const upc = /^\d{8,14}$/.test(upcRaw) ? upcRaw : "";
+  const color = String(body.color || "").trim().slice(0, 100);
+  const size = String(body.size || "").trim().slice(0, 100);
+  const material = String(body.material || "").trim().slice(0, 180);
   const price = Number(body.price);
   const quantity = Number(body.quantity);
 
@@ -108,6 +114,20 @@ export default async (request) => {
   const itemTempId = `#gw-item-${suffix}`;
   const variationTempId = `#gw-var-${suffix}`;
 
+  const variationName = [color, size].filter(Boolean).join(" / ") || "Default";
+  const variationData = {
+    item_id: itemTempId,
+    name: variationName,
+    pricing_type: "FIXED_PRICING",
+    price_money: {
+      amount: priceCents,
+      currency: "USD",
+    },
+    track_inventory: true,
+  };
+  if (sku) variationData.sku = sku;
+  if (upc) variationData.upc = upc;
+
   const itemData = {
     name: fullName,
     variations: [
@@ -115,21 +135,13 @@ export default async (request) => {
         id: variationTempId,
         type: "ITEM_VARIATION",
         present_at_all_locations: true,
-        item_variation_data: {
-          item_id: itemTempId,
-          name: "Default",
-          pricing_type: "FIXED_PRICING",
-          price_money: {
-            amount: priceCents,
-            currency: "USD",
-          },
-          track_inventory: true,
-        },
+        item_variation_data: variationData,
       },
     ],
   };
 
-  if (description) itemData.description = description;
+  const descriptionParts = [description, material ? `Material: ${material}` : ""].filter(Boolean);
+  if (descriptionParts.length) itemData.description = descriptionParts.join("\n");
 
   const catalog = await square("/v2/catalog/object", token, {
     method: "POST",
@@ -202,6 +214,10 @@ export default async (request) => {
       name: fullName,
       price: price.toFixed(2),
       quantity,
+      sku: sku || null,
+      upc: upc || null,
+      color: color || null,
+      size: size || null,
       itemId: catalog.data.catalog_object?.id || null,
       variationId,
       locationId: location.id,
