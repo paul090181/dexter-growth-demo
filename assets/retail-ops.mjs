@@ -96,7 +96,7 @@ function startWith(product,qty=1){document.querySelector('[data-nav="orders"]')?
 function renderSearch(){
   const root=$("#poProductSearchResults"); if(!root) return;
   const q=($("#poProductSearch").value||"").trim().toLowerCase();
-  const found=products.filter(p=>!q||[p.item_name,p.variation_name,p.sku,p.upc].filter(Boolean).join(" ").toLowerCase().includes(q)).slice(0,10);
+  const found=products.filter(p=>!q||[p.item_name,p.variation_name,p.sku,p.upc,p.description].filter(Boolean).join(" ").toLowerCase().includes(q)).slice(0,10);
   root.innerHTML=found.length?found.map(p=>`<button type="button" class="po-search-item" data-product="${esc(p.variation_id)}"><strong>${esc(p.item_name)}</strong><small>${p.price?"$"+esc(p.price):"No retail price"} · ${Number(p.quantity||0)} in stock${p.variation_name&&p.variation_name!=="Default"?" · "+esc(p.variation_name):""}</small></button>`).join(""):'<div class="inventory-empty">No matching Square products.</div>';
   root.querySelectorAll("[data-product]").forEach(b=>b.onclick=()=>{const p=products.find(x=>x.variation_id===b.dataset.product);if(p)addLine(p,1);});
 }
@@ -138,7 +138,17 @@ export function mountRetailOps(){
   products=Array.isArray(window.growthwiseInventoryProducts)?window.growthwiseInventoryProducts:[];sales=window.growthwiseSalesSnapshot||null;
   $("#newPurchaseOrderBtn")?.addEventListener("click",()=>showComposer(true));$("#cancelPurchaseOrderBtn")?.addEventListener("click",()=>showComposer(false));$("#savePurchaseOrderBtn")?.addEventListener("click",saveDraft);$("#poProductSearch")?.addEventListener("input",renderSearch);$("#poShipping")?.addEventListener("input",totalDraft);$("#poTax")?.addEventListener("input",totalDraft);
   $("#accountingComingSoonBtn")?.addEventListener("click",()=>tell("Accounting connector","GrowthWise is tracking sales, vendor orders and wholesale costs. The next step is connecting the bookkeeping platform Dexter actually uses so reviewed transactions can sync instead of being entered twice."));
-  document.querySelectorAll('[data-nav="orders"],[data-nav="money"]').forEach(b=>b.addEventListener("click",()=>{if(key())loadOrders();}));
+  document.querySelectorAll('[data-nav="orders"],[data-nav="money"]').forEach(b=>b.addEventListener("click",async ()=>{
+    if(!key()) return;
+    if(typeof window.loadLiveSquareData==="function"){
+      try{ await window.loadLiveSquareData(key()); }catch{}
+    }
+    await loadOrders();
+    products=Array.isArray(window.growthwiseInventoryProducts)?window.growthwiseInventoryProducts:products;
+    renderSearch();
+    renderRestock();
+    renderMoney();
+  }));
   window.addEventListener("growthwise:admin-key-ready",()=>loadOrders());
   window.addEventListener("growthwise:inventory-updated",e=>{products=Array.isArray(e.detail?.products)?e.detail.products:[];renderRestock();renderMoney();renderSearch();});
   window.addEventListener("growthwise:sales-updated",e=>{sales=e.detail||null;renderRestock();renderMoney();});
