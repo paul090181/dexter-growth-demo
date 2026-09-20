@@ -342,15 +342,9 @@
         <div class="section-head">
           <button class="back" data-nav="home">‹</button>
           <div>
-            <div class="eyebrow">READY-TO-USE PROMOTIONS</div>
-            <h2>Create Promotion</h2>
+            <div class="eyebrow">ONE REVIEW → SELECT CHANNELS → PUBLISH</div>
+            <h2>Review Promotion</h2>
           </div>
-        </div>
-
-        <div class="promo-card">
-          <div class="tag">DEXTER'S SLOW-DAY PLAN</div>
-          <h3>Turn Tuesday and Wednesday into traffic days</h3>
-          <p>GrowthWise can prepare Dexter's existing offers, keep the wording consistent, and later measure whether they actually improve sales versus a normal Tuesday or Wednesday.</p>
         </div>
 
         <div class="promo-toggle">
@@ -364,64 +358,22 @@
             <strong id="promoOfferTitle">Free Accessory Tuesday</strong>
             <span id="promoOfferRule">Free accessory with a purchase of $100 or more.</span>
           </div>
-
           <div class="promo-metric">
             <div>
               <strong id="promoGoal">Raise average ticket</strong>
-              <span>primary goal</span>
+              <span>goal</span>
             </div>
             <div>
               <strong id="promoGuardrail">Track giveaway cost</strong>
               <span>GrowthWise check</span>
             </div>
           </div>
-
-          <p class="promo-note" id="promoAdvice">
-            Best use: encourage shoppers who are already near the $100 mark to add another item. Once product costs are connected, GrowthWise can recommend which accessories are safest to give away.
-          </p>
+          <p class="promo-note" id="promoAdvice"></p>
         </div>
-
-        <div class="promo-card">
-          <div class="tag">FACEBOOK POST</div>
-          <div class="promo-preview" id="facebookPromoText"></div>
-          <div class="copy-row">
-            <button type="button" class="copy-primary" id="copyFacebookPromo">Copy Facebook post</button>
-            <button type="button" class="copy-secondary" id="copyOfferPromo">Copy offer only</button>
-          </div>
-          <div class="fb-publish-tools">
-            <label for="facebookCaptionEditor">Final Facebook caption — review before publishing</label>
-            <textarea id="facebookCaptionEditor" class="fb-caption-editor" maxlength="5000"></textarea>
-            <div class="fb-publish-actions">
-              <button type="button" class="preview" id="previewFacebookPostBtn">Preview</button>
-              <button type="button" class="publish" id="publishFacebookPostBtn">Post to Facebook</button>
-            </div>
-            <p class="fb-publish-note">GrowthWise will never publish automatically from this screen. You must tap Post to Facebook and confirm. If you selected the cleaned product photo below, GrowthWise will attach it to the post.</p>
-            <div class="fb-publish-status hidden" id="facebookPublishStatus"></div>
-          </div>
-        </div>
-
-        <div class="promo-card">
-          <div class="tag">INSTAGRAM</div>
-          <div class="promo-preview" id="instagramPromoText"></div>
-          <div class="copy-row">
-            <button type="button" class="copy-primary" id="copyInstagramPromo">Copy caption</button>
-          </div>
-          <div class="fb-publish-tools">
-            <label for="instagramCaptionEditor">Final Instagram caption — review before publishing</label>
-            <textarea id="instagramCaptionEditor" class="fb-caption-editor" maxlength="2200"></textarea>
-            <div class="fb-publish-actions">
-              <button type="button" class="preview" id="previewInstagramPostBtn">Preview</button>
-              <button type="button" class="publish" id="publishInstagramPostBtn">Post to Instagram</button>
-            </div>
-            <p class="fb-publish-note">GrowthWise will not publish automatically. You must review the caption and photo, tap Post to Instagram, and confirm the live post.</p>
-            <div class="fb-publish-status hidden" id="instagramPublishStatus"></div>
-          </div>
-        </div>
-
 
         <div class="photo-studio">
-          <div class="tag">PRODUCT PHOTO</div>
-          <h3>Prepare Dexter's clean product image</h3>
+          <div class="tag">PHOTO</div>
+          <h3>Add the image you want customers to see</h3>
           <div class="photo-drop">
             <input id="promoPhotoInput" type="file" accept="image/*" />
             <input id="promoCameraInput" type="file" accept="image/*" capture="environment" />
@@ -429,7 +381,7 @@
               <label for="promoCameraInput">Take a photo</label>
               <label for="promoPhotoInput">Choose from gallery</label>
             </div>
-            <p>Take a new product photo or choose an existing image. GrowthWise will use Dexter's preferred clean white-background presentation.</p>
+            <p>Use the original photo or let GrowthWise prepare a clean-background version.</p>
           </div>
 
           <div class="photo-preview-wrap" id="promoPhotoPreviewWrap">
@@ -437,39 +389,53 @@
               <img id="promoPhotoPreview" alt="Selected product preview" />
             </div>
             <div class="photo-actions">
-              <button type="button" class="photo-primary" id="prepareWhiteBgBtn">Prepare white-background version</button>
+              <button type="button" class="photo-primary" id="prepareWhiteBgBtn">Prepare clean background</button>
               <button type="button" class="photo-secondary" id="removePromoPhotoBtn">Remove photo</button>
             </div>
             <div class="photo-status" id="photoStatus">Photo selected.</div>
-
             <div class="ai-result" id="aiPhotoResult">
-              <div class="ai-result-title">✓ White-background version ready</div>
+              <div class="ai-result-title">✓ Clean-background version ready</div>
               <div class="photo-preview-frame">
                 <img id="aiPhotoOutput" alt="GrowthWise cleaned product photo" />
               </div>
               <div class="ai-result-actions">
                 <a id="saveCleanPhotoBtn" href="#" download="dexter-clean-product.png">Save image</a>
-                <button type="button" id="useCleanPhotoBtn">Use for promotion</button>
+                <button type="button" id="useCleanPhotoBtn">Use this image</button>
               </div>
             </div>
-          </div>
-
-          <div class="photo-rules">
-            <strong>Dexter's photo standard</strong>
-            <p>No mannequin heads. Remove distracting backgrounds or displays. Keep the actual hat realistic and unchanged, centered on a clean white background.</p>
           </div>
         </div>
 
         <div class="promo-card">
-          <div class="tag">MEASUREMENT PLAN</div>
-          <h3>GrowthWise will judge the promotion by results</h3>
-          <p id="promoMeasurement">
-            Compare Tuesday sales, orders and average ticket against Dexter's normal Tuesday baseline. Track how often customers cross the $100 threshold and, once costs are available, estimate the accessory giveaway cost versus added revenue.
-          </p>
+          <div class="tag">REVIEW ONCE</div>
+          <label for="promotionCaptionEditor" style="display:block;font-size:12px;font-weight:850;color:#596673;margin-bottom:7px">Post copy</label>
+          <textarea id="promotionCaptionEditor" class="fb-caption-editor" maxlength="2200"></textarea>
+          <div class="copy-row">
+            <button type="button" class="copy-primary" id="copyPromotionCaption">Copy post</button>
+            <button type="button" class="copy-secondary" id="copyOfferPromo">Copy offer only</button>
+          </div>
+
+          <div class="channel-picker">
+            <div class="tag">PUBLISH TO</div>
+            <label><input id="promotionFacebookChannel" type="checkbox" checked /> Facebook</label>
+            <label><input id="promotionInstagramChannel" type="checkbox" checked /> Instagram</label>
+          </div>
+
+          <div class="fb-publish-actions">
+            <button type="button" class="preview" id="previewPromotionBtn">Preview</button>
+            <button type="button" class="publish" id="publishPromotionBtn">Publish Now</button>
+          </div>
+          <p class="fb-publish-note">Nothing posts automatically. GrowthWise sends this reviewed photo and copy only after you confirm.</p>
+          <div class="fb-publish-status hidden" id="promotionPublishStatus"></div>
+        </div>
+
+        <div class="promo-card">
+          <div class="tag">WHY THIS PROMOTION</div>
+          <p id="promoMeasurement"></p>
         </div>
       </section>
 
-<section class="screen" id="product">
+      <section class="screen" id="product">
         <div class="section-head">
           <button class="back" data-nav="home">‹</button>
           <div>
@@ -803,25 +769,43 @@ Wednesday only • Eligible items`,
 };
 
 let activePromotionDay = 'tuesday';
+let selectedPromotionImageDataUrl = '';
+let selectedPromotionFile = null;
+let selectedPromotionPreviewUrl = '';
+let promotionPublishedChannels = new Set();
+let promotionAmbiguousChannels = new Set();
+
+function resetPromotionPublishState(){
+  promotionPublishedChannels = new Set();
+  promotionAmbiguousChannels = new Set();
+  const status = document.getElementById('promotionPublishStatus');
+  if(status){
+    status.className = 'fb-publish-status hidden';
+    status.textContent = '';
+  }
+  const btn = document.getElementById('publishPromotionBtn');
+  if(btn){
+    btn.disabled = false;
+    btn.textContent = 'Publish Now';
+  }
+}
 
 function renderPromotion(day){
   activePromotionDay = day;
   const p = promotionTemplates[day];
+  if(!p) return;
 
   document.getElementById('promoTuesdayBtn').classList.toggle('active', day === 'tuesday');
   document.getElementById('promoWednesdayBtn').classList.toggle('active', day === 'wednesday');
-
   document.getElementById('promoDayTag').textContent = p.dayTag;
   document.getElementById('promoOfferTitle').textContent = p.title;
   document.getElementById('promoOfferRule').textContent = p.rule;
   document.getElementById('promoGoal').textContent = p.goal;
   document.getElementById('promoGuardrail').textContent = p.guardrail;
   document.getElementById('promoAdvice').textContent = p.advice;
-  document.getElementById('facebookPromoText').textContent = p.facebook;
-  document.getElementById('facebookCaptionEditor').value = p.facebook;
-  document.getElementById('instagramPromoText').textContent = p.instagram;
-  document.getElementById('instagramCaptionEditor').value = p.instagram;
+  document.getElementById('promotionCaptionEditor').value = p.instagram || p.facebook || '';
   document.getElementById('promoMeasurement').textContent = p.measurement;
+  resetPromotionPublishState();
 }
 
 async function copyPromotionText(text, successLabel){
@@ -835,25 +819,18 @@ async function copyPromotionText(text, successLabel){
 
 document.getElementById('promoTuesdayBtn').addEventListener('click',()=>renderPromotion('tuesday'));
 document.getElementById('promoWednesdayBtn').addEventListener('click',()=>renderPromotion('wednesday'));
-
-document.getElementById('copyFacebookPromo').addEventListener('click',()=>{
-  copyPromotionText(document.getElementById('facebookCaptionEditor').value, 'Facebook post copied to your clipboard.');
-});
-document.getElementById('copyInstagramPromo').addEventListener('click',()=>{
-  copyPromotionText(document.getElementById('instagramCaptionEditor').value, 'Instagram caption copied to your clipboard.');
+document.getElementById('copyPromotionCaption').addEventListener('click',()=>{
+  copyPromotionText(document.getElementById('promotionCaptionEditor').value, 'Post copy copied to your clipboard.');
 });
 document.getElementById('copyOfferPromo').addEventListener('click',()=>{
-  copyPromotionText(promotionTemplates[activePromotionDay].offerOnly, 'Offer wording copied to your clipboard.');
+  copyPromotionText(promotionTemplates[activePromotionDay]?.offerOnly || '', 'Offer wording copied to your clipboard.');
 });
-let selectedPromotionImageDataUrl = '';
 
 const promoPhotoInput = document.getElementById('promoPhotoInput');
 const promoCameraInput = document.getElementById('promoCameraInput');
 const promoPhotoPreviewWrap = document.getElementById('promoPhotoPreviewWrap');
 const promoPhotoPreview = document.getElementById('promoPhotoPreview');
 const promoPhotoStatus = document.getElementById('photoStatus');
-let selectedPromotionFile = null;
-let selectedPromotionPreviewUrl = '';
 
 function handlePromotionPhoto(file){
   if(!file) return;
@@ -863,13 +840,13 @@ function handlePromotionPhoto(file){
   selectedPromotionPreviewUrl = URL.createObjectURL(file);
   promoPhotoPreview.src = selectedPromotionPreviewUrl;
   promoPhotoPreviewWrap.classList.add('show');
-  promoPhotoStatus.textContent = 'Photo selected. Dexter standard: clean white background, no mannequin heads.';
+  promoPhotoStatus.textContent = 'Photo selected. You can use it as-is or prepare a clean background.';
+  resetPromotionPublishState();
 }
 
 promoPhotoInput.addEventListener('change', ()=>{
   handlePromotionPhoto(promoPhotoInput.files && promoPhotoInput.files[0]);
 });
-
 promoCameraInput.addEventListener('change', ()=>{
   handlePromotionPhoto(promoCameraInput.files && promoCameraInput.files[0]);
 });
@@ -885,6 +862,7 @@ document.getElementById('removePromoPhotoBtn').addEventListener('click', ()=>{
   document.getElementById('aiPhotoResult').classList.remove('show');
   document.getElementById('aiPhotoOutput').removeAttribute('src');
   selectedPromotionImageDataUrl = '';
+  resetPromotionPublishState();
 });
 
 async function optimizePhotoForUpload(file){
@@ -894,81 +872,65 @@ async function optimizePhotoForUpload(file){
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
-
   const image = await new Promise((resolve, reject)=>{
     const img = new Image();
     img.onload = ()=>resolve(img);
     img.onerror = reject;
     img.src = dataUrl;
   });
-
   const maxEdge = 1600;
   const scale = Math.min(1, maxEdge / Math.max(image.width, image.height));
-  const width = Math.max(1, Math.round(image.width * scale));
-  const height = Math.max(1, Math.round(image.height * scale));
-
   const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(image, 0, 0, width, height);
-
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
   return canvas.toDataURL('image/jpeg', 0.9);
 }
 
+async function currentPromotionImage(){
+  if(selectedPromotionImageDataUrl) return selectedPromotionImageDataUrl;
+  if(selectedPromotionFile) return optimizePhotoForUpload(selectedPromotionFile);
+  return '';
+}
+
 document.getElementById('prepareWhiteBgBtn').addEventListener('click', async ()=>{
-  const file = selectedPromotionFile;
-  if(!file){
-    openModal('Choose a photo first', 'Select a product photo before preparing the white-background version.');
+  if(!selectedPromotionFile){
+    openModal('Choose a photo first', 'Select a product photo before preparing the clean-background version.');
     return;
   }
-
   const adminKey = sessionStorage.getItem('growthwise_admin_key') || '';
   if(!adminKey){
-    openModal('GrowthWise access key needed', 'Return Home and unlock live data with your beta admin key first.');
+    openModal('Unlock GrowthWise first', 'Return Home and enter your GrowthWise access key once.');
     return;
   }
 
   const btn = document.getElementById('prepareWhiteBgBtn');
   const resultBox = document.getElementById('aiPhotoResult');
   const output = document.getElementById('aiPhotoOutput');
-  const saveBtn = document.getElementById('saveCleanPhotoBtn');
-
   btn.disabled = true;
   btn.textContent = 'Preparing…';
-  promoPhotoStatus.textContent = 'AI is removing the display/background and preparing Dexter’s clean product photo…';
+  promoPhotoStatus.textContent = 'GrowthWise is preparing a clean product image…';
   resultBox.classList.remove('show');
 
   try{
-    const optimized = await optimizePhotoForUpload(file);
-
+    const optimized = await optimizePhotoForUpload(selectedPromotionFile);
     const response = await fetch('/.netlify/functions/clean-photo', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-GrowthWise-Key': adminKey
-      },
+      headers: { 'Content-Type': 'application/json', 'X-GrowthWise-Key': adminKey },
       body: JSON.stringify({ image_data_url: optimized })
     });
-
     const data = await response.json().catch(()=>({}));
-
-    if(!response.ok){
-      throw new Error(data.error || `Photo processing failed (HTTP ${response.status}).`);
-    }
-
+    if(!response.ok) throw new Error(data.error || `Photo processing failed (HTTP ${response.status}).`);
     output.src = data.image_data_url;
-    saveBtn.href = data.image_data_url;
+    document.getElementById('saveCleanPhotoBtn').href = data.image_data_url;
     resultBox.classList.add('show');
-    promoPhotoStatus.textContent = 'Done — compare the cleaned image with the original before using it.';
-
+    promoPhotoStatus.textContent = 'Clean-background version ready. Use it if you prefer this presentation.';
   }catch(err){
-    console.error(err);
     promoPhotoStatus.textContent = err.message || 'Photo processing failed.';
     openModal('Could not prepare photo', err.message || 'Please try again.');
   }finally{
     btn.disabled = false;
-    btn.textContent = 'Prepare white-background version';
+    btn.textContent = 'Prepare clean background';
   }
 });
 
@@ -976,202 +938,147 @@ document.getElementById('useCleanPhotoBtn').addEventListener('click', ()=>{
   const output = document.getElementById('aiPhotoOutput');
   if(!output.src) return;
   selectedPromotionImageDataUrl = output.src;
-  openModal(
-    'Promotion image selected ✓',
-    'This cleaned product photo is selected for your social posts. Review each channel caption before publishing.'
-  );
+  promoPhotoStatus.textContent = '✓ Clean-background image selected for this promotion.';
+  resetPromotionPublishState();
 });
 
-const instagramCaptionEditor = document.getElementById('instagramCaptionEditor');
-const publishInstagramPostBtn = document.getElementById('publishInstagramPostBtn');
-const previewInstagramPostBtn = document.getElementById('previewInstagramPostBtn');
-const instagramPublishStatus = document.getElementById('instagramPublishStatus');
-
-function setInstagramPublishStatus(kind, message){
-  instagramPublishStatus.className = `fb-publish-status ${kind}`;
-  instagramPublishStatus.textContent = message;
+function setPromotionPublishStatus(kind, message){
+  const status = document.getElementById('promotionPublishStatus');
+  status.className = `fb-publish-status ${kind}`;
+  status.textContent = message;
 }
 
-async function promotionImageForInstagram(){
-  let dataUrl = selectedPromotionImageDataUrl;
-  if(!dataUrl && selectedPromotionFile){
-    dataUrl = await optimizePhotoForUpload(selectedPromotionFile);
-  }
-  if(!dataUrl) return '';
+document.getElementById('promotionCaptionEditor').addEventListener('input', resetPromotionPublishState);
 
-  const image = await new Promise((resolve, reject)=>{
-    const img = new Image();
-    img.onload = ()=>resolve(img);
-    img.onerror = reject;
-    img.src = dataUrl;
-  });
-  const maxEdge = 1600;
-  const scale = Math.min(1, maxEdge / Math.max(image.width, image.height));
-  const width = Math.max(1, Math.round(image.width * scale));
-  const height = Math.max(1, Math.round(image.height * scale));
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(image, 0, 0, width, height);
-  return canvas.toDataURL('image/jpeg', 0.9);
-}
-
-previewInstagramPostBtn.addEventListener('click', ()=>{
-  const caption = instagramCaptionEditor.value.trim();
+document.getElementById('previewPromotionBtn').addEventListener('click', async ()=>{
+  const caption = document.getElementById('promotionCaptionEditor').value.trim();
   if(!caption){
-    openModal('Add an Instagram caption first', 'Review or enter the caption before previewing the post.');
+    openModal('Add post copy first', 'Review or edit the post copy before previewing.');
     return;
   }
-  const hasPhoto = Boolean(selectedPromotionImageDataUrl || selectedPromotionFile);
+  const facebook = document.getElementById('promotionFacebookChannel').checked;
+  const instagram = document.getElementById('promotionInstagramChannel').checked;
+  const channels = [facebook ? 'Facebook' : '', instagram ? 'Instagram' : ''].filter(Boolean);
   openModal(
-    hasPhoto ? 'Instagram post preview — photo + caption' : 'Instagram post preview — photo still needed',
-    caption
+    'Promotion preview',
+    `${channels.length ? 'Channels: ' + channels.join(' + ') + '. ' : ''}${selectedPromotionFile || selectedPromotionImageDataUrl ? 'Photo attached. ' : 'No photo selected. '}${caption}`
   );
 });
 
-publishInstagramPostBtn.addEventListener('click', async ()=>{
+document.getElementById('publishPromotionBtn').addEventListener('click', async ()=>{
   const adminKey = sessionStorage.getItem('growthwise_admin_key') || '';
-  const caption = instagramCaptionEditor.value.trim();
+  const caption = document.getElementById('promotionCaptionEditor').value.trim();
+  const wantsFacebook = document.getElementById('promotionFacebookChannel').checked;
+  const wantsInstagram = document.getElementById('promotionInstagramChannel').checked;
 
   if(!adminKey){
-    openModal('GrowthWise access key needed', 'Return Home and unlock the beta with your admin key first.');
+    openModal('Unlock GrowthWise first', 'Return Home and enter your GrowthWise access key once.');
     return;
   }
   if(!caption){
-    openModal('Caption required', 'Review or enter the Instagram caption before publishing.');
+    openModal('Post copy required', 'Review or enter the post copy before publishing.');
     return;
   }
-  if(!selectedPromotionImageDataUrl && !selectedPromotionFile){
-    openModal('Photo required', 'Choose a product photo before publishing to Instagram.');
+  if(!wantsFacebook && !wantsInstagram){
+    openModal('Choose a channel', 'Select Facebook, Instagram, or both.');
+    return;
+  }
+  if(wantsInstagram && !selectedPromotionFile && !selectedPromotionImageDataUrl){
+    openModal('Instagram needs a photo', 'Add a promotion photo or turn off Instagram for this post.');
+    return;
+  }
+  if(wantsInstagram && caption.length > 2200){
+    openModal('Instagram caption is too long', 'Shorten the post to 2,200 characters or turn off Instagram.');
+    return;
+  }
+  if(promotionAmbiguousChannels.has('instagram') && wantsInstagram){
+    openModal('Check Instagram before retrying', 'A previous final publish was uncertain. Check the Instagram account first so you do not create a duplicate.');
     return;
   }
 
-  const confirmed = window.confirm('Publish this reviewed photo + caption to the connected Instagram account now?');
+  const targets = [
+    wantsFacebook && !promotionPublishedChannels.has('facebook') ? 'Facebook' : '',
+    wantsInstagram && !promotionPublishedChannels.has('instagram') ? 'Instagram' : ''
+  ].filter(Boolean);
+
+  if(!targets.length){
+    openModal('Already published ✓', 'This reviewed promotion has already been sent to the selected channels in this session.');
+    return;
+  }
+
+  const confirmed = window.confirm(`Publish this reviewed promotion to ${targets.join(' and ')} now?`);
   if(!confirmed) return;
 
-  publishInstagramPostBtn.disabled = true;
-  publishInstagramPostBtn.textContent = 'Publishing…';
-  setInstagramPublishStatus('loading', 'Preparing the approved image and sending the reviewed post to Instagram…');
+  const btn = document.getElementById('publishPromotionBtn');
+  btn.disabled = true;
+  btn.textContent = 'Publishing…';
+  setPromotionPublishStatus('loading', `Publishing to ${targets.join(' and ')}…`);
 
+  const failures = [];
   try{
-    const imageDataUrl = await promotionImageForInstagram();
-    const response = await fetch('/.netlify/functions/instagram-publish', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-GrowthWise-Key': adminKey
-      },
-      body: JSON.stringify({
-        business_id: 'dexters-hats',
-        caption,
-        image_data_url: imageDataUrl,
-        reviewed: true
-      })
-    });
-    const data = await response.json().catch(()=>({}));
-    if(!response.ok){
-      if(data.code === 'PUBLISHING_PERMISSION_REQUIRED'){
-        throw new Error('Instagram is connected for identity, but publishing permission still needs approval. Go Home, tap Reconnect Instagram, allow access, then return here.');
+    const imageDataUrl = await currentPromotionImage();
+
+    if(targets.includes('Facebook')){
+      try{
+        const response = await fetch('/.netlify/functions/facebook-post', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-GrowthWise-Key': adminKey },
+          body: JSON.stringify({ message: caption, image_data_url: imageDataUrl || null })
+        });
+        const data = await response.json().catch(()=>({}));
+        if(!response.ok) throw new Error(data.error || `Facebook publish failed (HTTP ${response.status}).`);
+        promotionPublishedChannels.add('facebook');
+      }catch(err){
+        failures.push(`Facebook: ${err.message || 'publish failed'}`);
       }
-      if(data.code === 'INSTAGRAM_PUBLISH_AMBIGUOUS'){
-        throw new Error('Instagram did not confirm the final publish. Check the Instagram account before trying again so you do not create a duplicate post.');
-      }
-      throw new Error(data.error || `Instagram publish failed (HTTP ${response.status}).`);
-    }
-    setInstagramPublishStatus('ok', `Published to @${data.account?.username || 'the connected Instagram account'} ✓`);
-    openModal(
-      'Instagram post published ✓',
-      `GrowthWise published the reviewed photo and caption to @${data.account?.username || 'the connected Instagram account'}.`
-    );
-  }catch(err){
-    console.error('Instagram publishing failed:', err);
-    setInstagramPublishStatus('error', err.message || 'Could not publish to Instagram.');
-    openModal('Could not publish to Instagram', err.message || 'Please try again.');
-  }finally{
-    publishInstagramPostBtn.disabled = false;
-    publishInstagramPostBtn.textContent = 'Post to Instagram';
-  }
-});
-
-const facebookCaptionEditor = document.getElementById('facebookCaptionEditor');
-const publishFacebookPostBtn = document.getElementById('publishFacebookPostBtn');
-const previewFacebookPostBtn = document.getElementById('previewFacebookPostBtn');
-const facebookPublishStatus = document.getElementById('facebookPublishStatus');
-
-function setFacebookPublishStatus(kind, message){
-  facebookPublishStatus.className = `fb-publish-status ${kind}`;
-  facebookPublishStatus.textContent = message;
-}
-
-previewFacebookPostBtn.addEventListener('click', ()=>{
-  const caption = facebookCaptionEditor.value.trim();
-  if(!caption){
-    openModal('Add a caption first', 'Enter or generate the Facebook caption before previewing the post.');
-    return;
-  }
-  openModal(
-    selectedPromotionImageDataUrl ? 'Facebook post preview — photo + caption' : 'Facebook post preview — caption only',
-    caption
-  );
-});
-
-publishFacebookPostBtn.addEventListener('click', async ()=>{
-  const adminKey = sessionStorage.getItem('growthwise_admin_key') || '';
-  const message = facebookCaptionEditor.value.trim();
-
-  if(!adminKey){
-    openModal('GrowthWise access key needed', 'Return Home and unlock the beta with your admin key first.');
-    return;
-  }
-  if(!message){
-    openModal('Caption required', 'Review or enter the Facebook caption before publishing.');
-    return;
-  }
-
-  const hasPhoto = Boolean(selectedPromotionImageDataUrl);
-  const confirmed = window.confirm(
-    `Publish this ${hasPhoto ? 'photo + caption' : 'caption-only'} post to the connected Facebook Page now?`
-  );
-  if(!confirmed) return;
-
-  publishFacebookPostBtn.disabled = true;
-  publishFacebookPostBtn.textContent = 'Publishing…';
-  setFacebookPublishStatus('loading', 'Sending the approved post to Facebook…');
-
-  try{
-    const response = await fetch('/.netlify/functions/facebook-post', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-GrowthWise-Key': adminKey
-      },
-      body: JSON.stringify({
-        message,
-        image_data_url: selectedPromotionImageDataUrl || null
-      })
-    });
-
-    const data = await response.json().catch(()=>({}));
-    if(!response.ok){
-      throw new Error(data.error || `Facebook publish failed (HTTP ${response.status}).`);
     }
 
-    setFacebookPublishStatus(
-      'ok',
-      `Published to ${data.page_name || 'the connected Facebook Page'} ✓${data.post_id ? ` · Post ID ${data.post_id}` : ''}`
-    );
-    openModal(
-      'Facebook post published ✓',
-      `GrowthWise successfully published the approved ${hasPhoto ? 'photo and caption' : 'caption'} to ${data.page_name || 'the connected Facebook Page'}.`
-    );
-  }catch(err){
-    console.error('Facebook publishing failed:', err);
-    setFacebookPublishStatus('error', err.message || 'Could not publish to Facebook.');
-    openModal('Could not publish to Facebook', err.message || 'Please try again.');
+    if(targets.includes('Instagram')){
+      try{
+        const response = await fetch('/.netlify/functions/instagram-publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-GrowthWise-Key': adminKey },
+          body: JSON.stringify({
+            business_id: 'dexters-hats',
+            caption,
+            image_data_url: imageDataUrl,
+            reviewed: true
+          })
+        });
+        const data = await response.json().catch(()=>({}));
+        if(!response.ok){
+          const error = new Error(data.error || `Instagram publish failed (HTTP ${response.status}).`);
+          error.code = data.code;
+          throw error;
+        }
+        promotionPublishedChannels.add('instagram');
+      }catch(err){
+        if(err.code === 'INSTAGRAM_PUBLISH_AMBIGUOUS'){
+          promotionAmbiguousChannels.add('instagram');
+          failures.push('Instagram: final status was uncertain. Check Instagram before retrying.');
+        }else if(err.code === 'PUBLISHING_PERMISSION_REQUIRED'){
+          failures.push('Instagram: reconnect in Connected Apps to approve publishing.');
+        }else{
+          failures.push(`Instagram: ${err.message || 'publish failed'}`);
+        }
+      }
+    }
+
+    const done = [
+      promotionPublishedChannels.has('facebook') ? 'Facebook' : '',
+      promotionPublishedChannels.has('instagram') ? 'Instagram' : ''
+    ].filter(Boolean);
+
+    if(failures.length){
+      setPromotionPublishStatus('error', `Published: ${done.join(', ') || 'none'}. Needs attention: ${failures.join(' · ')}`);
+      openModal('One channel needs attention', `${failures.join(' ')} GrowthWise will not resend channels that already succeeded in this session.`);
+    }else{
+      setPromotionPublishStatus('ok', `Published to ${done.join(' + ')} ✓`);
+      openModal('Promotion published ✓', `GrowthWise published the reviewed promotion to ${done.join(' and ')}.`);
+    }
   }finally{
-    publishFacebookPostBtn.disabled = false;
-    publishFacebookPostBtn.textContent = 'Post to Facebook';
+    btn.disabled = false;
+    btn.textContent = 'Publish Now';
   }
 });
 
