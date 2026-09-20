@@ -2041,6 +2041,8 @@ addAndPromoteBtn.addEventListener('click', async ()=>{
       state.created = await createProductInSquare(form);
       void sendDexterPublishingShadow(form, state.created);
       sessionStorage.setItem('growthwise_admin_key', form.adminKey);
+      saveSquareBtn.classList.add('hidden');
+      document.getElementById('quickSquareApproveBtn').classList.add('hidden');
     }
 
     const created = state.created;
@@ -2085,9 +2087,18 @@ addAndPromoteBtn.addEventListener('click', async ()=>{
     await loadLiveSquareData(form.adminKey);
     await loadLiveSalesData(form.adminKey);
 
+    const workflowResult = document.getElementById('workflowResultTitle');
     if(failures.length){
       setCreateStatus('error', `✓ Completed: ${done.join(', ')}. Needs attention: ${failures.join(' · ')}`);
-      addAndPromoteBtn.textContent = state.instagramAmbiguous ? 'Check Instagram first' : 'Retry failed channel(s)';
+      const failedChannels = [
+        useFacebook && !state.facebook ? 'Facebook' : '',
+        useInstagram && !state.instagram ? 'Instagram' : ''
+      ].filter(Boolean);
+      addAndPromoteBtn.textContent = state.instagramAmbiguous
+        ? 'Check Instagram first'
+        : failedChannels.length === 1 ? `Retry ${failedChannels[0]}` : 'Retry failed channels';
+      workflowResult.textContent = '✓ Product saved · social follow-up needed';
+      workflowResult.classList.add('attention');
       openModal(
         'Product saved — one channel needs attention',
         `GrowthWise completed: ${done.join(', ')}. ${failures.join(' ')} Retrying will not recreate the Square item or resend channels that already succeeded.`
@@ -2095,6 +2106,8 @@ addAndPromoteBtn.addEventListener('click', async ()=>{
     }else{
       setCreateStatus('ok', `✓ Done: ${done.join(' · ')}.`);
       addAndPromoteBtn.textContent = 'Published ✓';
+      workflowResult.textContent = done.length > 1 ? '✓ Product workflow complete' : '✓ Added to Square';
+      workflowResult.classList.remove('attention');
       openModal(
         'Product created & published ✓',
         `${created.name || name} was added to Square${done.length > 1 ? ` and published to ${done.slice(1).join(' and ')}` : ''}.`
