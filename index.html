@@ -148,6 +148,9 @@
 .task-launcher{margin:0 0 16px}.task-launcher-title{margin:0 4px 8px}.task-launcher-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.task-launcher-grid button{border:1px solid #e2e6e9;background:#fff;border-radius:17px;padding:14px;text-align:left;min-height:132px;display:flex;flex-direction:column;align-items:flex-start;gap:4px;box-shadow:0 6px 18px rgba(14,27,43,.035)}.task-launcher-grid button:active{transform:translateY(1px)}.task-launcher-grid strong{font-size:16px;color:#17222e;line-height:1.18}.task-launcher-grid small{color:#697580;line-height:1.35}.task-icon{width:34px;height:34px;border-radius:11px;background:#0e1b2b;color:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:900;margin-bottom:4px}
 .recent-photo-library{margin-top:12px;border:1px solid #dde3e7;border-radius:15px;padding:12px;background:#f8fafb}.recent-photo-library.hidden{display:none}.recent-photo-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.recent-photo-head strong,.recent-photo-head small{display:block}.recent-photo-head small{font-size:11px;color:#687580;margin-top:2px}.recent-photo-head button{border:0;background:transparent;color:#8a672b;font-weight:850}.recent-photo-grid{display:flex;gap:8px;overflow-x:auto;padding:10px 1px 4px;scrollbar-width:thin}.recent-photo-item{flex:0 0 78px;border:2px solid transparent;border-radius:12px;padding:0;background:#fff;overflow:hidden;position:relative}.recent-photo-item img{display:block;width:78px;height:78px;object-fit:cover}.recent-photo-item span{position:absolute;left:4px;bottom:4px;background:rgba(13,25,37,.82);color:#fff;border-radius:999px;padding:3px 5px;font-size:9px;font-weight:800}.recent-photo-note{font-size:11px!important;color:#6c7781!important;margin:8px 0 0!important;line-height:1.4!important}
 @media(max-width:360px){.task-launcher-grid{grid-template-columns:1fr}.task-launcher-grid button{min-height:auto}}
+
+.new-product-action-choice{margin-top:16px;border-top:1px solid #eceff1;padding-top:16px}.new-product-action-buttons{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:8px}.new-product-action-buttons button{border:1px solid #dfe4e7;border-radius:14px;background:#f7f9fa;padding:13px;text-align:left}.new-product-action-buttons button.active{border:2px solid #0e1b2b;background:#eef3f6}.new-product-action-buttons strong,.new-product-action-buttons small{display:block}.new-product-action-buttons strong{color:#17222e}.new-product-action-buttons small{margin-top:3px;color:#68747e;line-height:1.3}
+.promo-product-picker{border:1px solid #e1e5e8;border-radius:18px;padding:16px;background:#fff;margin-bottom:14px}.promo-product-picker h3{margin:5px 0 5px}.promo-product-picker>p{margin:0 0 12px;color:#64707b;line-height:1.4}.promo-product-results{max-height:280px;overflow-y:auto;margin-top:9px;display:grid;gap:7px}.promo-product-result{width:100%;border:1px solid #e3e7e9;border-radius:13px;background:#f8fafb;padding:11px;text-align:left;display:grid;grid-template-columns:1fr auto;gap:4px 10px}.promo-product-result strong{color:#17222e}.promo-product-result small{color:#687580}.promo-product-result span{grid-row:1/3;grid-column:2;align-self:center;color:#8a672b;font-weight:850}.promo-selected-product{margin-top:10px;border-radius:14px;padding:12px;background:#eef5ef;border:1px solid #d5e5d7}.promo-selected-product.hidden{display:none}.promo-selected-product strong,.promo-selected-product small{display:block}.promo-selected-product small{margin-top:4px;color:#617067}
 </style>
 
 
@@ -381,6 +384,17 @@
             <div class="eyebrow">PROMOTIONS</div>
             <h2>Promote Products</h2>
           </div>
+        </div>
+
+        <div class="promo-product-picker">
+          <div class="tag">CHOOSE AN EXISTING PRODUCT</div>
+          <h3>What do you want to promote?</h3>
+          <p>Search the products already in Square. GrowthWise will use the product details to prepare the post.</p>
+          <input id="promotionProductSearch" class="inventory-search" placeholder="Search products…" autocomplete="off" />
+          <div id="promotionProductResults" class="promo-product-results">
+            <div class="inventory-empty">Unlock GrowthWise on Home to load current inventory.</div>
+          </div>
+          <div id="promotionSelectedProduct" class="promo-selected-product hidden"></div>
         </div>
 
         <div class="promo-toggle">
@@ -635,33 +649,49 @@
 
           <input id="adminKeyInput" type="hidden" />
 
-          <div class="tag" style="margin-top:16px">AI PROMO IDEA</div>
-          <div class="ai-promo-suggestion" id="newProductPromoIdea">
-            <strong>GrowthWise will suggest the angle.</strong>
-            <span>Scan a product or use AI Analyze Photo to build the listing and post copy.</span>
-          </div>
-          <button type="button" class="ghost" id="aiDescribeProductBtn" style="width:100%;margin-top:10px">AI analyze product photo</button>
-          <div class="create-status hidden" id="aiDescribeStatus"></div>
-
-          <label style="margin-top:12px">Post copy — review/edit once
-            <textarea id="newProductCaption" maxlength="2200" placeholder="GrowthWise will prepare channel-ready copy."></textarea>
-          </label>
-          <button type="button" class="ghost" id="buildNewProductCaptionBtn" style="width:100%">Refresh copy from product details</button>
-
-          <div class="channel-picker">
-            <div class="tag">PUBLISH TO</div>
-            <label><input type="checkbox" checked disabled /> Square inventory</label>
-            <label><input id="newProductFacebookChannel" type="checkbox" checked /> Facebook</label>
-            <label><input id="newProductInstagramChannel" type="checkbox" checked /> Instagram</label>
+          <div class="new-product-action-choice">
+            <div class="tag">WHAT SHOULD GROWTHWISE DO?</div>
+            <div class="new-product-action-buttons">
+              <button type="button" class="active" id="addInventoryOnlyChoice">
+                <strong>Add to Inventory</strong>
+                <small>Save this product to Square</small>
+              </button>
+              <button type="button" id="addAndPromoteChoice">
+                <strong>Add + Promote Now</strong>
+                <small>Save it and create the social post</small>
+              </button>
+            </div>
           </div>
 
-          <div class="notice" style="margin-top:14px">
-            <strong>One review. One publish action.</strong><br>
-            <span>GrowthWise creates the Square item first, then sends the reviewed photo and copy only to the channels you selected.</span>
+          <div id="newProductPromotionOptions" class="hidden">
+            <div class="tag" style="margin-top:16px">AI PROMO IDEA</div>
+            <div class="ai-promo-suggestion" id="newProductPromoIdea">
+              <strong>GrowthWise will suggest the angle.</strong>
+              <span>GrowthWise will prepare the copy from the product details you just reviewed.</span>
+            </div>
+            <button type="button" class="ghost" id="aiDescribeProductBtn" style="width:100%;margin-top:10px">AI analyze product photo</button>
+            <div class="create-status hidden" id="aiDescribeStatus"></div>
+
+            <label style="margin-top:12px">Post copy — review/edit once
+              <textarea id="newProductCaption" maxlength="2200" placeholder="GrowthWise will prepare channel-ready copy."></textarea>
+            </label>
+            <button type="button" class="ghost" id="buildNewProductCaptionBtn" style="width:100%">Refresh copy from product details</button>
+
+            <div class="channel-picker">
+              <div class="tag">PUBLISH TO</div>
+              <label><input type="checkbox" checked disabled /> Square inventory</label>
+              <label><input id="newProductFacebookChannel" type="checkbox" checked /> Facebook</label>
+              <label><input id="newProductInstagramChannel" type="checkbox" checked /> Instagram</label>
+            </div>
+
+            <div class="notice" style="margin-top:14px">
+              <strong>Add it once. Promote it at the same time.</strong><br>
+              <span>GrowthWise creates the Square item first, then sends the reviewed photo and copy to the channels you selected.</span>
+            </div>
           </div>
 
-          <button class="primary" id="addAndPromoteBtn" style="margin-top:14px">Create &amp; Publish</button>
-          <button class="ghost button-gap" id="saveSquareBtn" style="width:100%">Approve &amp; Add to Square</button>
+          <button class="primary hidden" id="addAndPromoteBtn" style="margin-top:14px">Add + Promote Now</button>
+          <button class="primary button-gap" id="saveSquareBtn" style="width:100%">Add to Inventory</button>
           <div class="create-status hidden" id="createStatus"></div>
         </div>
 
