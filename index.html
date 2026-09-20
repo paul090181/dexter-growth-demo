@@ -163,8 +163,8 @@
       <section class="screen active" id="home">
         <div class="hero">
           <div class="eyebrow">GOOD MORNING</div>
-          <h1>Dexter, here are your 3 best opportunities today.</h1>
-          <p>This pilot is designed to turn business data into simple actions—not more dashboards.</p>
+          <h1>Dexter, GrowthWise is finding your best opportunities today.</h1>
+          <p>Live inventory, recent sales and AI suggestions turn into simple actions you can review and use.</p>
         </div>
 
         <div class="square-live" id="squareLiveStatus">
@@ -176,12 +176,12 @@
         </div>
 
         <div class="live-unlock" id="liveUnlock">
-          <label for="liveAdminKeyInput">Unlock live Square data</label>
+          <label for="liveAdminKeyInput">Unlock GrowthWise</label>
           <div class="live-unlock-row">
-            <input id="liveAdminKeyInput" type="password" placeholder="GrowthWise beta admin key" autocomplete="current-password" />
+            <input id="liveAdminKeyInput" type="password" placeholder="GrowthWise access key" autocomplete="current-password" />
             <button id="unlockLiveBtn" type="button" onclick="growthwiseUnlockSquare(event)">Unlock</button>
           </div>
-          <small>Enter the beta admin key once per browser session. It is kept only in this tab's session storage and is not written into the public webpage.</small>
+          <small>Enter once per browser session to connect your live business data and publishing tools.</small>
         </div>
 
         <script>
@@ -265,6 +265,7 @@
           <div id="aiOpportunityStack"></div>
         </div>
 
+        <div class="tag" style="margin:18px 4px 8px">QUICK ACTIONS</div>
         <div class="stack">
           <article class="opportunity">
             <div class="rank">1</div>
@@ -1412,7 +1413,7 @@ document.getElementById('newProductCleanBtn').addEventListener('click', async ()
   }
   const adminKey = document.getElementById('adminKeyInput').value || sessionStorage.getItem('growthwise_admin_key') || '';
   if(!adminKey){
-    openModal('GrowthWise access key needed', 'Enter the beta admin key before preparing the photo.');
+    openModal('Unlock GrowthWise first', 'Return Home and enter the GrowthWise access key once, then come back to this product.');
     return;
   }
   const btn = document.getElementById('newProductCleanBtn');
@@ -1470,7 +1471,7 @@ async function analyzeNewProductWithAI(){
   const adminKeyInput = document.getElementById('adminKeyInput');
   const adminKey = adminKeyInput.value || sessionStorage.getItem('growthwise_admin_key') || '';
   if(!adminKey){
-    openModal('GrowthWise access key needed', 'Enter the beta admin key before asking AI to analyze the product.');
+    openModal('Unlock GrowthWise first', 'Return Home and enter the GrowthWise access key once, then come back to this product.');
     return;
   }
 
@@ -1584,7 +1585,7 @@ function validateNewProductForm(form, requirePhoto=false){
   if(!form.productName) return 'Enter a product name first.';
   if(form.priceText === '' || !Number.isFinite(form.price) || form.price < 0) return 'Enter a valid price.';
   if(form.quantityText === '' || !Number.isInteger(form.quantity) || form.quantity < 0) return 'Starting inventory must be a whole number 0 or greater.';
-  if(!form.adminKey) return 'Enter the GrowthWise beta admin key.';
+  if(!form.adminKey) return 'Return Home and unlock GrowthWise first.';
   if(requirePhoto && !newProductImageDataUrl) return 'Take a product photo or choose one from the gallery before promoting it.';
   return '';
 }
