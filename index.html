@@ -250,6 +250,8 @@
 .smart-auto-rules{display:grid;gap:7px;margin-top:12px}.smart-rule{border-radius:11px;padding:10px 11px}.smart-rule strong,.smart-rule span{display:block}.smart-rule strong{font-size:10px}.smart-rule span{font-size:10px;line-height:1.4;margin-top:3px}.smart-rule.safe{background:#e8f5ea;color:#285e32}.smart-rule.review{background:#fff5dd;color:#725817}.smart-rule.human{background:#fbecea;color:#8c3f35}
 .smart-auto-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:12px}.smart-auto-stats div{border:1px solid #dde5e9;background:#fff;border-radius:11px;padding:10px;text-align:center}.smart-auto-stats strong{display:block;font-size:19px}.smart-auto-stats span{font-size:9px;color:#6b7781;text-transform:uppercase;font-weight:850}.smart-auto-notice{margin-top:11px;border:1px dashed #cfd9df;border-radius:11px;padding:10px;color:#596a76;font-size:11px;line-height:1.4}
 .lead-automation-decision{margin-top:9px;border-radius:11px;padding:10px 11px;font-size:11px;font-weight:800;line-height:1.4}.lead-automation-decision.hidden{display:none}.lead-automation-decision.safe{background:#e8f5ea;color:#285e32}.lead-automation-decision.review{background:#fff5dd;color:#725817}.lead-automation-decision.human{background:#fbecea;color:#8c3f35}
+
+.lead-inline-unlock{border:1px solid #d8e1e6;background:#f7fafb;border-radius:16px;padding:14px;margin-bottom:14px}.lead-inline-unlock.hidden{display:none}.lead-inline-unlock strong,.lead-inline-unlock small{display:block}.lead-inline-unlock strong{margin-top:4px}.lead-inline-unlock small{margin-top:4px;color:#687680;line-height:1.4}.lead-inline-unlock-row{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:11px}.lead-inline-unlock input{width:100%;border:1px solid #d4dde3;border-radius:11px;padding:11px;font:inherit}.lead-inline-unlock button{border:0;border-radius:11px;background:#0e1b2b;color:#fff;padding:0 15px;font-weight:850}.lead-inline-unlock-status{margin-top:9px;border-radius:10px;padding:9px 10px;font-size:11px;font-weight:750}.lead-inline-unlock-status.hidden{display:none}.lead-inline-unlock-status.error{background:#fbecea;color:#8c3f35}.lead-inline-unlock-status.ok{background:#e8f5ea;color:#285e32}.lead-inline-unlock-status.loading{background:#eef3f6;color:#42515e}
 </style>
 
 
@@ -973,6 +975,19 @@
           <div class="smart-auto-notice" id="retailLeadAutomationNotice">
             No customer messages are being sent automatically. Shadow Mode is observation only.
           </div>
+        </div>
+
+        <div class="lead-inline-unlock" id="retailLeadUnlock">
+          <div>
+            <div class="tag">UNLOCK GROWTHWISE</div>
+            <strong>Stay right here in Leads</strong>
+            <small>Enter the GrowthWise access key once. This will load Square products and enable Smart Auto testing in this browser session.</small>
+          </div>
+          <div class="lead-inline-unlock-row">
+            <input id="retailLeadUnlockKey" type="password" placeholder="GrowthWise access key" autocomplete="current-password" />
+            <button type="button" id="retailLeadUnlockBtn">Unlock</button>
+          </div>
+          <div class="lead-inline-unlock-status hidden" id="retailLeadUnlockStatus"></div>
         </div>
 
         <div class="lead-assistant-card">
