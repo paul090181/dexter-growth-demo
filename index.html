@@ -160,6 +160,63 @@
 .purchase-order-list{display:grid;gap:10px}.po-card{border:1px solid #e1e5e8;border-radius:16px;padding:14px;background:#fff}.po-card-top{display:flex;justify-content:space-between;gap:10px}.po-card h3{margin:4px 0}.po-status{font-size:11px;border-radius:999px;padding:5px 8px;background:#eef2f4;font-weight:850;text-transform:uppercase;height:max-content}.po-status.shipped{background:#eaf2fb;color:#2d5f91}.po-status.received{background:#e8f5ea;color:#285e32}.po-status.cancelled{background:#f8eae8;color:#8d4036}.po-card-meta{font-size:12px;color:#687580;line-height:1.45}.po-line-summary{margin-top:8px;font-size:12px;color:#4e5c68}.po-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.po-actions button{border:0;border-radius:10px;padding:9px 10px;background:#eef1f3;color:#24313d;font-weight:800}.po-actions button.primary-action{background:#0e1b2b;color:#fff}.po-tracking{display:grid;grid-template-columns:1fr 1.4fr;gap:7px;margin-top:9px}.po-tracking input{width:100%;border:1px solid #dce1e4;border-radius:10px;padding:9px;font-size:12px}
 .money-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.money-card{border:1px solid #e2e6e9;border-radius:16px;padding:14px;background:#fff;min-height:100px;display:flex;flex-direction:column;justify-content:space-between}.money-card span{font-size:12px;color:#6b7680}.money-card strong{font-size:23px;color:#17222e}.vendor-spend-list{display:grid;gap:8px;margin-top:10px}.vendor-spend-row{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #edf0f2;padding:8px 0}.vendor-spend-row:last-child{border-bottom:0}.vendor-spend-row span{color:#5d6974}
 @media(max-width:390px){.ops-summary{grid-template-columns:1fr}.money-grid{grid-template-columns:1fr 1fr}.po-draft-line-fields,.po-tracking{grid-template-columns:1fr}}
+
+/* Persistent GrowthWise workflow navigation — mirrors the automotive pilot */
+.phone-shell{padding-top:calc(60px + env(safe-area-inset-top,0px))}
+.topbar{position:relative;top:auto;z-index:1}
+.workflow-quick-nav-shell{
+  position:fixed;
+  top:0;
+  left:50%;
+  transform:translateX(-50%);
+  width:min(520px,100%);
+  z-index:1000;
+  padding:calc(8px + env(safe-area-inset-top,0px)) 10px 8px;
+  background:rgba(237,240,243,.97);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(207,216,224,.95);
+  box-shadow:0 6px 18px rgba(14,27,43,.10);
+}
+.workflow-quick-nav{
+  display:flex;
+  gap:6px;
+  overflow-x:auto;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-x:contain;
+}
+.workflow-quick-nav::-webkit-scrollbar{display:none}
+.workflow-quick-nav button{
+  flex:0 0 auto;
+  min-width:92px;
+  border:1px solid #d8e0e6;
+  background:#fff;
+  color:#334554;
+  border-radius:11px;
+  padding:9px 10px;
+  font-size:10px;
+  line-height:1.15;
+  font-weight:950;
+  letter-spacing:.01em;
+  cursor:pointer;
+  white-space:nowrap;
+  box-shadow:0 2px 8px rgba(14,27,43,.05);
+}
+.workflow-quick-nav button.active{
+  background:#0e1b2b;
+  color:#fff;
+  border-color:#0e1b2b;
+  box-shadow:0 5px 15px rgba(14,27,43,.20);
+}
+.workflow-quick-nav button:focus-visible{
+  outline:3px solid rgba(14,27,43,.18);
+  outline-offset:2px;
+}
+.screen{scroll-margin-top:74px}
+@media(max-width:360px){
+  .workflow-quick-nav-shell{padding-left:8px;padding-right:8px}
+  .workflow-quick-nav button{min-width:86px;padding:9px 8px;font-size:9.5px}
+}
 </style>
 
 
@@ -171,6 +228,17 @@
 </head>
 <body>
   <div class="phone-shell">
+    <div class="workflow-quick-nav-shell" aria-label="GrowthWise sections">
+      <nav class="workflow-quick-nav">
+        <button type="button" class="workflow-nav-btn" data-nav="product">Add Products</button>
+        <button type="button" class="workflow-nav-btn" data-nav="promotion">Promote</button>
+        <button type="button" class="workflow-nav-btn" data-nav="results">Inventory</button>
+        <button type="button" class="workflow-nav-btn" data-nav="orders">Orders</button>
+        <button type="button" class="workflow-nav-btn" data-nav="money">Money</button>
+        <button type="button" class="workflow-nav-btn" data-nav="chat">Ask AI</button>
+      </nav>
+    </div>
+
     <header class="topbar">
       <div>
         <div class="eyebrow">PRIVATE DEMO</div>
@@ -976,10 +1044,14 @@
 
   <script>const screens=[...document.querySelectorAll('.screen')];
 const navs=[...document.querySelectorAll('.nav')];
+const workflowNavs=[...document.querySelectorAll('.workflow-nav-btn')];
 
 function show(id){
   screens.forEach(s=>s.classList.toggle('active',s.id===id));
   navs.forEach(n=>n.classList.toggle('active',n.dataset.nav===id));
+  workflowNavs.forEach(n=>n.classList.toggle('active',n.dataset.nav===id));
+  const activeWorkflowNav=workflowNavs.find(n=>n.dataset.nav===id);
+  activeWorkflowNav?.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
   window.scrollTo({top:0,behavior:'smooth'});
 }
 document.querySelectorAll('[data-nav]').forEach(el=>{
