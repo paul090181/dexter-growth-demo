@@ -1879,12 +1879,103 @@ document.getElementById('connectSquare').addEventListener('click',()=>openModal(
   'Latest sales & inventory',
   window.salesStatusText || window.squareStatusText || 'GrowthWise is syncing your latest Square activity.'
 ));
-document.getElementById('squareBtn').addEventListener('click',()=>openModal(
-  'Square sync is active ✓',
-  window.squareStatusText || 'GrowthWise is syncing your latest inventory from Square.'
-));
+document.getElementById('squareBtn').addEventListener('click',()=>show('settings'));
 
 let growthwiseInventoryProducts = [];
+
+let growthwiseSalesSnapshot = null;
+let growthwiseAiSuggestions = [];
+let growthwiseAiIdeaRequest = null;
+
+function renderRetailAiIdeas(data){
+  growthwiseAiSuggestions = Array.isArray(data?.suggestions) ? data.suggestions : [];
+  const stack = document.getElementById('aiOpportunityStack');
+  const panel = document.getElementById('aiOpportunityPanel');
+  if(!stack || !panel || growthwiseAiSuggestions.length !== 3) return;
+
+  panel.querySelector('.ai-opportunity-head strong').textContent =
+    data.summary || 'Three actions based on current inventory and recent sales.';
+
+  stack.innerHTML = growthwiseAiSuggestions.map((idea,index)=>`
+    <article class="ai-opportunity-item">
+      <div class="tag">${escapeHtml(idea.kind.replaceAll('_',' ').toUpperCase())}</div>
+      <h3>${escapeHtml(idea.title)}</h3>
+      <p>${escapeHtml(idea.reason)}</p>
+      <button type="button" data-ai-idea-index="${index}">${escapeHtml(idea.action_label || 'Build post')}</button>
+    </article>
+  `).join('');
+
+  stack.querySelectorAll('[data-ai-idea-index]').forEach(btn=>{
+    btn.addEventListener('click',()=>useRetailAiIdea(Number(btn.dataset.aiIdeaIndex)));
+  });
+}
+
+function useRetailAiIdea(index){
+  const idea = growthwiseAiSuggestions[index];
+  if(!idea) return;
+
+  promotionTemplates.ai = {
+    dayTag: "AI SUGGESTION",
+    title: idea.title || "GrowthWise suggestion",
+    rule: idea.offer || "Use the approved product and promotion details shown here.",
+    goal: idea.kind === 'protect_stock' ? "Protect availability" : "Create customer interest",
+    guardrail: idea.confidence ? `${idea.confidence} confidence` : "Review before publishing",
+    advice: idea.reason || "Based on current Square inventory and recent sales.",
+    facebook: idea.facebook_caption || "",
+    instagram: idea.instagram_caption || "",
+    offerOnly: idea.offer || "",
+    measurement: `Why GrowthWise suggested this: ${idea.reason || 'current inventory and recent sales data.'}`
+  };
+  renderPromotion('ai');
+  show('promotion');
+}
+
+async function loadRetailAiIdeas(key = sessionStorage.getItem('growthwise_admin_key') || ''){
+  if(!key || !growthwiseInventoryProducts.length || !growthwiseSalesSnapshot) return false;
+  if(growthwiseAiIdeaRequest) return growthwiseAiIdeaRequest;
+
+  const panel = document.getElementById('aiOpportunityPanel');
+  if(panel){
+    panel.querySelector('.ai-opportunity-head strong').textContent =
+      'GrowthWise is ranking today’s best ideas from live data…';
+  }
+
+  growthwiseAiIdeaRequest = (async ()=>{
+    try{
+      const response = await fetch('/.netlify/functions/retail-opportunities', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-GrowthWise-Key': key
+        },
+        body: JSON.stringify({
+          business_name: "Dexter's Hats & Caps",
+          day: new Date().toLocaleDateString([], { weekday: 'long' }),
+          inventory: growthwiseInventoryProducts,
+          sales_summary: growthwiseSalesSnapshot.summary || {},
+          top_products: growthwiseSalesSnapshot.top_products || [],
+          known_promotions:
+            "Tuesday: free accessory with a purchase of $100 or more. Wednesday: buy one hat or cap and get a second of equal or lesser value 30% off."
+        })
+      });
+      const data = await response.json().catch(()=>({}));
+      if(!response.ok) throw new Error(data.error || `AI opportunity request failed (HTTP ${response.status}).`);
+      renderRetailAiIdeas(data);
+      return true;
+    }catch(err){
+      console.error('GrowthWise AI opportunity suggestions failed:', err);
+      if(panel){
+        panel.querySelector('.ai-opportunity-head strong').textContent =
+          'Live data is connected. AI suggestions will retry on the next refresh.';
+      }
+      return false;
+    }finally{
+      growthwiseAiIdeaRequest = null;
+    }
+  })();
+
+  return growthwiseAiIdeaRequest;
+}
 
 function formatInventoryUpdated(iso){
   if(!iso) return 'Live inventory updated just now.';
@@ -2030,6 +2121,7 @@ async function loadLiveSquareData(key = sessionStorage.getItem('growthwise_admin
 
     const products = data.products || [];
     renderInventory(products, data.summary || {}, data.generated_at || null);
+    if(growthwiseSalesSnapshot) void loadRetailAiIdeas(key);
 
     const product =
       products.find(p => /GrowthWise Test Porkpie/i.test(p.item_name || '')) ||
@@ -2060,6 +2152,8 @@ async function loadLiveSquareData(key = sessionStorage.getItem('growthwise_admin
 
       window.squareStatusText =
         `Latest inventory from ${location}: ${variationCount} product variation(s) and ${totalUnits} total unit(s) in stock.`;
+      const settingsSquareStatus = document.getElementById('settingsSquareStatus');
+      if(settingsSquareStatus) settingsSquareStatus.textContent = window.squareStatusText;
     } else {
       document.getElementById('homeProductName').textContent = 'Square catalog';
       document.getElementById('homeProductLive').textContent =
@@ -2120,6 +2214,9 @@ async function loadLiveSalesData(key = sessionStorage.getItem('growthwise_admin_
     if(!response.ok){
       throw new Error(data.error || `Sales request failed (HTTP ${response.status}).`);
     }
+
+    growthwiseSalesSnapshot = data;
+    void loadRetailAiIdeas(key);
 
     const summary = data.summary || {};
     const orders = Number(summary.completed_order_count || 0);
