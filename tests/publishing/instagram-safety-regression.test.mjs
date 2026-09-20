@@ -46,6 +46,7 @@ test("Instagram live endpoints exist only in the explicit publishing provider an
   }
   assert.deepEqual(liveEndpointFiles.sort(), [
     "netlify/functions/_instagram-publishing.mjs",
+    "netlify/functions/instagram-publish.mjs",
   ]);
   const source = await joined(files);
   const assembled = source.replace(/[\s"'\`+]/g, "");
