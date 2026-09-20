@@ -33,3 +33,23 @@ test("home includes proactive AI suggestion surface", () => {
   assert.match(html, /id="aiOpportunityStack"/);
   assert.match(html, /retail-opportunities/);
 });
+
+test("home uses task-first plain-English navigation", () => {
+  for (const label of [
+    "Add New Products",
+    "Promote Products",
+    "View Inventory",
+    "Ask GrowthWise",
+  ]) {
+    assert.match(html, new RegExp(label));
+  }
+  assert.match(html, /class="task-launcher"/);
+});
+
+test("product photos persist locally for retry and reuse", () => {
+  assert.match(html, /indexedDB\.open\(PRODUCT_PHOTO_DB/);
+  assert.match(html, /PRODUCT_PHOTO_LIMIT = 30/);
+  assert.match(html, /Recent Product Photos/);
+  assert.match(html, /data-recent-photo-id/);
+  assert.match(html, /saveProductPhotoToDevice/);
+});
