@@ -2324,6 +2324,78 @@ function validateNewProductForm(form, requirePhoto=false){
   return '';
 }
 
+const RECENT_SQUARE_PRODUCTS_KEY = 'growthwise_recent_square_products';
+
+function rememberRecentlyCreatedSquareProduct(form, created){
+  const variationId = created?.variationId || '';
+  const itemId = created?.itemId || '';
+  if(!variationId && !itemId) return;
+
+  const record = {
+    item_id: itemId || null,
+    item_name: created?.name || [form.brand, form.productName].filter(Boolean).join(' ') || form.productName,
+    description: form.description || '',
+    variation_id: variationId || null,
+    variation_name: [form.color, form.size].filter(Boolean).join(' / ') || 'Default',
+    sku: form.sku || null,
+    upc: form.upc || null,
+    price_cents: Math.round(Number(form.price || 0) * 100),
+    price: Number(form.price || 0).toFixed(2),
+    currency: 'USD',
+    track_inventory: true,
+    quantity: Number(form.quantity || 0),
+    inventory_calculated_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    remembered_at: Date.now()
+  };
+
+  let recent = [];
+  try{
+    recent = JSON.parse(sessionStorage.getItem(RECENT_SQUARE_PRODUCTS_KEY) || '[]');
+    if(!Array.isArray(recent)) recent = [];
+  }catch{
+    recent = [];
+  }
+
+  recent = recent.filter(product =>
+    product &&
+    product.variation_id !== record.variation_id &&
+    product.item_id !== record.item_id &&
+    (Date.now() - Number(product.remembered_at || 0)) < 15 * 60 * 1000
+  );
+  recent.unshift(record);
+  sessionStorage.setItem(RECENT_SQUARE_PRODUCTS_KEY, JSON.stringify(recent.slice(0,12)));
+}
+
+function mergeRecentSquareProducts(products){
+  const now = Date.now();
+  let recent = [];
+  try{
+    recent = JSON.parse(sessionStorage.getItem(RECENT_SQUARE_PRODUCTS_KEY) || '[]');
+    if(!Array.isArray(recent)) recent = [];
+  }catch{
+    recent = [];
+  }
+
+  const fresh = recent.filter(product =>
+    product && (now - Number(product.remembered_at || 0)) < 15 * 60 * 1000
+  );
+  const result = [...products];
+
+  for(const remembered of fresh){
+    const found = products.some(product =>
+      (remembered.variation_id && product.variation_id === remembered.variation_id) ||
+      (remembered.item_id && product.item_id === remembered.item_id)
+    );
+    if(!found) result.unshift(remembered);
+  }
+
+  if(fresh.length) sessionStorage.setItem(RECENT_SQUARE_PRODUCTS_KEY, JSON.stringify(fresh));
+  else sessionStorage.removeItem(RECENT_SQUARE_PRODUCTS_KEY);
+
+  return result;
+}
+
 async function createProductInSquare(form){
   const response = await fetch('/.netlify/functions/add-product', {
     method: 'POST',
@@ -2346,7 +2418,9 @@ async function createProductInSquare(form){
   });
   const data = await response.json().catch(()=>({}));
   if(!response.ok) throw new Error(data.error || `Square request failed (HTTP ${response.status}).`);
-  return data.product || {};
+  const created = data.product || {};
+  rememberRecentlyCreatedSquareProduct(form, created);
+  return created;
 }
 
 // Best-effort shadow copy only. A Core failure must never change Square/Facebook results.
@@ -3132,8 +3206,18 @@ async function loadLiveSquareData(key = sessionStorage.getItem('growthwise_admin
     liveAdminKeyInput.value = '';
     liveUnlock.classList.add('hidden');
 
-    const products = data.products || [];
-    renderInventory(products, data.summary || {}, data.generated_at || null);
+    const products = mergeRecentSquareProducts(data.products || []);
+    const liveSummary = { ...(data.summary || {}) };
+    if(products.length !== Number(liveSummary.variation_count ?? products.length)){
+      liveSummary.variation_count = products.length;
+      liveSummary.total_units_in_stock = products.reduce((sum,p)=>sum + (Number(p.quantity)||0),0);
+      const inventoryValueCents = products.reduce(
+        (sum,p)=>sum + ((Number(p.price_cents)||0) * (Number(p.quantity)||0)), 0
+      );
+      liveSummary.inventory_value_cents = inventoryValueCents;
+      liveSummary.inventory_value = (inventoryValueCents / 100).toFixed(2);
+    }
+    renderInventory(products, liveSummary, data.generated_at || null);
     if(growthwiseSalesSnapshot) void loadRetailAiIdeas(key);
 
     const product = [...products].sort((a,b)=>{
