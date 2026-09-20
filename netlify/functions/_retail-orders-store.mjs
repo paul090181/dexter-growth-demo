@@ -139,6 +139,35 @@ export function createRetailOrdersStore({ getPool = netlifyPool } = {}) {
     }));
   }
 
+  async function getOrder({ businessId, id } = {}) {
+    const safeBusinessId = cleanText(businessId, 120);
+    const safeId = cleanText(id, 120);
+    if (!safeBusinessId || !safeId) throw safeError("INVALID_ORDER");
+
+    const pool = await getPool();
+    const orderResult = await pool.query(
+      `SELECT id, business_id, po_number, vendor_name, vendor_contact, status,
+              ordered_at, expected_at, received_at, carrier, tracking_number, notes,
+              subtotal_cents, shipping_cents, tax_cents, total_cents, created_at, updated_at
+         FROM retail_purchase_orders
+        WHERE id = $1 AND business_id = $2`,
+      [safeId, safeBusinessId],
+    );
+    const order = orderResult.rows[0];
+    if (!order) return null;
+
+    const linesResult = await pool.query(
+      `SELECT id, purchase_order_id, square_item_id, square_variation_id, item_name,
+              variation_name, sku, upc, vendor_sku, quantity_ordered, quantity_received,
+              unit_cost_cents, retail_price_cents, created_at
+         FROM retail_purchase_order_lines
+        WHERE purchase_order_id = $1
+        ORDER BY created_at ASC`,
+      [safeId],
+    );
+    return { ...order, lines: linesResult.rows };
+  }
+
   async function createOrder(input) {
     const value = validateCreate(input);
     const subtotalCents = value.lines.reduce(
@@ -288,5 +317,5 @@ export function createRetailOrdersStore({ getPool = netlifyPool } = {}) {
     }
   }
 
-  return { listOrders, createOrder, updateOrder };
+  return { listOrders, getOrder, createOrder, updateOrder };
 }
