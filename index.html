@@ -299,6 +299,9 @@
             if(typeof window.loadLiveSalesData === 'function'){
               window.loadLiveSalesData(key).catch(()=>{});
             }
+            if(typeof window.loadRetailOrders === 'function'){
+              window.loadRetailOrders(key).catch(()=>{});
+            }
             return true;
           }catch(err){
             console.error('Square unlock failed:', err);
@@ -983,7 +986,12 @@ function show(id){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 document.querySelectorAll('[data-nav]').forEach(el=>{
-  el.addEventListener('click',()=>show(el.dataset.nav));
+  el.addEventListener('click',()=>{
+    show(el.dataset.nav);
+    if(['orders','money'].includes(el.dataset.nav) && typeof window.loadRetailOrders === 'function'){
+      window.loadRetailOrders().catch(()=>{});
+    }
+  });
 });
 
 const promotionTemplates = {
@@ -2945,6 +2953,8 @@ function renderInventory(products = [], summary = {}, generatedAt = null){
 
   filterInventoryList();
   renderPromotionProductResults();
+  renderReorderSuggestions();
+  renderMoneyDashboard();
 }
 
 function filterInventoryList(){
@@ -3006,6 +3016,940 @@ function escapeHtml(value){
 }
 
 document.getElementById('inventorySearch').addEventListener('input', filterInventoryList);
+
+let growthwisePurchaseOrders = [];
+let growthwiseOrderSummary = {};
+let growthwiseOrderDraftLines = [];
+
+function money(value){
+  const number = Number(value || 0);
+  return 'const liveUnlock = document.getElementById('liveUnlock');
+const liveAdminKeyInput = document.getElementById('liveAdminKeyInput');
+const unlockLiveBtn = document.getElementById('unlockLiveBtn');
+
+function setSquareLocked(message='Enter your GrowthWise access key to view the latest inventory update.'){
+  const status = document.getElementById('squareLiveStatus');
+  const detail = document.getElementById('squareLiveDetail');
+  status.classList.add('error');
+  detail.textContent = message;
+  liveUnlock.classList.remove('hidden');
+}
+
+async function loadLiveSquareData(key = sessionStorage.getItem('growthwise_admin_key') || ''){
+  const status = document.getElementById('squareLiveStatus');
+  const detail = document.getElementById('squareLiveDetail');
+
+  if(!key){
+    setSquareLocked();
+    return false;
+  }
+
+  status.classList.remove('error');
+  detail.textContent = 'Refreshing your latest inventory…';
+
+  try{
+    const response = await fetch('/.netlify/functions/square-data', {
+      method: 'GET',
+      headers: {
+        'X-GrowthWise-Key': key
+      },
+      cache: 'no-store'
+    });
+
+    const data = await response.json().catch(()=>({}));
+
+    if(response.status === 401){
+      sessionStorage.removeItem('growthwise_admin_key');
+      setSquareLocked('Admin key was not accepted. Re-enter it to unlock live Square data.');
+      return false;
+    }
+
+    if(!response.ok){
+      throw new Error(data.error || `Square data request failed (HTTP ${response.status}).`);
+    }
+
+    sessionStorage.setItem('growthwise_admin_key', key);
+    liveAdminKeyInput.value = '';
+    liveUnlock.classList.add('hidden');
+
+    const products = data.products || [];
+    renderInventory(products, data.summary || {}, data.generated_at || null);
+    if(growthwiseSalesSnapshot) void loadRetailAiIdeas(key);
+
+    const product = [...products].sort((a,b)=>{
+      const aTime = Date.parse(a.updated_at || '') || 0;
+      const bTime = Date.parse(b.updated_at || '') || 0;
+      return bTime - aTime;
+    })[0] || products[0];
+
+    const location = data.location?.name || 'Square location';
+    const itemCount = data.summary?.item_count ?? products.length;
+    const variationCount = data.summary?.variation_count ?? products.length;
+    const totalUnits = data.summary?.total_units_in_stock ?? 0;
+
+    if(product){
+      const price = product.price ? `$${product.price}` : 'Price unavailable';
+      const qty = product.quantity ?? 0;
+      const name = product.item_name || 'Square product';
+
+      document.getElementById('homeProductName').textContent = name;
+      document.getElementById('homeProductLive').innerHTML =
+        `<span class="live-value">${price}</span> · <span class="live-value">${qty} in stock</span> · synced with Square just now`;
+
+      detail.textContent = `${data.summary?.variation_count ?? products.length} products · ${data.summary?.total_units_in_stock ?? 0} units in stock · updated just now`;
+
+      answers.weekend =
+        `<div class="tag">LIVE SQUARE DATA</div>
+         <h3>Consider featuring ${name}.</h3>
+         <p>Square currently shows <strong>${qty} in stock</strong> at <strong>${price}</strong>. GrowthWise is reading this directly from Square through the protected Netlify backend. Once sales history is connected, this recommendation can also factor in recent sell-through, timing and margin.</p>`;
+
+      window.squareStatusText =
+        `Latest inventory from ${location}: ${variationCount} product variation(s) and ${totalUnits} total unit(s) in stock.`;
+      const settingsSquareStatus = document.getElementById('settingsSquareStatus');
+      if(settingsSquareStatus) settingsSquareStatus.textContent = window.squareStatusText;
+    } else {
+      document.getElementById('homeProductName').textContent = 'Square catalog';
+      document.getElementById('homeProductLive').textContent =
+        'Connected successfully, but no catalog products were returned.';
+      detail.textContent = 'Connected — no products returned';
+      window.squareStatusText =
+        `GrowthWise connected to ${location}, but no inventory items were returned.`;
+    }
+
+    document.getElementById('squareOpportunityText').textContent =
+      `${itemCount} catalog item(s), ${variationCount} variation(s), and ${totalUnits} total unit(s) in stock are being read directly from ${location}.`;
+
+    return true;
+
+  }catch(err){
+    console.error('Live Square data load failed:', err);
+    status.classList.add('error');
+    detail.textContent = err.message || 'Live Square data unavailable';
+    document.getElementById('homeProductLive').textContent =
+      'Live Square data could not be loaded.';
+    document.getElementById('squareOpportunityText').textContent =
+      'GrowthWise could not refresh the Square catalog right now.';
+    window.squareStatusText =
+      err.message || 'GrowthWise could not refresh Square data.';
+    liveUnlock.classList.remove('hidden');
+    return false;
+  }
+}
+
+
+async function loadLiveSalesData(key = sessionStorage.getItem('growthwise_admin_key') || ''){
+  if(!key) return false;
+
+  const salesHeadline = document.getElementById('salesHeadline');
+  const salesText = document.getElementById('squareOpportunityText');
+  const salesTotal = document.getElementById('salesTotal');
+  const salesOrders = document.getElementById('salesOrders');
+  const salesAverage = document.getElementById('salesAverage');
+
+  salesHeadline.textContent = 'Checking recent sales…';
+  salesText.textContent = 'GrowthWise is combining recent sales with current inventory.';
+
+  try{
+    const response = await fetch('/.netlify/functions/square-sales?days=30', {
+      method: 'GET',
+      headers: {
+        'X-GrowthWise-Key': key
+      },
+      cache: 'no-store'
+    });
+
+    const data = await response.json().catch(()=>({}));
+
+    if(response.status === 401){
+      return false;
+    }
+
+    if(!response.ok){
+      throw new Error(data.error || `Sales request failed (HTTP ${response.status}).`);
+    }
+
+    growthwiseSalesSnapshot = data;
+    void loadRetailAiIdeas(key);
+    renderReorderSuggestions();
+    renderMoneyDashboard();
+
+    const summary = data.summary || {};
+    const orders = Number(summary.completed_order_count || 0);
+    const total = Number(summary.total_collected || 0);
+    const average = Number(summary.average_order || 0);
+    const top = (data.top_products || [])[0];
+
+    salesTotal.textContent = `$${total.toFixed(2)}`;
+    salesOrders.textContent = orders;
+    salesAverage.textContent = `$${average.toFixed(2)}`;
+
+    if(orders === 0){
+      salesHeadline.textContent = 'No recent sales yet';
+      salesText.textContent =
+        'There are no completed Square sales in this test account for the last 30 days. Inventory is still syncing normally.';
+      window.salesStatusText =
+        'No completed sales were found in the last 30 days. Inventory syncing is active, so GrowthWise is ready as soon as sales begin.';
+
+      answers.weekend =
+        `<div class="tag">INVENTORY-BASED IDEA</div>
+         <h3>Use current inventory to choose the next promotion.</h3>
+         <p>There are no recent test sales yet, so GrowthWise is using stock levels for now. Once real sales begin, recommendations will automatically factor in what is selling, average order value and current inventory.</p>`;
+      return true;
+    }
+
+    if(top){
+      const inv = growthwiseInventoryProducts.find(
+        p => p.variation_id === top.catalog_object_id
+      );
+      const qty = inv ? Number(inv.quantity || 0) : null;
+      const topName = top.item_name || 'your top-selling item';
+      const unitsSold = Number(top.quantity_sold || 0);
+      const revenue = Number(top.total_collected || 0);
+
+      if(qty !== null && qty <= 2){
+        salesHeadline.textContent = `${topName} may need attention`;
+        salesText.textContent =
+          `${unitsSold} sold in the last 30 days, with only ${qty} currently in stock. Consider restocking before promoting it harder.`;
+      }else{
+        salesHeadline.textContent = `${topName} is leading recent sales`;
+        salesText.textContent =
+          `${unitsSold} sold in the last 30 days · $${revenue.toFixed(2)} collected${qty === null ? '' : ` · ${qty} currently in stock`}.`;
+      }
+
+      answers.weekend =
+        `<div class="tag">LIVE SALES + INVENTORY</div>
+         <h3>${qty !== null && qty <= 2 ? `Protect momentum on ${escapeHtml(topName)}.` : `Consider featuring ${escapeHtml(topName)}.`}</h3>
+         <p>Square shows <strong>${unitsSold} sold</strong> in the last 30 days and <strong>$${revenue.toFixed(2)}</strong> collected${qty === null ? '' : `, with <strong>${qty} in stock</strong> now`}. GrowthWise is combining sales and inventory so the recommendation reflects current business activity.</p>`;
+    }else{
+      salesHeadline.textContent = `${orders} recent order${orders === 1 ? '' : 's'}`;
+      salesText.textContent =
+        `$${total.toFixed(2)} collected in the last 30 days with an average order of $${average.toFixed(2)}.`;
+    }
+
+    window.salesStatusText =
+      `Last 30 days: ${orders} completed order${orders === 1 ? '' : 's'}, $${total.toFixed(2)} collected, and a $${average.toFixed(2)} average order.`;
+
+    return true;
+
+  }catch(err){
+    console.error('Live Square sales load failed:', err);
+    salesHeadline.textContent = 'Sales data needs attention';
+    salesText.textContent = err.message || 'GrowthWise could not refresh recent sales right now.';
+    salesTotal.textContent = '—';
+    salesOrders.textContent = '—';
+    salesAverage.textContent = '—';
+    window.salesStatusText = err.message || 'GrowthWise could not refresh recent sales.';
+    return false;
+  }
+}
+
+// Enter key uses the same critical-path unlock function as the button.
+liveAdminKeyInput.addEventListener('keydown', e=>{
+  if(e.key === 'Enter') growthwiseUnlockSquare(e);
+});
+
+window.renderInventory = renderInventory;
+window.loadLiveSalesData = loadLiveSalesData;
+window.loadRetailOrders = loadRetailOrders;
+
+loadLiveSquareData().then(()=>{
+  const key = sessionStorage.getItem('growthwise_admin_key') || '';
+  if(key){
+    loadLiveSalesData(key);
+    loadRetailOrders(key);
+  }
+});
+
+
+
+</script>
+<script type="module">
+  import { mountInstagramConnection } from "./assets/instagram-connection.mjs";
+  mountInstagramConnection({
+    root: document.querySelector("#instagram-connection"),
+    businessId: "dexters-hats",
+    getAdminKey: () => sessionStorage.getItem("growthwise_admin_key") || "",
+  });
+</script>
+</body>
+</html>
+ + (Number.isFinite(number) ? number : 0).toFixed(2);
+}
+
+function incomingForVariation(variationId){
+  if(!variationId) return 0;
+  return growthwisePurchaseOrders
+    .filter(order=>!['received','cancelled'].includes(order.status))
+    .flatMap(order=>order.lines || [])
+    .filter(line=>line.square_variation_id === variationId)
+    .reduce((sum,line)=>sum + Math.max(0, Number(line.quantity_ordered || 0) - Number(line.quantity_received || 0)), 0);
+}
+
+function renderReorderSuggestions(){
+  const root = document.getElementById('reorderSuggestions');
+  if(!root) return;
+  if(!growthwiseInventoryProducts.length){
+    root.innerHTML = '<div class="inventory-empty">Unlock GrowthWise to analyze inventory and recent sales.</div>';
+    return;
+  }
+
+  const salesMap = new Map(
+    (growthwiseSalesSnapshot?.top_products || []).map(product=>[
+      product.catalog_object_id,
+      Number(product.quantity_sold || 0)
+    ])
+  );
+
+  const suggestions = growthwiseInventoryProducts.map(product=>{
+    const sold30 = salesMap.get(product.variation_id) || 0;
+    const current = Number(product.quantity || 0);
+    const incoming = incomingForVariation(product.variation_id);
+    const target = sold30 > 0 ? Math.max(2, Math.ceil(sold30)) : 0;
+    const suggested = target > 0 ? Math.max(0, target - current - incoming) : 0;
+    return { product, sold30, current, incoming, suggested };
+  }).filter(item=>item.suggested > 0)
+    .sort((a,b)=>b.suggested-a.suggested)
+    .slice(0,5);
+
+  if(suggestions.length){
+    root.innerHTML = suggestions.map((item,index)=>`
+      <div class="reorder-suggestion">
+        <strong>${escapeHtml(item.product.item_name || 'Product')}</strong>
+        <small>${item.sold30} sold in the last 30 days · ${item.current} in stock · ${item.incoming} already on order.</small>
+        <button type="button" data-reorder-index="${index}">Start order for ${item.suggested}</button>
+      </div>
+    `).join('');
+    root.querySelectorAll('[data-reorder-index]').forEach(button=>{
+      button.addEventListener('click',()=>{
+        const item = suggestions[Number(button.dataset.reorderIndex)];
+        if(item) startPurchaseOrderWithProduct(item.product, item.suggested);
+      });
+    });
+    return;
+  }
+
+  const low = growthwiseInventoryProducts.filter(product=>(Number(product.quantity)||0) <= 2).slice(0,5);
+  if(low.length && !(growthwiseSalesSnapshot?.top_products || []).length){
+    root.innerHTML = `<div class="inventory-empty">GrowthWise sees ${low.length} low-stock item${low.length===1?'':'s'}, but this test account does not have enough recent sales history to recommend reorder quantities yet. You can still create a purchase order manually.</div>`;
+  }else{
+    root.innerHTML = '<div class="inventory-empty">No reorder recommendation is supported by the current inventory and 30-day sales data.</div>';
+  }
+}
+
+function renderMoneyDashboard(){
+  const sales = Number(growthwiseSalesSnapshot?.summary?.total_collected || 0);
+  const inventoryRetail = growthwiseInventoryProducts.reduce(
+    (sum,product)=>sum + ((Number(product.price_cents)||0) * (Number(product.quantity)||0)), 0
+  ) / 100;
+  const openOrders = Number(growthwiseOrderSummary.open_commitment || 0);
+  const receivedTotal = growthwisePurchaseOrders
+    .filter(order=>order.status === 'received')
+    .reduce((sum,order)=>sum + Number(order.total || 0),0);
+
+  document.getElementById('moneySales30').textContent = money(sales);
+  document.getElementById('moneyInventoryRetail').textContent = money(inventoryRetail);
+  document.getElementById('moneyOpenOrders').textContent = money(openOrders);
+  document.getElementById('moneyReceivedPurchases').textContent = money(receivedTotal);
+
+  const costVariationIds = new Set(
+    growthwisePurchaseOrders.flatMap(order=>order.lines || [])
+      .filter(line=>line.square_variation_id && Number(line.unit_cost_cents) >= 0)
+      .map(line=>line.square_variation_id)
+  );
+  const inventoryIds = new Set(growthwiseInventoryProducts.map(p=>p.variation_id).filter(Boolean));
+  const covered = [...inventoryIds].filter(id=>costVariationIds.has(id)).length;
+  const coverage = inventoryIds.size ? Math.round((covered / inventoryIds.size) * 100) : 0;
+  document.getElementById('moneyCostCoverage').textContent =
+    inventoryIds.size ? `${coverage}% of current product variations have a known purchase cost` : 'Wholesale costs are starting to build.';
+  document.getElementById('moneyCostCoverageDetail').textContent =
+    inventoryIds.size
+      ? `GrowthWise has cost history for ${covered} of ${inventoryIds.size} current Square variations. Each vendor order improves future margin and reorder analysis.`
+      : 'Every purchase order you enter gives GrowthWise better cost and margin information.';
+
+  const vendorMap = new Map();
+  for(const order of growthwisePurchaseOrders.filter(order=>order.status === 'received')){
+    const current = vendorMap.get(order.vendor_name) || { total:0, count:0 };
+    current.total += Number(order.total || 0);
+    current.count += 1;
+    vendorMap.set(order.vendor_name,current);
+  }
+  const vendorRoot = document.getElementById('vendorSpendList');
+  const vendors = [...vendorMap.entries()].sort((a,b)=>b[1].total-a[1].total);
+  vendorRoot.innerHTML = vendors.length
+    ? vendors.map(([vendor,data])=>`<div class="vendor-spend-row"><span>${escapeHtml(vendor)} · ${data.count} received order${data.count===1?'':'s'}</span><strong>${money(data.total)}</strong></div>`).join('')
+    : '<div class="inventory-empty">Received purchase orders will appear here.</div>';
+}
+
+function renderPurchaseOrders(){
+  document.getElementById('ordersOpenCount').textContent = Number(growthwiseOrderSummary.open_order_count || 0);
+  document.getElementById('ordersCommitment').textContent = money(growthwiseOrderSummary.open_commitment || 0);
+  document.getElementById('ordersAwaitingCount').textContent = Number(growthwiseOrderSummary.awaiting_receipt_count || 0);
+
+  const root = document.getElementById('purchaseOrderList');
+  if(!growthwisePurchaseOrders.length){
+    root.innerHTML = '<div class="inventory-empty">No GrowthWise purchase orders yet.</div>';
+    renderReorderSuggestions();
+    renderMoneyDashboard();
+    return;
+  }
+
+  root.innerHTML = growthwisePurchaseOrders.map(order=>{
+    const itemSummary = (order.lines || []).map(line=>{
+      const received = Number(line.quantity_received || 0);
+      const ordered = Number(line.quantity_ordered || 0);
+      return `${escapeHtml(line.item_name)} × ${ordered}${received ? ` · ${received} received` : ''}`;
+    }).join('<br>');
+    const expected = order.expected_at ? new Date(order.expected_at).toLocaleDateString() : 'Not set';
+    const tracking = order.tracking_number ? `${escapeHtml(order.carrier || 'Carrier')} · ${escapeHtml(order.tracking_number)}` : 'No tracking yet';
+
+    let actions = '';
+    if(order.status === 'draft'){
+      actions += `<button type="button" class="primary-action" data-po-action="ordered" data-po-id="${order.id}">Mark Sent / Ordered</button>`;
+    }
+    if(order.status === 'ordered'){
+      actions += `<button type="button" data-po-action="confirmed" data-po-id="${order.id}">Vendor Confirmed</button>`;
+    }
+    if(['ordered','confirmed'].includes(order.status)){
+      actions += `<button type="button" data-po-action="shipped" data-po-id="${order.id}">Mark Shipped</button>`;
+    }
+    if(['ordered','confirmed','shipped'].includes(order.status)){
+      actions += `<button type="button" class="primary-action" data-po-receive="${order.id}">Receive into Square</button>`;
+    }
+
+    const trackingInputs = ['ordered','confirmed','shipped'].includes(order.status)
+      ? `<div class="po-tracking">
+          <input data-po-carrier="${order.id}" placeholder="Carrier" value="${escapeHtml(order.carrier || '')}" />
+          <input data-po-tracking="${order.id}" placeholder="Tracking #" value="${escapeHtml(order.tracking_number || '')}" />
+        </div>`
+      : '';
+
+    return `<div class="po-card">
+      <div class="po-card-top">
+        <div>
+          <div class="tag">${escapeHtml(order.po_number)}</div>
+          <h3>${escapeHtml(order.vendor_name)}</h3>
+        </div>
+        <span class="po-status ${escapeHtml(order.status)}">${escapeHtml(order.status)}</span>
+      </div>
+      <div class="po-card-meta">Total: <strong>${money(order.total)}</strong> · Expected: ${escapeHtml(expected)}<br>${tracking}</div>
+      <div class="po-line-summary">${itemSummary}</div>
+      ${trackingInputs}
+      ${actions ? `<div class="po-actions">${actions}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  root.querySelectorAll('[data-po-action]').forEach(button=>{
+    button.addEventListener('click',()=>updatePurchaseOrderStatus(button.dataset.poId, button.dataset.poAction));
+  });
+  root.querySelectorAll('[data-po-receive]').forEach(button=>{
+    button.addEventListener('click',()=>receivePurchaseOrder(button.dataset.poReceive));
+  });
+
+  renderReorderSuggestions();
+  renderMoneyDashboard();
+}
+
+async function loadRetailOrders(key = sessionStorage.getItem('growthwise_admin_key') || ''){
+  if(!key) return false;
+  try{
+    const response = await fetch('/.netlify/functions/retail-orders?business_id=dexters-hats', {
+      method:'GET',
+      headers:{'X-GrowthWise-Key':key},
+      cache:'no-store'
+    });
+    const data = await response.json().catch(()=>({}));
+    if(response.status === 401) return false;
+    if(!response.ok) throw new Error(data.error || `Purchase order request failed (HTTP ${response.status}).`);
+    growthwisePurchaseOrders = Array.isArray(data.orders) ? data.orders : [];
+    growthwiseOrderSummary = data.summary || {};
+    renderPurchaseOrders();
+    return true;
+  }catch(err){
+    console.error('GrowthWise purchase orders failed:',err);
+    document.getElementById('purchaseOrderList').innerHTML =
+      `<div class="inventory-empty">${escapeHtml(err.message || 'Purchase orders could not be loaded.')}</div>`;
+    return false;
+  }
+}
+
+function showPurchaseOrderComposer(showComposer=true){
+  const composer = document.getElementById('purchaseOrderComposer');
+  composer.classList.toggle('hidden', !showComposer);
+  if(showComposer){
+    renderPoProductSearch();
+    composer.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+}
+
+function startPurchaseOrderWithProduct(product, quantity=1){
+  show('orders');
+  showPurchaseOrderComposer(true);
+  addProductToPurchaseOrder(product, quantity);
+}
+
+function renderPoProductSearch(){
+  const root = document.getElementById('poProductSearchResults');
+  const query = (document.getElementById('poProductSearch').value || '').trim().toLowerCase();
+  if(!growthwiseInventoryProducts.length){
+    root.innerHTML = '<div class="inventory-empty">Unlock GrowthWise on Home to load Square products.</div>';
+    return;
+  }
+  const products = growthwiseInventoryProducts.filter(product=>{
+    const haystack = [product.item_name,product.variation_name,product.sku,product.upc].filter(Boolean).join(' ').toLowerCase();
+    return !query || haystack.includes(query);
+  }).slice(0,10);
+
+  root.innerHTML = products.map(product=>`<button type="button" class="po-search-item" data-po-product-id="${escapeHtml(product.variation_id)}">
+    <strong>${escapeHtml(product.item_name || 'Product')}</strong>
+    <small>${product.price ? 'const liveUnlock = document.getElementById('liveUnlock');
+const liveAdminKeyInput = document.getElementById('liveAdminKeyInput');
+const unlockLiveBtn = document.getElementById('unlockLiveBtn');
+
+function setSquareLocked(message='Enter your GrowthWise access key to view the latest inventory update.'){
+  const status = document.getElementById('squareLiveStatus');
+  const detail = document.getElementById('squareLiveDetail');
+  status.classList.add('error');
+  detail.textContent = message;
+  liveUnlock.classList.remove('hidden');
+}
+
+async function loadLiveSquareData(key = sessionStorage.getItem('growthwise_admin_key') || ''){
+  const status = document.getElementById('squareLiveStatus');
+  const detail = document.getElementById('squareLiveDetail');
+
+  if(!key){
+    setSquareLocked();
+    return false;
+  }
+
+  status.classList.remove('error');
+  detail.textContent = 'Refreshing your latest inventory…';
+
+  try{
+    const response = await fetch('/.netlify/functions/square-data', {
+      method: 'GET',
+      headers: {
+        'X-GrowthWise-Key': key
+      },
+      cache: 'no-store'
+    });
+
+    const data = await response.json().catch(()=>({}));
+
+    if(response.status === 401){
+      sessionStorage.removeItem('growthwise_admin_key');
+      setSquareLocked('Admin key was not accepted. Re-enter it to unlock live Square data.');
+      return false;
+    }
+
+    if(!response.ok){
+      throw new Error(data.error || `Square data request failed (HTTP ${response.status}).`);
+    }
+
+    sessionStorage.setItem('growthwise_admin_key', key);
+    liveAdminKeyInput.value = '';
+    liveUnlock.classList.add('hidden');
+
+    const products = data.products || [];
+    renderInventory(products, data.summary || {}, data.generated_at || null);
+    if(growthwiseSalesSnapshot) void loadRetailAiIdeas(key);
+
+    const product = [...products].sort((a,b)=>{
+      const aTime = Date.parse(a.updated_at || '') || 0;
+      const bTime = Date.parse(b.updated_at || '') || 0;
+      return bTime - aTime;
+    })[0] || products[0];
+
+    const location = data.location?.name || 'Square location';
+    const itemCount = data.summary?.item_count ?? products.length;
+    const variationCount = data.summary?.variation_count ?? products.length;
+    const totalUnits = data.summary?.total_units_in_stock ?? 0;
+
+    if(product){
+      const price = product.price ? `$${product.price}` : 'Price unavailable';
+      const qty = product.quantity ?? 0;
+      const name = product.item_name || 'Square product';
+
+      document.getElementById('homeProductName').textContent = name;
+      document.getElementById('homeProductLive').innerHTML =
+        `<span class="live-value">${price}</span> · <span class="live-value">${qty} in stock</span> · synced with Square just now`;
+
+      detail.textContent = `${data.summary?.variation_count ?? products.length} products · ${data.summary?.total_units_in_stock ?? 0} units in stock · updated just now`;
+
+      answers.weekend =
+        `<div class="tag">LIVE SQUARE DATA</div>
+         <h3>Consider featuring ${name}.</h3>
+         <p>Square currently shows <strong>${qty} in stock</strong> at <strong>${price}</strong>. GrowthWise is reading this directly from Square through the protected Netlify backend. Once sales history is connected, this recommendation can also factor in recent sell-through, timing and margin.</p>`;
+
+      window.squareStatusText =
+        `Latest inventory from ${location}: ${variationCount} product variation(s) and ${totalUnits} total unit(s) in stock.`;
+      const settingsSquareStatus = document.getElementById('settingsSquareStatus');
+      if(settingsSquareStatus) settingsSquareStatus.textContent = window.squareStatusText;
+    } else {
+      document.getElementById('homeProductName').textContent = 'Square catalog';
+      document.getElementById('homeProductLive').textContent =
+        'Connected successfully, but no catalog products were returned.';
+      detail.textContent = 'Connected — no products returned';
+      window.squareStatusText =
+        `GrowthWise connected to ${location}, but no inventory items were returned.`;
+    }
+
+    document.getElementById('squareOpportunityText').textContent =
+      `${itemCount} catalog item(s), ${variationCount} variation(s), and ${totalUnits} total unit(s) in stock are being read directly from ${location}.`;
+
+    return true;
+
+  }catch(err){
+    console.error('Live Square data load failed:', err);
+    status.classList.add('error');
+    detail.textContent = err.message || 'Live Square data unavailable';
+    document.getElementById('homeProductLive').textContent =
+      'Live Square data could not be loaded.';
+    document.getElementById('squareOpportunityText').textContent =
+      'GrowthWise could not refresh the Square catalog right now.';
+    window.squareStatusText =
+      err.message || 'GrowthWise could not refresh Square data.';
+    liveUnlock.classList.remove('hidden');
+    return false;
+  }
+}
+
+
+async function loadLiveSalesData(key = sessionStorage.getItem('growthwise_admin_key') || ''){
+  if(!key) return false;
+
+  const salesHeadline = document.getElementById('salesHeadline');
+  const salesText = document.getElementById('squareOpportunityText');
+  const salesTotal = document.getElementById('salesTotal');
+  const salesOrders = document.getElementById('salesOrders');
+  const salesAverage = document.getElementById('salesAverage');
+
+  salesHeadline.textContent = 'Checking recent sales…';
+  salesText.textContent = 'GrowthWise is combining recent sales with current inventory.';
+
+  try{
+    const response = await fetch('/.netlify/functions/square-sales?days=30', {
+      method: 'GET',
+      headers: {
+        'X-GrowthWise-Key': key
+      },
+      cache: 'no-store'
+    });
+
+    const data = await response.json().catch(()=>({}));
+
+    if(response.status === 401){
+      return false;
+    }
+
+    if(!response.ok){
+      throw new Error(data.error || `Sales request failed (HTTP ${response.status}).`);
+    }
+
+    growthwiseSalesSnapshot = data;
+    void loadRetailAiIdeas(key);
+
+    const summary = data.summary || {};
+    const orders = Number(summary.completed_order_count || 0);
+    const total = Number(summary.total_collected || 0);
+    const average = Number(summary.average_order || 0);
+    const top = (data.top_products || [])[0];
+
+    salesTotal.textContent = `$${total.toFixed(2)}`;
+    salesOrders.textContent = orders;
+    salesAverage.textContent = `$${average.toFixed(2)}`;
+
+    if(orders === 0){
+      salesHeadline.textContent = 'No recent sales yet';
+      salesText.textContent =
+        'There are no completed Square sales in this test account for the last 30 days. Inventory is still syncing normally.';
+      window.salesStatusText =
+        'No completed sales were found in the last 30 days. Inventory syncing is active, so GrowthWise is ready as soon as sales begin.';
+
+      answers.weekend =
+        `<div class="tag">INVENTORY-BASED IDEA</div>
+         <h3>Use current inventory to choose the next promotion.</h3>
+         <p>There are no recent test sales yet, so GrowthWise is using stock levels for now. Once real sales begin, recommendations will automatically factor in what is selling, average order value and current inventory.</p>`;
+      return true;
+    }
+
+    if(top){
+      const inv = growthwiseInventoryProducts.find(
+        p => p.variation_id === top.catalog_object_id
+      );
+      const qty = inv ? Number(inv.quantity || 0) : null;
+      const topName = top.item_name || 'your top-selling item';
+      const unitsSold = Number(top.quantity_sold || 0);
+      const revenue = Number(top.total_collected || 0);
+
+      if(qty !== null && qty <= 2){
+        salesHeadline.textContent = `${topName} may need attention`;
+        salesText.textContent =
+          `${unitsSold} sold in the last 30 days, with only ${qty} currently in stock. Consider restocking before promoting it harder.`;
+      }else{
+        salesHeadline.textContent = `${topName} is leading recent sales`;
+        salesText.textContent =
+          `${unitsSold} sold in the last 30 days · $${revenue.toFixed(2)} collected${qty === null ? '' : ` · ${qty} currently in stock`}.`;
+      }
+
+      answers.weekend =
+        `<div class="tag">LIVE SALES + INVENTORY</div>
+         <h3>${qty !== null && qty <= 2 ? `Protect momentum on ${escapeHtml(topName)}.` : `Consider featuring ${escapeHtml(topName)}.`}</h3>
+         <p>Square shows <strong>${unitsSold} sold</strong> in the last 30 days and <strong>$${revenue.toFixed(2)}</strong> collected${qty === null ? '' : `, with <strong>${qty} in stock</strong> now`}. GrowthWise is combining sales and inventory so the recommendation reflects current business activity.</p>`;
+    }else{
+      salesHeadline.textContent = `${orders} recent order${orders === 1 ? '' : 's'}`;
+      salesText.textContent =
+        `$${total.toFixed(2)} collected in the last 30 days with an average order of $${average.toFixed(2)}.`;
+    }
+
+    window.salesStatusText =
+      `Last 30 days: ${orders} completed order${orders === 1 ? '' : 's'}, $${total.toFixed(2)} collected, and a $${average.toFixed(2)} average order.`;
+
+    return true;
+
+  }catch(err){
+    console.error('Live Square sales load failed:', err);
+    salesHeadline.textContent = 'Sales data needs attention';
+    salesText.textContent = err.message || 'GrowthWise could not refresh recent sales right now.';
+    salesTotal.textContent = '—';
+    salesOrders.textContent = '—';
+    salesAverage.textContent = '—';
+    window.salesStatusText = err.message || 'GrowthWise could not refresh recent sales.';
+    return false;
+  }
+}
+
+// Enter key uses the same critical-path unlock function as the button.
+liveAdminKeyInput.addEventListener('keydown', e=>{
+  if(e.key === 'Enter') growthwiseUnlockSquare(e);
+});
+
+loadLiveSquareData().then(()=>{
+  const key = sessionStorage.getItem('growthwise_admin_key') || '';
+  if(key) loadLiveSalesData(key);
+});
+
+
+
+</script>
+<script type="module">
+  import { mountInstagramConnection } from "./assets/instagram-connection.mjs";
+  mountInstagramConnection({
+    root: document.querySelector("#instagram-connection"),
+    businessId: "dexters-hats",
+    getAdminKey: () => sessionStorage.getItem("growthwise_admin_key") || "",
+  });
+</script>
+</body>
+</html>
++escapeHtml(product.price) : 'No retail price'} · ${Number(product.quantity||0)} in stock${product.variation_name && product.variation_name !== 'Default' ? ' · '+escapeHtml(product.variation_name) : ''}</small>
+  </button>`).join('');
+
+  root.querySelectorAll('[data-po-product-id]').forEach(button=>{
+    button.addEventListener('click',()=>{
+      const product = growthwiseInventoryProducts.find(p=>p.variation_id === button.dataset.poProductId);
+      if(product) addProductToPurchaseOrder(product,1);
+    });
+  });
+}
+
+function addProductToPurchaseOrder(product, quantity=1){
+  const existing = growthwiseOrderDraftLines.find(line=>line.product.variation_id === product.variation_id);
+  if(existing){
+    existing.quantity += Math.max(1,Number(quantity)||1);
+  }else{
+    growthwiseOrderDraftLines.push({ product, quantity:Math.max(1,Number(quantity)||1), unitCost:'' });
+  }
+  document.getElementById('poProductSearch').value = '';
+  renderOrderDraftLines();
+  renderPoProductSearch();
+}
+
+function renderOrderDraftLines(){
+  const root = document.getElementById('poDraftLines');
+  if(!growthwiseOrderDraftLines.length){
+    root.innerHTML = '<div class="inventory-empty">Choose products above to build this order.</div>';
+  }else{
+    root.innerHTML = growthwiseOrderDraftLines.map((line,index)=>`<div class="po-draft-line">
+      <div class="po-draft-line-head">
+        <strong>${escapeHtml(line.product.item_name || 'Product')}</strong>
+        <button type="button" data-po-remove-line="${index}">Remove</button>
+      </div>
+      <small>${line.product.variation_name && line.product.variation_name !== 'Default' ? escapeHtml(line.product.variation_name)+' · ' : ''}${line.product.sku ? 'SKU '+escapeHtml(line.product.sku) : ''}</small>
+      <div class="po-draft-line-fields">
+        <label>Quantity
+          <input type="number" min="1" step="1" inputmode="numeric" data-po-line-qty="${index}" value="${line.quantity}" />
+        </label>
+        <label>Wholesale cost each
+          <input type="number" min="0" step="0.01" inputmode="decimal" data-po-line-cost="${index}" value="${escapeHtml(line.unitCost)}" placeholder="0.00" />
+        </label>
+      </div>
+    </div>`).join('');
+  }
+
+  root.querySelectorAll('[data-po-remove-line]').forEach(button=>{
+    button.addEventListener('click',()=>{
+      growthwiseOrderDraftLines.splice(Number(button.dataset.poRemoveLine),1);
+      renderOrderDraftLines();
+    });
+  });
+  root.querySelectorAll('[data-po-line-qty]').forEach(input=>{
+    input.addEventListener('input',()=>{
+      growthwiseOrderDraftLines[Number(input.dataset.poLineQty)].quantity = Math.max(1,Math.floor(Number(input.value)||1));
+      updatePoDraftTotal();
+    });
+  });
+  root.querySelectorAll('[data-po-line-cost]').forEach(input=>{
+    input.addEventListener('input',()=>{
+      growthwiseOrderDraftLines[Number(input.dataset.poLineCost)].unitCost = input.value;
+      updatePoDraftTotal();
+    });
+  });
+  updatePoDraftTotal();
+}
+
+function updatePoDraftTotal(){
+  const subtotal = growthwiseOrderDraftLines.reduce(
+    (sum,line)=>sum + ((Number(line.unitCost)||0) * (Number(line.quantity)||0)),0
+  );
+  const shipping = Number(document.getElementById('poShipping').value || 0);
+  const tax = Number(document.getElementById('poTax').value || 0);
+  document.getElementById('poDraftTotal').textContent = money(subtotal + (Number.isFinite(shipping)?shipping:0) + (Number.isFinite(tax)?tax:0));
+}
+
+async function savePurchaseOrder(){
+  const key = sessionStorage.getItem('growthwise_admin_key') || '';
+  const status = document.getElementById('purchaseOrderStatus');
+  const vendor = document.getElementById('poVendorName').value.trim();
+  if(!key){
+    openModal('Unlock GrowthWise first','Return Home and unlock GrowthWise before saving a purchase order.');
+    return;
+  }
+  if(!vendor){
+    status.className='create-status error';
+    status.textContent='Enter the wholesaler or vendor name.';
+    return;
+  }
+  if(!growthwiseOrderDraftLines.length){
+    status.className='create-status error';
+    status.textContent='Add at least one product to this order.';
+    return;
+  }
+  if(growthwiseOrderDraftLines.some(line=>line.unitCost === '' || !Number.isFinite(Number(line.unitCost)) || Number(line.unitCost) < 0)){
+    status.className='create-status error';
+    status.textContent='Enter the wholesale unit cost for every product.';
+    return;
+  }
+
+  const button = document.getElementById('savePurchaseOrderBtn');
+  button.disabled=true;
+  button.textContent='Saving…';
+  status.className='create-status loading';
+  status.textContent='Saving purchase order…';
+
+  try{
+    const response = await fetch('/.netlify/functions/retail-orders?business_id=dexters-hats',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-GrowthWise-Key':key},
+      body:JSON.stringify({
+        vendor_name:vendor,
+        vendor_contact:document.getElementById('poVendorContact').value.trim(),
+        expected_at:document.getElementById('poExpectedDate').value || null,
+        shipping:Number(document.getElementById('poShipping').value || 0),
+        tax:Number(document.getElementById('poTax').value || 0),
+        notes:document.getElementById('poNotes').value.trim(),
+        lines:growthwiseOrderDraftLines.map(line=>({
+          square_item_id:line.product.item_id,
+          square_variation_id:line.product.variation_id,
+          item_name:line.product.item_name,
+          variation_name:line.product.variation_name,
+          sku:line.product.sku,
+          upc:line.product.upc,
+          quantity_ordered:line.quantity,
+          unit_cost:Number(line.unitCost),
+          retail_price:line.product.price
+        }))
+      })
+    });
+    const data = await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error || `Could not save purchase order (HTTP ${response.status}).`);
+
+    status.className='create-status ok';
+    status.textContent=`✓ ${data.order.po_number} saved as a draft.`;
+    growthwiseOrderDraftLines=[];
+    document.getElementById('poVendorName').value='';
+    document.getElementById('poVendorContact').value='';
+    document.getElementById('poExpectedDate').value='';
+    document.getElementById('poShipping').value='';
+    document.getElementById('poTax').value='';
+    document.getElementById('poNotes').value='';
+    renderOrderDraftLines();
+    showPurchaseOrderComposer(false);
+    await loadRetailOrders(key);
+    openModal('Purchase order saved ✓',`${data.order.po_number} is ready. Mark it Sent / Ordered after the wholesaler receives the order.`);
+  }catch(err){
+    status.className='create-status error';
+    status.textContent=err.message || 'GrowthWise could not save the purchase order.';
+  }finally{
+    button.disabled=false;
+    button.textContent='Save Draft';
+  }
+}
+
+async function updatePurchaseOrderStatus(orderId,nextStatus){
+  const key=sessionStorage.getItem('growthwise_admin_key')||'';
+  if(!key) return;
+  const body={id:orderId,status:nextStatus};
+  if(nextStatus === 'shipped'){
+    body.carrier=(document.querySelector(`[data-po-carrier="${orderId}"]`)?.value||'').trim();
+    body.tracking_number=(document.querySelector(`[data-po-tracking="${orderId}"]`)?.value||'').trim();
+  }
+  try{
+    const response=await fetch('/.netlify/functions/retail-orders?business_id=dexters-hats',{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json','X-GrowthWise-Key':key},
+      body:JSON.stringify(body)
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error || 'Could not update purchase order.');
+    await loadRetailOrders(key);
+  }catch(err){
+    openModal('Order update failed',err.message || 'GrowthWise could not update this purchase order.');
+  }
+}
+
+async function receivePurchaseOrder(orderId){
+  const key=sessionStorage.getItem('growthwise_admin_key')||'';
+  if(!key) return;
+  const order=growthwisePurchaseOrders.find(item=>item.id===orderId);
+  if(!order) return;
+  if(!window.confirm(`Receive ${order.po_number} now? GrowthWise will add the ordered quantities to Square inventory and mark the order received.`)) return;
+
+  try{
+    const response=await fetch('/.netlify/functions/retail-order-receive',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-GrowthWise-Key':key},
+      body:JSON.stringify({business_id:'dexters-hats',order_id:orderId})
+    });
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error || 'Could not receive this order.');
+    await Promise.all([loadRetailOrders(key),loadLiveSquareData(key)]);
+    openModal('Order received ✓',`${order.po_number} was marked received and its linked quantities were added to Square inventory.`);
+  }catch(err){
+    openModal('Could not receive order',err.message || 'GrowthWise left the order open so inventory is not double-counted.');
+  }
+}
+
+document.getElementById('newPurchaseOrderBtn').addEventListener('click',()=>showPurchaseOrderComposer(true));
+document.getElementById('cancelPurchaseOrderBtn').addEventListener('click',()=>showPurchaseOrderComposer(false));
+document.getElementById('savePurchaseOrderBtn').addEventListener('click',savePurchaseOrder);
+document.getElementById('poProductSearch').addEventListener('input',renderPoProductSearch);
+document.getElementById('poShipping').addEventListener('input',updatePoDraftTotal);
+document.getElementById('poTax').addEventListener('input',updatePoDraftTotal);
+document.getElementById('accountingComingSoonBtn').addEventListener('click',()=>openModal(
+  'Accounting connector',
+  'GrowthWise is ready to track sales, vendor orders and wholesale costs. The next step is connecting the bookkeeping platform Dexter actually uses so reviewed transactions can sync instead of being entered twice.'
+));
 
 const liveUnlock = document.getElementById('liveUnlock');
 const liveAdminKeyInput = document.getElementById('liveAdminKeyInput');
