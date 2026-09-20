@@ -35,3 +35,12 @@ test("Retail Lead UI exposes shadow decisions and pilot counts", () => {
   assert.match(ui, /retailLeadAckCount/);
   assert.match(ui, /retailLeadHumanCount/);
 });
+
+test("Lead UI unlocks in place and refreshes verified Square data", () => {
+  assert.match(ui, /unlockLeads/);
+  assert.match(ui, /retailLeadUnlockKey/);
+  assert.match(ui, /square-data/);
+  assert.match(ui, /growthwise:admin-key-ready/);
+  assert.match(ui, /growthwise:inventory-updated/);
+  assert.match(ui, /example is still here/);
+});
