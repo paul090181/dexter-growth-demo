@@ -1218,6 +1218,8 @@ function setInstagramQuickMode(enabled){
     resetPromotionPublishState();
     if(publishBtn) publishBtn.textContent = 'Post to Instagram';
   }else{
+    if(facebook) facebook.checked = true;
+    if(instagram) instagram.checked = true;
     if(title) title.textContent = 'Promote Products';
     if(eyebrow) eyebrow.textContent = 'PROMOTIONS';
     if(photoHeading) photoHeading.textContent = 'Add the image you want customers to see';
@@ -1251,6 +1253,9 @@ async function unlockInstagramQuickMode(){
     window.dispatchEvent(new Event('growthwise:admin-key-ready'));
     if(input) input.value = '';
     setInstagramQuickUnlockVisibility();
+    if(instagramQuickMode && selectedPromotionFile){
+      void draftInstagramFromPhoto(selectedPromotionFile);
+    }
     return true;
   }catch(err){
     openModal('Could not unlock GrowthWise', err.message || 'Please check the access key and try again.');
