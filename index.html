@@ -144,6 +144,10 @@
 .ai-opportunity-panel{margin:14px 0;border:1px solid #e7dbc4;background:#fffaf0;border-radius:18px;padding:14px}
 .ai-opportunity-head{display:flex;justify-content:space-between;gap:12px;align-items:center}.ai-opportunity-head strong{display:block;margin-top:3px;color:#17222e}.ai-opportunity-head>span{font-size:24px}
 .ai-opportunity-item{background:#fff;border:1px solid #e6e8ea;border-radius:14px;padding:12px;margin-top:10px}.ai-opportunity-item h3{margin:4px 0 5px}.ai-opportunity-item p{margin:0;color:#596673;line-height:1.45}.ai-opportunity-item button{margin-top:10px;border:0;border-radius:11px;padding:10px 12px;background:#0e1b2b;color:#fff;font-weight:850}
+
+.task-launcher{margin:0 0 16px}.task-launcher-title{margin:0 4px 8px}.task-launcher-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.task-launcher-grid button{border:1px solid #e2e6e9;background:#fff;border-radius:17px;padding:14px;text-align:left;min-height:132px;display:flex;flex-direction:column;align-items:flex-start;gap:4px;box-shadow:0 6px 18px rgba(14,27,43,.035)}.task-launcher-grid button:active{transform:translateY(1px)}.task-launcher-grid strong{font-size:16px;color:#17222e;line-height:1.18}.task-launcher-grid small{color:#697580;line-height:1.35}.task-icon{width:34px;height:34px;border-radius:11px;background:#0e1b2b;color:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:900;margin-bottom:4px}
+.recent-photo-library{margin-top:12px;border:1px solid #dde3e7;border-radius:15px;padding:12px;background:#f8fafb}.recent-photo-library.hidden{display:none}.recent-photo-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.recent-photo-head strong,.recent-photo-head small{display:block}.recent-photo-head small{font-size:11px;color:#687580;margin-top:2px}.recent-photo-head button{border:0;background:transparent;color:#8a672b;font-weight:850}.recent-photo-grid{display:flex;gap:8px;overflow-x:auto;padding:10px 1px 4px;scrollbar-width:thin}.recent-photo-item{flex:0 0 78px;border:2px solid transparent;border-radius:12px;padding:0;background:#fff;overflow:hidden;position:relative}.recent-photo-item img{display:block;width:78px;height:78px;object-fit:cover}.recent-photo-item span{position:absolute;left:4px;bottom:4px;background:rgba(13,25,37,.82);color:#fff;border-radius:999px;padding:3px 5px;font-size:9px;font-weight:800}.recent-photo-note{font-size:11px!important;color:#6c7781!important;margin:8px 0 0!important;line-height:1.4!important}
+@media(max-width:360px){.task-launcher-grid{grid-template-columns:1fr}.task-launcher-grid button{min-height:auto}}
 </style>
 
 
@@ -169,6 +173,34 @@
           <div class="eyebrow">GOOD MORNING</div>
           <h1>Dexter, GrowthWise is finding your best opportunities today.</h1>
           <p>Live inventory, recent sales and AI suggestions turn into simple actions you can review and use.</p>
+        </div>
+
+        <div class="task-launcher" aria-label="Main GrowthWise actions">
+          <div class="task-launcher-title">
+            <div class="tag">WHAT DO YOU WANT TO DO?</div>
+          </div>
+          <div class="task-launcher-grid">
+            <button type="button" data-nav="product">
+              <span class="task-icon">＋</span>
+              <strong>Add New Products</strong>
+              <small>Take photos, read tags &amp; add to Square</small>
+            </button>
+            <button type="button" data-nav="promotion">
+              <span class="task-icon">↗</span>
+              <strong>Promote Products</strong>
+              <small>Create Facebook &amp; Instagram posts</small>
+            </button>
+            <button type="button" data-nav="results">
+              <span class="task-icon">▥</span>
+              <strong>View Inventory</strong>
+              <small>See current Square products &amp; stock</small>
+            </button>
+            <button type="button" data-nav="chat">
+              <span class="task-icon">✦</span>
+              <strong>Ask GrowthWise</strong>
+              <small>Get ideas and business help</small>
+            </button>
+          </div>
         </div>
 
         <div class="square-live" id="squareLiveStatus">
@@ -346,8 +378,8 @@
         <div class="section-head">
           <button class="back" data-nav="home">‹</button>
           <div>
-            <div class="eyebrow">ONE REVIEW → SELECT CHANNELS → PUBLISH</div>
-            <h2>Review Promotion</h2>
+            <div class="eyebrow">PROMOTIONS</div>
+            <h2>Promote Products</h2>
           </div>
         </div>
 
@@ -443,8 +475,8 @@
         <div class="section-head">
           <button class="back" data-nav="home">‹</button>
           <div>
-            <div class="eyebrow">SCAN → REVIEW → PUBLISH</div>
-            <h2>Add a Product</h2>
+            <div class="eyebrow">PRODUCTS</div>
+            <h2>Add New Products</h2>
           </div>
         </div>
 
@@ -469,6 +501,18 @@
           <div class="intake-actions">
             <label class="intake-primary" for="productIntakeCameraInput">📷 Take a photo</label>
             <label class="intake-secondary" for="productIntakeGalleryInput">▧ Choose photo(s)</label>
+          </div>
+
+          <div class="recent-photo-library hidden" id="recentProductPhotoLibrary">
+            <div class="recent-photo-head">
+              <div>
+                <strong>Recent Product Photos</strong>
+                <small>Automatically saved on this device</small>
+              </div>
+              <button type="button" id="clearRecentProductPhotosBtn">Clear</button>
+            </div>
+            <div class="recent-photo-grid" id="recentProductPhotoGrid"></div>
+            <p class="recent-photo-note">Tap a photo to reuse it in this product. These stay in GrowthWise on this device unless browser/site data is cleared.</p>
           </div>
 
           <div class="product-packet hidden" id="productIntakePacket">
@@ -663,8 +707,8 @@
         <div class="section-head">
           <button class="back" data-nav="home">‹</button>
           <div>
-            <div class="eyebrow">BUSINESS-SPECIFIC AI</div>
-            <h2>Ask My Business AI</h2>
+            <div class="eyebrow">GROWTHWISE AI</div>
+            <h2>Ask GrowthWise</h2>
           </div>
         </div>
 
@@ -735,8 +779,8 @@
 
     <nav class="bottom-nav">
       <button class="nav active" data-nav="home"><span>⌂</span><small>Home</small></button>
-      <button class="nav" data-nav="product"><span>＋</span><small>New Product</small></button>
-      <button class="nav" data-nav="chat"><span>✦</span><small>AI Chat</small></button>
+      <button class="nav" data-nav="product"><span>＋</span><small>Add Products</small></button>
+      <button class="nav" data-nav="chat"><span>✦</span><small>Ask AI</small></button>
       <button class="nav" data-nav="results"><span>▥</span><small>Inventory</small></button>
     </nav>
   </div>
