@@ -1,0 +1,32 @@
+name: GrowthWise social tests
+
+on:
+  push:
+    branches:
+      - platform-v1
+      - "feat/**"
+      - "codex/**"
+  pull_request:
+    branches:
+      - platform-v1
+
+permissions:
+  contents: read
+
+jobs:
+  instagram:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Use Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.12.0"
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund --package-lock=false
+      - name: Run Instagram tests
+        run: npm run test:instagram
+      - name: Run publishing regression tests
+        run: npm run test:publishing
