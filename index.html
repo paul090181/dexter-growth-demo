@@ -948,8 +948,6 @@ function setPromotionPublishStatus(kind, message){
   status.textContent = message;
 }
 
-document.getElementById('promotionCaptionEditor').addEventListener('input', resetPromotionPublishState);
-
 document.getElementById('previewPromotionBtn').addEventListener('click', async ()=>{
   const caption = document.getElementById('promotionCaptionEditor').value.trim();
   if(!caption){
