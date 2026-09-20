@@ -1619,10 +1619,54 @@ async function publishNewProductToInstagram(form, message){
   return data;
 }
 
+let newProductPublishState = {
+  key: null,
+  created: null,
+  facebook: false,
+  instagram: false,
+  instagramAmbiguous: false,
+};
+
+function newProductAttemptKey(form){
+  return JSON.stringify({
+    brand: form.brand,
+    productName: form.productName,
+    price: form.priceText,
+    quantity: form.quantityText,
+    description: form.description,
+    sku: form.sku,
+    upc: form.upc,
+    color: form.color,
+    size: form.size,
+    material: form.material,
+  });
+}
+
+function stateForNewProduct(form){
+  const key = newProductAttemptKey(form);
+  if(newProductPublishState.key !== key){
+    newProductPublishState = {
+      key,
+      created: null,
+      facebook: false,
+      instagram: false,
+      instagramAmbiguous: false,
+    };
+  }
+  return newProductPublishState;
+}
+
 saveSquareBtn.addEventListener('click', async ()=>{
   const form = getNewProductForm();
   const error = validateNewProductForm(form, false);
   if(error){ setCreateStatus('error', error); return; }
+  const state = stateForNewProduct(form);
+
+  if(state.created){
+    setCreateStatus('ok', `✓ ${state.created.name || form.productName} is already saved in Square in this session.`);
+    openModal('Already saved ✓', 'GrowthWise will not create this same reviewed product in Square twice in the current workflow.');
+    return;
+  }
 
   saveSquareBtn.disabled = true;
   saveSquareBtn.textContent = 'Creating in Square…';
@@ -1630,8 +1674,9 @@ saveSquareBtn.addEventListener('click', async ()=>{
 
   try{
     const created = await createProductInSquare(form);
+    state.created = created;
     void sendDexterPublishingShadow(form, created);
-    setCreateStatus('ok', `✓ ${created.name || form.productName} created in Square at $${created.price || form.price.toFixed(2)} with ${created.quantity ?? form.quantity} in stock.`);
+    setCreateStatus('ok', `✓ ${created.name || form.productName} created in Square at ${created.price || form.price.toFixed(2)} with ${created.quantity ?? form.quantity} in stock.`);
     document.getElementById('websiteTitle').textContent = created.name || [form.brand, form.productName].filter(Boolean).join(' ');
     sessionStorage.setItem('growthwise_admin_key', form.adminKey);
     form.adminKeyInput.value = '';
@@ -1653,6 +1698,7 @@ addAndPromoteBtn.addEventListener('click', async ()=>{
   const error = validateNewProductForm(form, true);
   if(error){ setCreateStatus('error', error); return; }
 
+  const state = stateForNewProduct(form);
   const useFacebook = document.getElementById('newProductFacebookChannel').checked;
   const useInstagram = document.getElementById('newProductInstagramChannel').checked;
   let message = document.getElementById('newProductCaption').value.trim();
@@ -1665,52 +1711,65 @@ addAndPromoteBtn.addEventListener('click', async ()=>{
     setCreateStatus('error', 'Instagram copy must be 2,200 characters or fewer.');
     return;
   }
+  if(useInstagram && state.instagramAmbiguous && !state.instagram){
+    openModal('Check Instagram before retrying', 'The previous final Instagram publish was uncertain. Check the account before retrying so GrowthWise does not create a duplicate post.');
+    return;
+  }
 
-  const channels = [
-    'Square',
-    useFacebook ? 'Facebook' : '',
-    useInstagram ? 'Instagram' : ''
+  const remaining = [
+    useFacebook && !state.facebook ? 'Facebook' : '',
+    useInstagram && !state.instagram ? 'Instagram' : ''
   ].filter(Boolean);
   const name = [form.brand, form.productName].filter(Boolean).join(' ') || form.productName;
   const photoLabel = newProductPromotionImageKind === 'cleaned' ? 'cleaned product photo' : 'selected product photo';
+
+  if(state.created && !remaining.length){
+    openModal('Already complete ✓', 'This product is already saved in Square and has already been sent to the selected channels in this session.');
+    return;
+  }
+
   const confirmed = window.confirm(
-    `Create ${name} in Square and publish the reviewed ${photoLabel} + copy to ${channels.slice(1).join(' and ') || 'no social channels'}?`
+    state.created
+      ? `Square is already saved. Retry the reviewed ${photoLabel} + copy only to ${remaining.join(' and ')}?`
+      : `Create ${name} in Square${remaining.length ? ` and publish the reviewed ${photoLabel} + copy to ${remaining.join(' and ')}` : ''}?`
   );
   if(!confirmed) return;
 
   addAndPromoteBtn.disabled = true;
   saveSquareBtn.disabled = true;
-  addAndPromoteBtn.textContent = 'Creating…';
-  setCreateStatus('loading', 'Creating the product in Square…');
-
-  let created;
-  const published = [];
   const failures = [];
-  try{
-    created = await createProductInSquare(form);
-    void sendDexterPublishingShadow(form, created);
-    sessionStorage.setItem('growthwise_admin_key', form.adminKey);
-    published.push('Square');
 
-    if(useFacebook){
+  try{
+    if(!state.created){
+      addAndPromoteBtn.textContent = 'Creating in Square…';
+      setCreateStatus('loading', 'Creating the product in Square…');
+      state.created = await createProductInSquare(form);
+      void sendDexterPublishingShadow(form, state.created);
+      sessionStorage.setItem('growthwise_admin_key', form.adminKey);
+    }
+
+    const created = state.created;
+
+    if(useFacebook && !state.facebook){
       addAndPromoteBtn.textContent = 'Posting to Facebook…';
-      setCreateStatus('loading', `✓ Square saved. Publishing the reviewed post to Facebook…`);
+      setCreateStatus('loading', '✓ Square saved. Publishing the reviewed post to Facebook…');
       try{
-        const facebook = await publishNewProductToFacebook(form, message);
-        published.push(facebook.page_name || 'Facebook');
+        await publishNewProductToFacebook(form, message);
+        state.facebook = true;
       }catch(err){
         failures.push(`Facebook: ${err.message || 'publish failed'}`);
       }
     }
 
-    if(useInstagram){
+    if(useInstagram && !state.instagram){
       addAndPromoteBtn.textContent = 'Posting to Instagram…';
-      setCreateStatus('loading', `✓ Square saved${useFacebook ? ' · Facebook step complete' : ''}. Publishing the reviewed post to Instagram…`);
+      setCreateStatus('loading', `✓ Square saved${state.facebook ? ' · Facebook published' : ''}. Publishing the reviewed post to Instagram…`);
       try{
-        const instagram = await publishNewProductToInstagram(form, message);
-        published.push(`Instagram @${instagram.account?.username || 'connected account'}`);
+        await publishNewProductToInstagram(form, message);
+        state.instagram = true;
       }catch(err){
         if(err.code === 'INSTAGRAM_PUBLISH_AMBIGUOUS'){
+          state.instagramAmbiguous = true;
           failures.push('Instagram: final status was uncertain — check Instagram before retrying.');
         }else if(err.code === 'PUBLISHING_PERMISSION_REQUIRED'){
           failures.push('Instagram: reconnect Instagram in Connected Apps to approve publishing.');
@@ -1720,36 +1779,39 @@ addAndPromoteBtn.addEventListener('click', async ()=>{
       }
     }
 
+    const done = [
+      'Square',
+      state.facebook ? 'Facebook' : '',
+      state.instagram ? 'Instagram' : ''
+    ].filter(Boolean);
+
     document.getElementById('websiteTitle').textContent = created.name || name;
     document.getElementById('generated').classList.remove('hidden');
     await loadLiveSquareData(form.adminKey);
     await loadLiveSalesData(form.adminKey);
 
     if(failures.length){
-      setCreateStatus('error', `✓ Saved to ${published.join(', ')}. Needs attention: ${failures.join(' · ')}`);
+      setCreateStatus('error', `✓ Completed: ${done.join(', ')}. Needs attention: ${failures.join(' · ')}`);
+      addAndPromoteBtn.textContent = state.instagramAmbiguous ? 'Check Instagram first' : 'Retry failed channel(s)';
       openModal(
         'Product saved — one channel needs attention',
-        `GrowthWise completed: ${published.join(', ')}. ${failures.join(' ')} Do not recreate the Square item.`
+        `GrowthWise completed: ${done.join(', ')}. ${failures.join(' ')} Retrying will not recreate the Square item or resend channels that already succeeded.`
       );
     }else{
-      setCreateStatus('ok', `✓ Done: ${published.join(' · ')}.`);
+      setCreateStatus('ok', `✓ Done: ${done.join(' · ')}.`);
+      addAndPromoteBtn.textContent = 'Published ✓';
       openModal(
         'Product created & published ✓',
-        `${created.name || name} was added to Square and the reviewed post was sent to ${published.slice(1).join(' and ') || 'your selected channels'}.`
+        `${created.name || name} was added to Square${done.length > 1 ? ` and published to ${done.slice(1).join(' and ')}` : ''}.`
       );
     }
   }catch(err){
-    if(created){
-      setCreateStatus('error', `Square succeeded, but publishing needs attention: ${err.message || 'Unknown error.'}`);
-      openModal('Square saved — publishing needs attention', 'The product already exists in Square. Fix the channel issue before retrying social publishing.');
-    }else{
-      setCreateStatus('error', err.message || 'GrowthWise could not create and publish the product.');
-    }
+    setCreateStatus('error', err.message || 'GrowthWise could not create and publish the product.');
   }finally{
     form.adminKeyInput.value = '';
     addAndPromoteBtn.disabled = false;
     saveSquareBtn.disabled = false;
-    addAndPromoteBtn.textContent = 'Create & Publish';
+    if(!state.created) addAndPromoteBtn.textContent = 'Create & Publish';
   }
 });
 
