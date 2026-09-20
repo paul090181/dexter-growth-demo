@@ -1093,6 +1093,12 @@ function show(id){
 document.querySelectorAll('[data-nav]').forEach(el=>{
   el.addEventListener('click',()=>show(el.dataset.nav));
 });
+document.querySelectorAll('[data-instagram-quick]').forEach(el=>{
+  el.addEventListener('click',()=>setInstagramQuickMode(true));
+});
+document.querySelectorAll('[data-full-promotion]').forEach(el=>{
+  el.addEventListener('click',()=>setInstagramQuickMode(false));
+});
 
 const promotionTemplates = {
   spotlight: {
@@ -1159,6 +1165,147 @@ let selectedPromotionFile = null;
 let selectedPromotionPreviewUrl = '';
 let promotionPublishedChannels = new Set();
 let promotionAmbiguousChannels = new Set();
+let instagramQuickMode = false;
+
+function setInstagramQuickUnlockVisibility(){
+  const unlock = document.getElementById('instagramQuickUnlock');
+  if(!unlock) return;
+  unlock.classList.toggle('hidden', Boolean(sessionStorage.getItem('growthwise_admin_key')));
+}
+
+function setInstagramQuickMode(enabled){
+  instagramQuickMode = Boolean(enabled);
+  const intro = document.getElementById('instagramQuickIntro');
+  const picker = document.getElementById('promotionProductPicker');
+  const toggle = document.getElementById('promotionTypeToggle');
+  const strategy = document.getElementById('promotionStrategyCard');
+  const why = document.getElementById('promotionWhyCard');
+  const channelPicker = document.getElementById('promotionChannelPicker');
+  const copyOffer = document.getElementById('copyOfferPromo');
+  const title = document.getElementById('promotionScreenTitle');
+  const eyebrow = document.getElementById('promotionEyebrow');
+  const photoHeading = document.getElementById('promotionPhotoHeading');
+  const captionLabel = document.getElementById('promotionCaptionLabel');
+  const facebook = document.getElementById('promotionFacebookChannel');
+  const instagram = document.getElementById('promotionInstagramChannel');
+  const publishBtn = document.getElementById('publishPromotionBtn');
+
+  intro?.classList.toggle('hidden', !instagramQuickMode);
+  picker?.classList.toggle('hidden', instagramQuickMode);
+  toggle?.classList.toggle('hidden', instagramQuickMode);
+  strategy?.classList.toggle('hidden', instagramQuickMode);
+  why?.classList.toggle('hidden', instagramQuickMode);
+  channelPicker?.classList.toggle('hidden', instagramQuickMode);
+  copyOffer?.classList.toggle('hidden', instagramQuickMode);
+
+  if(instagramQuickMode){
+    show('promotion');
+    if(title) title.textContent = 'Instagram Post';
+    if(eyebrow) eyebrow.textContent = 'INSTAGRAM';
+    if(photoHeading) photoHeading.textContent = 'Take or choose a hat photo';
+    if(captionLabel) captionLabel.textContent = 'Instagram caption — review before posting';
+    if(facebook) facebook.checked = false;
+    if(instagram) instagram.checked = true;
+    if(publishBtn) publishBtn.textContent = 'Post to Instagram';
+    selectedExistingPromotionProduct = null;
+    document.getElementById('promotionCaptionEditor').value = '';
+    const draftStatus = document.getElementById('instagramDraftStatus');
+    if(draftStatus){
+      draftStatus.className = 'instagram-draft-status hidden';
+      draftStatus.textContent = '';
+    }
+    setInstagramQuickUnlockVisibility();
+    resetPromotionPublishState();
+    if(publishBtn) publishBtn.textContent = 'Post to Instagram';
+  }else{
+    if(title) title.textContent = 'Promote Products';
+    if(eyebrow) eyebrow.textContent = 'PROMOTIONS';
+    if(photoHeading) photoHeading.textContent = 'Add the image you want customers to see';
+    if(captionLabel) captionLabel.textContent = 'Post copy';
+    if(channelPicker) channelPicker.classList.remove('hidden');
+    if(copyOffer) copyOffer.classList.remove('hidden');
+    if(publishBtn) publishBtn.textContent = 'Publish Now';
+    renderPromotion(activePromotionDay || 'spotlight');
+  }
+}
+
+async function unlockInstagramQuickMode(){
+  const input = document.getElementById('instagramQuickKey');
+  const button = document.getElementById('instagramQuickUnlockBtn');
+  const supplied = (input?.value || '').trim();
+  if(!supplied){
+    input?.focus();
+    return false;
+  }
+  if(button){ button.disabled = true; button.textContent = 'Checking…'; }
+  try{
+    const response = await fetch('/.netlify/functions/instagram-connection?business_id=dexters-hats', {
+      method:'GET',
+      headers:{'X-GrowthWise-Key':supplied},
+      cache:'no-store'
+    });
+    const data = await response.json().catch(()=>({}));
+    if(response.status === 401) throw new Error('GrowthWise access key was not accepted.');
+    if(!response.ok) throw new Error(data.error || 'GrowthWise could not verify Instagram.');
+    sessionStorage.setItem('growthwise_admin_key', supplied);
+    window.dispatchEvent(new Event('growthwise:admin-key-ready'));
+    if(input) input.value = '';
+    setInstagramQuickUnlockVisibility();
+    return true;
+  }catch(err){
+    openModal('Could not unlock GrowthWise', err.message || 'Please check the access key and try again.');
+    return false;
+  }finally{
+    if(button){ button.disabled = false; button.textContent = 'Unlock'; }
+  }
+}
+
+async function draftInstagramFromPhoto(file){
+  if(!instagramQuickMode || !file) return;
+  const status = document.getElementById('instagramDraftStatus');
+  const adminKey = sessionStorage.getItem('growthwise_admin_key') || '';
+  if(!adminKey){
+    setInstagramQuickUnlockVisibility();
+    if(status){
+      status.className = 'instagram-draft-status';
+      status.textContent = 'Photo saved. Unlock GrowthWise above and it will write the Instagram caption.';
+    }
+    return;
+  }
+
+  if(status){
+    status.className = 'instagram-draft-status';
+    status.textContent = 'GrowthWise is studying the photo and writing the Instagram caption…';
+  }
+
+  try{
+    const imageDataUrl = await optimizePhotoForUpload(file);
+    const response = await fetch('/.netlify/functions/instagram-photo-draft', {
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'X-GrowthWise-Key':adminKey
+      },
+      body:JSON.stringify({ image_data_url:imageDataUrl })
+    });
+    const data = await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error || `Instagram draft failed (HTTP ${response.status}).`);
+    document.getElementById('promotionCaptionEditor').value = data.caption || '';
+    if(status){
+      status.className = 'instagram-draft-status ok';
+      status.textContent = data.uncertainty_note
+        ? `✓ Caption ready. Review it once. Note: ${data.uncertainty_note}`
+        : '✓ Instagram caption ready. Review it once, then post.';
+    }
+    resetPromotionPublishState();
+    document.getElementById('publishPromotionBtn').textContent = 'Post to Instagram';
+  }catch(err){
+    if(status){
+      status.className = 'instagram-draft-status error';
+      status.textContent = err.message || 'GrowthWise could not write the Instagram caption.';
+    }
+  }
+}
 
 function resetPromotionPublishState(){
   promotionPublishedChannels = new Set();
@@ -1171,7 +1318,7 @@ function resetPromotionPublishState(){
   const btn = document.getElementById('publishPromotionBtn');
   if(btn){
     btn.disabled = false;
-    btn.textContent = 'Publish Now';
+    btn.textContent = instagramQuickMode ? 'Post to Instagram' : 'Publish Now';
   }
 }
 
@@ -1221,6 +1368,10 @@ document.getElementById('copyPromotionCaption').addEventListener('click',()=>{
 document.getElementById('copyOfferPromo').addEventListener('click',()=>{
   copyPromotionText(promotionTemplates[activePromotionDay]?.offerOnly || '', 'Offer wording copied to your clipboard.');
 });
+document.getElementById('instagramQuickUnlockBtn').addEventListener('click', unlockInstagramQuickMode);
+document.getElementById('openFullPromotionToolsBtn').addEventListener('click',()=>{
+  setInstagramQuickMode(false);
+});
 
 const promoPhotoInput = document.getElementById('promoPhotoInput');
 const promoCameraInput = document.getElementById('promoCameraInput');
@@ -1236,8 +1387,11 @@ function handlePromotionPhoto(file){
   selectedPromotionPreviewUrl = URL.createObjectURL(file);
   promoPhotoPreview.src = selectedPromotionPreviewUrl;
   promoPhotoPreviewWrap.classList.add('show');
-  promoPhotoStatus.textContent = 'Photo selected. You can use it as-is or prepare a clean background.';
+  promoPhotoStatus.textContent = instagramQuickMode
+    ? 'Photo selected. GrowthWise will draft the Instagram caption next.'
+    : 'Photo selected. You can use it as-is or prepare a clean background.';
   resetPromotionPublishState();
+  if(instagramQuickMode) void draftInstagramFromPhoto(file);
 }
 
 promoPhotoInput.addEventListener('change', ()=>{
@@ -1480,7 +1634,7 @@ document.getElementById('publishPromotionBtn').addEventListener('click', async (
     }
   }finally{
     btn.disabled = false;
-    btn.textContent = 'Publish Now';
+    btn.textContent = instagramQuickMode ? 'Post to Instagram' : 'Publish Now';
   }
 });
 
