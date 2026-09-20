@@ -55,6 +55,9 @@ export default async (request) => {
   if (!openaiKey) return json(500, { error: "GrowthWise AI is not configured." });
   let body; try { body = await request.json(); } catch { return json(400, { error: "Invalid request." }); }
 
+  const requestedAutomationMode = clean(body.automation_mode, 40) || "shadow";
+  // Live delivery is intentionally disabled until a supported messaging channel is connected.
+  const automationMode = requestedAutomationMode === "draft_only" ? "draft_only" : "shadow";
   const source = clean(body.source, 120) || "Customer message";
   const customerName = clean(body.customer_name, 120);
   const customerContact = clean(body.customer_contact, 180);
@@ -129,10 +132,36 @@ export default async (request) => {
     intent="shipping"; risk="medium"; decision="auto_reply_then_review"; reply="Thanks for asking. I can have Dexter confirm whether shipping is available for this item and what the options would be."; reason="No verified shipping policy was supplied."; followUp="Dexter confirms shipping availability and cost before promising anything.";
   }
 
+  const automationClass =
+    decision === "auto_reply" ? "safe_auto" :
+    decision === "auto_reply_then_review" ? "safe_ack_then_review" :
+    "human_only";
+  const wouldAutoSend = automationMode === "shadow" && decision !== "review_required";
+  const deliveryAction =
+    automationMode === "draft_only" ? "manual_send" :
+    decision === "auto_reply" ? "would_auto_reply" :
+    decision === "auto_reply_then_review" ? "would_auto_ack_then_review" :
+    "human_review_only";
+  const automationReason =
+    automationMode === "draft_only" ? "Draft-only mode is enabled." :
+    decision === "auto_reply" ? "Shadow Mode judged this reply low-risk and grounded enough for future automatic sending." :
+    decision === "auto_reply_then_review" ? "Shadow Mode would send only the safe acknowledgement, then route the decision or verification to Dexter." :
+    "GrowthWise judged this message unsuitable for automatic sending.";
+
   const id = crypto.randomUUID();
   await db.sql`INSERT INTO retail_customer_leads
-    (id,business_id,source,customer_name,customer_contact,message,square_item_id,square_variation_id,product_name,intent,risk_level,decision,suggested_reply,follow_up_action,status)
-    VALUES (${id},${businessId},${source},${customerName || null},${customerContact || null},${message},${product?.item_id || null},${product?.variation_id || null},${product?.name || null},${intent},${risk},${decision},${reply},${followUp},'new')`;
+    (id,business_id,source,customer_name,customer_contact,message,square_item_id,square_variation_id,product_name,intent,risk_level,decision,suggested_reply,follow_up_action,status,
+     automation_mode,automation_class,would_auto_send,delivery_action,automation_reason)
+    VALUES (${id},${businessId},${source},${customerName || null},${customerContact || null},${message},${product?.item_id || null},${product?.variation_id || null},${product?.name || null},${intent},${risk},${decision},${reply},${followUp},'new',
+     ${automationMode},${automationClass},${wouldAutoSend},${deliveryAction},${automationReason})`;
 
-  return json(200, { ok: true, id, model, intent, risk_level: risk, decision, reply, reason, follow_up_action: followUp });
+  return json(200, {
+    ok: true, id, model, intent, risk_level: risk, decision, reply, reason, follow_up_action: followUp,
+    automation_mode: automationMode,
+    automation_class: automationClass,
+    would_auto_send: wouldAutoSend,
+    delivery_action: deliveryAction,
+    automation_reason: automationReason,
+    live_smart_locked: true
+  });
 };
