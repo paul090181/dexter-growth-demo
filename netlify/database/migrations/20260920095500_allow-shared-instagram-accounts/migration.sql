@@ -1,0 +1,2 @@
+ALTER TABLE instagram_credentials
+  DROP CONSTRAINT IF EXISTS instagram_credentials_account_binding_key_key;
