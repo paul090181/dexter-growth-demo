@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 
 import {
   INSTAGRAM_AUTHORIZATION_ENDPOINT,
+  INSTAGRAM_AUTHORIZATION_SCOPE,
+  INSTAGRAM_CONTENT_PUBLISH_SCOPE,
   INSTAGRAM_IDENTITY_SCOPE,
   InstagramProviderError,
   buildAuthorizationUrl,
@@ -29,18 +31,20 @@ test("client registry accepts configured GrowthWise and Dexter tenants only", ()
   assert.throws(() => getInstagramClient("__proto__"), /not configured/i);
 });
 
-test("authorization URL uses the exact callback minimum scope and opaque state", () => {
+test("authorization URL uses the exact callback identity and publishing scopes with opaque state", () => {
   const url = new URL(buildAuthorizationUrl({ appId: "123", callbackUri: CALLBACK, state: "v1.opaque.tag" }));
   assert.equal(url.origin + url.pathname, INSTAGRAM_AUTHORIZATION_ENDPOINT);
   assert.deepEqual([...url.searchParams.keys()].sort(), ["client_id", "redirect_uri", "response_type", "scope", "state"]);
   assert.equal(url.searchParams.get("redirect_uri"), CALLBACK);
-  assert.equal(url.searchParams.get("scope"), INSTAGRAM_IDENTITY_SCOPE);
+  assert.equal(url.searchParams.get("scope"), INSTAGRAM_AUTHORIZATION_SCOPE);
+  assert.equal(INSTAGRAM_AUTHORIZATION_SCOPE.split(",").includes(INSTAGRAM_IDENTITY_SCOPE), true);
+  assert.equal(INSTAGRAM_AUTHORIZATION_SCOPE.split(",").includes(INSTAGRAM_CONTENT_PUBLISH_SCOPE), true);
   assert.equal(url.searchParams.get("state"), "v1.opaque.tag");
 });
 
-test("authorization URL has no business claim arbitrary return or publishing scope", () => {
+test("authorization URL has no business claim arbitrary return or unrelated scopes", () => {
   const serialized = buildAuthorizationUrl({ appId: "123", callbackUri: CALLBACK, state: "v1.opaque.tag" });
-  assert.doesNotMatch(serialized, /business_id|return_to|code_challenge|content_publish|media/);
+  assert.doesNotMatch(serialized, /business_id|return_to|code_challenge|manage_messages|manage_comments/);
 });
 
 test("client registry assigns fixed allowlisted return destinations to GrowthWise and Dexter", () => {
