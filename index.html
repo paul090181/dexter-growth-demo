@@ -259,6 +259,21 @@
 .channel-picker label{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .channel-picker label small{margin-left:auto;color:#75818a;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
 .channel-picker label.channel-unavailable{opacity:.55}
+
+.unified-inbox-card{background:linear-gradient(180deg,#fff,#f7fafb)}
+.lead-source-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px}
+.lead-source-tile{border:1px solid #dfe5e8;border-radius:12px;background:#fff;padding:11px}
+.lead-source-tile strong,.lead-source-tile small{display:block}.lead-source-tile strong{font-size:12px;color:#263541}.lead-source-tile small{font-size:10px;color:#6d7982;line-height:1.35;margin-top:3px}
+.lead-source-tile.connected{border-color:#cde1d1;background:#f2faf4}.lead-source-tile.connected small{color:#356a42}
+.lead-source-tile.needs-attention{border-color:#ead8b9;background:#fff9ed}
+.lead-source-filters{display:flex;gap:6px;overflow-x:auto;margin-top:12px;padding-bottom:2px;scrollbar-width:none}.lead-source-filters::-webkit-scrollbar{display:none}
+.lead-source-filters button{flex:0 0 auto;border:1px solid #d6dee3;background:#fff;color:#465663;border-radius:999px;padding:7px 10px;font-size:10px;font-weight:850}
+.lead-source-filters button.active{background:#0e1b2b;color:#fff;border-color:#0e1b2b}
+.lead-inbox-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:12px}.lead-inbox-summary>div{border:1px solid #dfe5e8;border-radius:11px;background:#fff;padding:10px;text-align:center}
+.lead-inbox-summary strong{display:block;font-size:18px;color:#17222e}.lead-inbox-summary span{display:block;font-size:9px;color:#6d7882;text-transform:uppercase;font-weight:850;margin-top:2px}
+.lead-inbox-note{margin:10px 0 0!important;font-size:10px!important;color:#6b7781!important;line-height:1.4!important}
+.retail-lead-source-badge{display:inline-flex;align-items:center;border-radius:999px;background:#eef2f4;color:#43515e;padding:4px 7px;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.03em}
+.retail-lead-card.unread{border-left:4px solid #0e1b2b}
 </style>
 
 
@@ -943,8 +958,41 @@
           <button class="back" data-nav="home">‹</button>
           <div>
             <div class="eyebrow">CUSTOMERS</div>
-            <h2>Lead Assistant</h2>
+            <h2>GrowthWise Inbox</h2>
           </div>
+        </div>
+
+        <div class="lead-assistant-card unified-inbox-card">
+          <div class="tag">ALL LEADS · ONE INBOX</div>
+          <h3>Bring every customer conversation into GrowthWise.</h3>
+          <p>Instagram, Facebook, email, website forms, text/SMS and other lead sources all feed the same inbox. GrowthWise keeps the original source attached so Dexter knows where each conversation came from and where a reply should go.</p>
+
+          <div class="lead-source-grid" id="retailLeadSourceGrid">
+            <div class="lead-source-tile" data-source-summary="instagram"><strong>Instagram</strong><small>Connector not enabled for inbox yet</small></div>
+            <div class="lead-source-tile" data-source-summary="facebook"><strong>Facebook</strong><small>Connector not enabled for inbox yet</small></div>
+            <div class="lead-source-tile" data-source-summary="email"><strong>Email</strong><small>Ready for email connector / forwarding</small></div>
+            <div class="lead-source-tile" data-source-summary="website"><strong>Website</strong><small>Ready for form / webhook intake</small></div>
+            <div class="lead-source-tile" data-source-summary="sms"><strong>Text / SMS</strong><small>Ready for messaging connector</small></div>
+            <div class="lead-source-tile" data-source-summary="manual"><strong>Manual / Share</strong><small>Available now</small></div>
+          </div>
+
+          <div class="lead-source-filters" id="retailLeadSourceFilters" aria-label="Filter GrowthWise Inbox">
+            <button type="button" class="active" data-lead-filter="all">All</button>
+            <button type="button" data-lead-filter="instagram">Instagram</button>
+            <button type="button" data-lead-filter="facebook">Facebook</button>
+            <button type="button" data-lead-filter="email">Email</button>
+            <button type="button" data-lead-filter="website">Website</button>
+            <button type="button" data-lead-filter="sms">Text</button>
+            <button type="button" data-lead-filter="other">Other</button>
+          </div>
+
+          <div class="lead-inbox-summary">
+            <div><strong id="retailInboxTotal">0</strong><span>in inbox</span></div>
+            <div><strong id="retailInboxUnread">0</strong><span>unread</span></div>
+            <div><strong id="retailInboxNeedsHuman">0</strong><span>needs Dexter</span></div>
+          </div>
+
+          <p class="lead-inbox-note">Direct provider connections are enabled one source at a time. GrowthWise will not claim a channel is connected until inbound messages are actually reaching this inbox.</p>
         </div>
 
         <div class="lead-assistant-card smart-auto-card">
@@ -1012,6 +1060,7 @@
               <select id="retailLeadSource">
                 <option>Instagram DM</option>
                 <option>Facebook Messenger</option>
+                <option>Email</option>
                 <option>Text message</option>
                 <option>Website</option>
                 <option>Phone follow-up</option>
@@ -1068,9 +1117,9 @@
         </div>
 
         <div class="lead-assistant-card">
-          <div class="tag">RECENT CUSTOMER QUESTIONS</div>
-          <h3>Follow-up list</h3>
-          <p>GrowthWise keeps the questions you run through the assistant so Dexter can see what still needs attention.</p>
+          <div class="tag">GROWTHWISE INBOX</div>
+          <h3>Customer conversations</h3>
+          <p>Messages from connected sources and questions entered manually appear together here. Open any conversation to continue it through the Lead Assistant.</p>
           <div id="retailLeadList">
             <div class="inventory-empty">Customer questions handled through GrowthWise will appear here.</div>
           </div>
