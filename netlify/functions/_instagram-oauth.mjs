@@ -119,13 +119,16 @@ export function callbackUri(publicOrigin) {
   return `${origin.origin}/.netlify/functions/instagram-oauth-callback`;
 }
 
-export function buildAuthorizationUrl({ appId, callbackUri: redirectUri, state }) {
+export function buildAuthorizationUrl({ appId, callbackUri: redirectUri, state, scope = INSTAGRAM_IDENTITY_SCOPE }) {
+  if (![INSTAGRAM_IDENTITY_SCOPE, INSTAGRAM_AUTHORIZATION_SCOPE].includes(scope)) {
+    throw new TypeError("Invalid Instagram authorization scope.");
+  }
   const url = new URL(INSTAGRAM_AUTHORIZATION_ENDPOINT);
   url.search = new URLSearchParams({
     client_id: requireText(appId, "app ID"),
     redirect_uri: requireText(redirectUri, "callback URI"),
     response_type: "code",
-    scope: INSTAGRAM_AUTHORIZATION_SCOPE,
+    scope,
     state: requireText(state, "state"),
   }).toString();
   return url.toString();
