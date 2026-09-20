@@ -144,11 +144,13 @@ export async function exchangeAuthorizationCode({ appId, appSecret, callbackUri:
   body.set("redirect_uri", requireText(redirectUri, "callback URI"));
   body.set("code", requireText(code, "authorization code"));
   const json = await providerJson(INSTAGRAM_TOKEN_ENDPOINT, { method: "POST", body }, { fetchImpl, maxResponseBytes, failureCode: "exchange_failed" });
-  const accountId = normalizedProviderId(json?.user_id);
-  if (!objectWithRequiredFields(json, ["access_token", "user_id"]) || typeof json.access_token !== "string" || json.access_token.length === 0 || accountId === undefined) {
+  // The authorization-code response is used only to obtain the short-lived token.
+  // Provider account metadata from this response is intentionally non-authoritative;
+  // the long-lived token is verified against /me before any tenant binding is stored.
+  if (!objectWithRequiredFields(json, ["access_token"]) || typeof json.access_token !== "string" || json.access_token.length === 0) {
     throw new InstagramProviderError("exchange_failed", { reason: "missing_fields" });
   }
-  return { accessToken: json.access_token, accountId };
+  return { accessToken: json.access_token };
 }
 
 export async function exchangeLongLivedToken({ appSecret, accessToken, fetchImpl = fetch, maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES }) {
