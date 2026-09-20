@@ -254,6 +254,11 @@
 .lead-automation-decision{margin-top:9px;border-radius:11px;padding:10px 11px;font-size:11px;font-weight:800;line-height:1.4}.lead-automation-decision.hidden{display:none}.lead-automation-decision.safe{background:#e8f5ea;color:#285e32}.lead-automation-decision.review{background:#fff5dd;color:#725817}.lead-automation-decision.human{background:#fbecea;color:#8c3f35}
 
 .lead-inline-unlock{border:1px solid #d8e1e6;background:#f7fafb;border-radius:16px;padding:14px;margin-bottom:14px}.lead-inline-unlock.hidden{display:none}.lead-inline-unlock strong,.lead-inline-unlock small{display:block}.lead-inline-unlock strong{margin-top:4px}.lead-inline-unlock small{margin-top:4px;color:#687680;line-height:1.4}.lead-inline-unlock-row{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:11px}.lead-inline-unlock input{width:100%;border:1px solid #d4dde3;border-radius:11px;padding:11px;font:inherit}.lead-inline-unlock button{border:0;border-radius:11px;background:#0e1b2b;color:#fff;padding:0 15px;font-weight:850}.lead-inline-unlock-status{margin-top:9px;border-radius:10px;padding:9px 10px;font-size:11px;font-weight:750}.lead-inline-unlock-status.hidden{display:none}.lead-inline-unlock-status.error{background:#fbecea;color:#8c3f35}.lead-inline-unlock-status.ok{background:#e8f5ea;color:#285e32}.lead-inline-unlock-status.loading{background:#eef3f6;color:#42515e}
+
+.channel-picker-help{margin:6px 0 10px;color:#687680;font-size:11px;line-height:1.4}
+.channel-picker label{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.channel-picker label small{margin-left:auto;color:#75818a;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
+.channel-picker label.channel-unavailable{opacity:.55}
 </style>
 
 
@@ -267,7 +272,7 @@
   <div class="phone-shell">
     <div class="workflow-quick-nav-shell" aria-label="GrowthWise sections">
       <nav class="workflow-quick-nav">
-        <button type="button" class="workflow-nav-btn" data-nav="promotion" data-instagram-quick>Instagram</button>
+        <button type="button" class="workflow-nav-btn" data-nav="promotion" data-full-promotion>Marketing</button>
         <button type="button" class="workflow-nav-btn" data-nav="product">Add Products</button>
         <button type="button" class="workflow-nav-btn" data-nav="results">Inventory</button>
         <button type="button" class="workflow-nav-btn" data-nav="orders">Orders</button>
@@ -691,13 +696,18 @@
 
           <div class="channel-picker" id="promotionChannelPicker">
             <div class="tag">PUBLISH TO</div>
-            <label><input id="promotionFacebookChannel" type="checkbox" checked /> Facebook</label>
-            <label><input id="promotionInstagramChannel" type="checkbox" checked /> Instagram</label>
+            <p class="channel-picker-help">Choose where this post should go. Instagram starts on for Dexter; everything else stays off unless you choose it.</p>
+            <label><input id="promotionInstagramChannel" type="checkbox" checked /> Instagram <small>connected</small></label>
+            <label><input id="promotionFacebookChannel" type="checkbox" /> Facebook <small>connected</small></label>
+            <label class="channel-unavailable"><input id="promotionWebsiteChannel" type="checkbox" disabled /> Website <small>not connected yet</small></label>
+            <label class="channel-unavailable"><input id="promotionTikTokChannel" type="checkbox" disabled /> TikTok <small>not connected yet</small></label>
+            <label class="channel-unavailable"><input id="promotionSnapchatChannel" type="checkbox" disabled /> Snapchat <small>not connected yet</small></label>
+            <label class="channel-unavailable"><input id="promotionYouTubeChannel" type="checkbox" disabled /> YouTube <small>not connected yet</small></label>
           </div>
 
           <div class="fb-publish-actions">
             <button type="button" class="preview" id="previewPromotionBtn">Preview</button>
-            <button type="button" class="publish" id="publishPromotionBtn">Publish Now</button>
+            <button type="button" class="publish" id="publishPromotionBtn">Publish Selected</button>
           </div>
           <p class="fb-publish-note">Nothing posts automatically. GrowthWise sends this reviewed photo and copy only after you confirm.</p>
           <div class="fb-publish-status hidden" id="promotionPublishStatus"></div>
@@ -1444,15 +1454,15 @@ function setInstagramQuickMode(enabled){
     resetPromotionPublishState();
     if(publishBtn) publishBtn.textContent = 'Post to Instagram';
   }else{
-    if(facebook) facebook.checked = true;
+    if(facebook) facebook.checked = false;
     if(instagram) instagram.checked = true;
-    if(title) title.textContent = 'Promote Products';
-    if(eyebrow) eyebrow.textContent = 'PROMOTIONS';
+    if(title) title.textContent = 'Marketing';
+    if(eyebrow) eyebrow.textContent = 'MARKETING';
     if(photoHeading) photoHeading.textContent = 'Add the image you want customers to see';
     if(captionLabel) captionLabel.textContent = 'Post copy';
     if(channelPicker) channelPicker.classList.remove('hidden');
     if(copyOffer) copyOffer.classList.remove('hidden');
-    if(publishBtn) publishBtn.textContent = 'Publish Now';
+    if(publishBtn) publishBtn.textContent = 'Publish Selected';
     renderPromotion(activePromotionDay || 'spotlight');
   }
 }
@@ -1549,7 +1559,7 @@ function resetPromotionPublishState(){
   const btn = document.getElementById('publishPromotionBtn');
   if(btn){
     btn.disabled = false;
-    btn.textContent = instagramQuickMode ? 'Post to Instagram' : 'Publish Now';
+    btn.textContent = instagramQuickMode ? 'Post to Instagram' : 'Publish Selected';
   }
 }
 
@@ -1865,7 +1875,7 @@ document.getElementById('publishPromotionBtn').addEventListener('click', async (
     }
   }finally{
     btn.disabled = false;
-    btn.textContent = instagramQuickMode ? 'Post to Instagram' : 'Publish Now';
+    btn.textContent = instagramQuickMode ? 'Post to Instagram' : 'Publish Selected';
   }
 });
 
