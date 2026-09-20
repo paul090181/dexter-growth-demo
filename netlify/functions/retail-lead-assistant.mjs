@@ -81,14 +81,32 @@ export default async (request) => {
 
   if (request.method === "PATCH") {
     let body; try { body = await request.json(); } catch { return json(400, { error: "Invalid request." }); }
-    const id = clean(body.id, 120), status = clean(body.status, 40);
-    if (!id || !["new","replied","follow-up","closed"].includes(status)) return json(400, { error: "Valid lead and status are required." });
-    const rows = await db.sql`UPDATE retail_customer_leads
-      SET status = ${status},
-          unread = CASE WHEN ${status} = 'new' THEN unread ELSE FALSE END,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${id} AND business_id = ${businessId}
-      RETURNING *`;
+    const id = clean(body.id, 120);
+    const status = body.status == null ? "" : clean(body.status, 40);
+    const hasStatus = status !== "";
+    const hasUnread = typeof body.unread === "boolean";
+    if (!id || (!hasStatus && !hasUnread)) return json(400, { error: "Lead id plus a status or unread update is required." });
+    if (hasStatus && !["new","replied","follow-up","closed"].includes(status)) return json(400, { error: "Invalid lead status." });
+
+    let rows;
+    if (hasStatus && hasUnread) {
+      rows = await db.sql`UPDATE retail_customer_leads
+        SET status = ${status}, unread = ${body.unread}, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${id} AND business_id = ${businessId}
+        RETURNING *`;
+    } else if (hasStatus) {
+      rows = await db.sql`UPDATE retail_customer_leads
+        SET status = ${status},
+            unread = CASE WHEN ${status} = 'new' THEN unread ELSE FALSE END,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${id} AND business_id = ${businessId}
+        RETURNING *`;
+    } else {
+      rows = await db.sql`UPDATE retail_customer_leads
+        SET unread = ${body.unread}, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ${id} AND business_id = ${businessId}
+        RETURNING *`;
+    }
     if (!rows.length) return json(404, { error: "Lead not found." });
     return json(200, { ok: true, lead: rows[0] });
   }
