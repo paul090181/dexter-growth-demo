@@ -202,6 +202,8 @@ export function createProductIntakeHandler(options = {}) {
         (userContext ? `Store-supplied context: ${userContext}\n` : "") +
         "\nRules:\n" +
         "- Extract text conservatively. Never invent a brand, SKU, UPC, size, color, quantity, price, material, or model.\n" +
+        "- When multiple images are product/tag/barcode/package views of the SAME physical product, merge evidence across all images into ONE product record. Do not create duplicate products merely because the same item appears in several photos.\n" +
+        "- Treat camera/photo packets as one product unless the images clearly show different products or the requested mode is order_form.\n" +
         "- A price on an invoice/order form is usually wholesale/cost unless the document clearly labels it retail/MSRP. Mark price_type accordingly.\n" +
         "- If an exact product name is not printed, a photo may receive a plain descriptive retail name, but do not pretend it is an exact vendor model.\n" +
         "- For order forms, return every clearly legible line item up to 20.\n" +
