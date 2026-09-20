@@ -5,6 +5,11 @@ export const INSTAGRAM_REFRESH_TOKEN_ENDPOINT = "https://graph.instagram.com/ref
 export const INSTAGRAM_IDENTITY_ENDPOINT = "https://graph.instagram.com/me";
 export const INSTAGRAM_IDENTITY_FIELDS = "user_id,username";
 export const INSTAGRAM_IDENTITY_SCOPE = "instagram_business_basic";
+export const INSTAGRAM_CONTENT_PUBLISH_SCOPE = "instagram_business_content_publish";
+export const INSTAGRAM_AUTHORIZATION_SCOPE = [
+  INSTAGRAM_IDENTITY_SCOPE,
+  INSTAGRAM_CONTENT_PUBLISH_SCOPE,
+].join(",");
 
 const DEFAULT_MAX_RESPONSE_BYTES = 32 * 1024;
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -120,7 +125,7 @@ export function buildAuthorizationUrl({ appId, callbackUri: redirectUri, state }
     client_id: requireText(appId, "app ID"),
     redirect_uri: requireText(redirectUri, "callback URI"),
     response_type: "code",
-    scope: INSTAGRAM_IDENTITY_SCOPE,
+    scope: INSTAGRAM_AUTHORIZATION_SCOPE,
     state: requireText(state, "state"),
   }).toString();
   return url.toString();
