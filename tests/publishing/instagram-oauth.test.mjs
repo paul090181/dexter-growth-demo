@@ -331,11 +331,14 @@ test("empty or ambiguous Instagram identity is rejected without active binding",
   }
 });
 
-test("duplicate account binding to a second tenant is rejected", async () => {
-  const fixture = callbackFixture(); fixture.transaction.business_id = "dexters-hats";
-  fixture.store.connectCredential = async () => { throw new Error("ACCOUNT_ALREADY_CONNECTED"); };
+test("shared provider identity is still written only to the callback transaction tenant", async () => {
+  const fixture = callbackFixture();
+  fixture.transaction.business_id = "dexters-hats";
+  fixture.transaction.return_destination_id = "dexter-integration";
   const response = await fixture.handler(callbackRequest("state=v1.valid.tag&code=ok"));
-  assert.match(response.headers.get("location"), /instagram=attention$/); assert.equal(fixture.calls.finish[0].status, "consumed_failed");
+  assert.equal(fixture.calls.connect[0].businessId, "dexters-hats");
+  assert.equal(fixture.calls.connect[0].accountId, "99");
+  assert.equal(response.headers.get("location"), `${ORIGIN}/?instagram=connected`);
 });
 
 test("successful callback encrypts binds and marks consumed_success", async () => {
