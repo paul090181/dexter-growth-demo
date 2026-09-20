@@ -8,7 +8,7 @@ const feedback = await readFile(new URL("../../netlify/functions/pilot-feedback.
 
 test("public GrowthWise showcase is industry-neutral and captures referrals", () => {
   assert.match(page, /GrowthWise for Small Business/);
-  assert.match(page, /request access/i);
+  assert.match(page, /Request GrowthWise access/);
   assert.match(page, /referral_code/);
   assert.match(page, /growthwise-interest/);
   assert.match(page, /navigator\.share/);
@@ -18,7 +18,7 @@ test("public GrowthWise showcase is industry-neutral and captures referrals", ()
 test("interest endpoint allows public POST but protects lead listing", () => {
   assert.match(leads, /request\.method === "GET"/);
   assert.match(leads, /x-growthwise-key/);
-  assert.match(leads, /request\.method === "POST"/);
+  assert.match(leads, /\["GET","POST"\]\.includes\(request\.method\)/);
   assert.match(leads, /growthwise_interest_leads/);
   assert.match(leads, /website/);
 });
