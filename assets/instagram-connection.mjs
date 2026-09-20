@@ -19,9 +19,21 @@ export function createInstagramConnectionController({
   let view = { state: "Not Connected", loading: true, connecting: false, account: null, action: "Checking Instagram connection…" };
   let connectPromise = null;
   const publish = (change) => { view = { ...view, ...change }; onChange({ ...view }); return { ...view }; };
-  const headers = () => ({ "X-GrowthWise-Key": typeof adminKey === "function" ? adminKey() : adminKey });
+  const adminKeyValue = () => {
+    const value = typeof adminKey === "function" ? adminKey() : adminKey;
+    return typeof value === "string" ? value.trim() : "";
+  };
+  const headers = () => ({ "X-GrowthWise-Key": adminKeyValue() });
+  const lockedView = () => publish({
+    state: "Not Connected",
+    account: null,
+    action: "Enter your GrowthWise access key above to connect Instagram.",
+    loading: false,
+    connecting: false,
+  });
 
   async function loadHealth() {
+    if (!adminKeyValue()) return lockedView();
     publish({ loading: true });
     try {
       const url = `${endpointBase}/instagram-connection?business_id=${encodeURIComponent(businessId)}`;
@@ -38,6 +50,7 @@ export function createInstagramConnectionController({
 
   function connect() {
     if (connectPromise) return connectPromise;
+    if (!adminKeyValue()) return Promise.resolve(lockedView() && false);
     publish({ connecting: true });
     connectPromise = (async () => {
       try {
@@ -46,13 +59,23 @@ export function createInstagramConnectionController({
           body: JSON.stringify({ business_id: businessId }),
         });
         const body = await response.json();
-        if (!response.ok || !body || Object.keys(body).length !== 1 || typeof body.authorization_url !== "string") throw new Error("start_failed");
+        if (!response.ok) {
+          const error = new Error("start_failed");
+          error.status = response.status;
+          throw error;
+        }
+        if (!body || Object.keys(body).length !== 1 || typeof body.authorization_url !== "string") throw new Error("start_failed");
         const target = new URL(body.authorization_url);
         if (target.protocol !== "https:" || target.origin !== authorizationOrigin) throw new Error("unsafe_authorization_url");
         navigate(target.toString());
         return true;
-      } catch {
-        publish({ state: "Needs Attention", account: null, action: "Instagram connection could not be started.", connecting: false });
+      } catch (error) {
+        const action = error?.status === 401
+          ? "Unlock GrowthWise with your access key above, then try again."
+          : error?.status === 429
+            ? "Please wait about 30 seconds, then try connecting Instagram again."
+            : "Instagram connection could not be started.";
+        publish({ state: "Needs Attention", account: null, action, connecting: false });
         return false;
       } finally {
         connectPromise = null;
@@ -94,5 +117,6 @@ export function mountInstagramConnection({ root, businessId, getAdminKey, ...opt
   button.addEventListener("click", () => controller.connect());
   render(controller.getView());
   controller.consumeReturnHint(globalThis.location.href);
+  globalThis.addEventListener?.("growthwise:admin-key-ready", () => controller.loadHealth());
   return controller;
 }
