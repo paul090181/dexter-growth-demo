@@ -106,3 +106,13 @@ test("purchase orders can be saved or shared as PDF", () => {
   assert.match(retailOps, /navigator\.share/);
   assert.match(retailOps, /application\/pdf/);
 });
+
+test("Dexter pilot leads with Instagram-only quick posting", () => {
+  assert.match(html, /Instagram Post/);
+  assert.match(html, /data-instagram-quick/);
+  assert.match(html, /INSTAGRAM FIRST/);
+  assert.match(html, /No Square changes\. No Facebook posting\./);
+  assert.match(html, /instagram-photo-draft/);
+  assert.match(html, /Post to Instagram/);
+  assert.match(html, /instagramQuickUnlock/);
+});
