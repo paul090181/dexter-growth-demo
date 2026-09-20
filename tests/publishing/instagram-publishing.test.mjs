@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 
 import {
   createInstagramImageContainer,
+  getInstagramContainerStatus,
+  waitForInstagramContainerReady,
   publishInstagramContainer,
   InstagramPublishError,
 } from "../../netlify/functions/_instagram-publishing.mjs";
@@ -34,6 +36,54 @@ test("Instagram provider creates an image container with bearer auth and no toke
   assert.equal(seen.init.body.get("caption"), "Reviewed caption");
   assert.equal(seen.init.body.has("access_token"), false);
   assert.equal(seen.url.searchParams.has("access_token"), false);
+});
+
+test("Instagram provider reads container status with bearer auth and fields only", async () => {
+  let seen;
+  const result = await getInstagramContainerStatus({
+    accessToken: "SYNTHETIC_TOKEN",
+    containerId: "18000001",
+    graphApiVersion: "v26.0",
+    fetchImpl: async (url, init) => {
+      seen = { url: new URL(url), init };
+      return providerResponse({ id: "18000001", status_code: "FINISHED", status: "Finished" });
+    },
+  });
+
+  assert.deepEqual(result, { statusCode: "FINISHED", status: "Finished" });
+  assert.equal(seen.url.toString(), "https://graph.instagram.com/v26.0/18000001?fields=status_code%2Cstatus");
+  assert.equal(seen.init.method, "GET");
+  assert.equal(seen.init.headers.Authorization, "Bearer SYNTHETIC_TOKEN");
+  assert.equal(seen.url.searchParams.has("access_token"), false);
+});
+
+test("Instagram provider waits through IN_PROGRESS before reporting FINISHED", async () => {
+  const states = ["IN_PROGRESS", "IN_PROGRESS", "FINISHED"];
+  const sleeps = [];
+  const result = await waitForInstagramContainerReady({
+    accessToken: "SYNTHETIC_TOKEN",
+    containerId: "18000001",
+    graphApiVersion: "v26.0",
+    delaysMs: [0, 1, 2],
+    sleepImpl: async (ms) => { sleeps.push(ms); },
+    fetchImpl: async () => providerResponse({ status_code: states.shift(), status: "state" }),
+  });
+  assert.equal(result.statusCode, "FINISHED");
+  assert.deepEqual(sleeps, [1, 2]);
+});
+
+test("Instagram provider fails safely when container processing never finishes", async () => {
+  await assert.rejects(
+    waitForInstagramContainerReady({
+      accessToken: "SYNTHETIC_TOKEN",
+      containerId: "18000001",
+      graphApiVersion: "v26.0",
+      delaysMs: [0, 0],
+      sleepImpl: async () => {},
+      fetchImpl: async () => providerResponse({ status_code: "IN_PROGRESS", status: "Processing" }),
+    }),
+    (error) => error instanceof InstagramPublishError && error.code === "processing_timeout",
+  );
 });
 
 test("Instagram provider publishes only the supplied container", async () => {
@@ -72,7 +122,7 @@ test("Instagram provider normalizes transient failures without exposing provider
 });
 
 function publishFixture(overrides = {}) {
-  const calls = { stage: 0, create: 0, publish: 0 };
+  const calls = { stage: 0, create: 0, status: 0, publish: 0 };
   const clients = {
     "dexters-hats": {
       business_id: "dexters-hats",
@@ -113,6 +163,10 @@ function publishFixture(overrides = {}) {
       calls.create += 1;
       return { containerId: "18000001" };
     },
+    waitForContainer: async () => {
+      calls.status += 1;
+      return { statusCode: "FINISHED", status: "Finished" };
+    },
     publishContainer: async () => {
       calls.publish += 1;
       return { mediaId: "17999999" };
@@ -141,7 +195,7 @@ test("publish endpoint requires explicit review before any media or provider cal
   const { handler, calls } = publishFixture();
   const response = await handler(request({ ...validBody, reviewed: false }));
   assert.equal(response.status, 400);
-  assert.deepEqual(calls, { stage: 0, create: 0, publish: 0 });
+  assert.deepEqual(calls, { stage: 0, create: 0, status: 0, publish: 0 });
 });
 
 test("publish endpoint fails closed when the saved authorization lacks publishing scope", async () => {
@@ -158,7 +212,7 @@ test("publish endpoint fails closed when the saved authorization lacks publishin
   const body = await response.json();
   assert.equal(response.status, 409);
   assert.equal(body.code, "PUBLISHING_PERMISSION_REQUIRED");
-  assert.deepEqual(calls, { stage: 0, create: 0, publish: 0 });
+  assert.deepEqual(calls, { stage: 0, create: 0, status: 0, publish: 0 });
 });
 
 test("reviewed publish stages one image creates one container and sends one live publish", async () => {
@@ -171,7 +225,7 @@ test("reviewed publish stages one image creates one container and sends one live
   assert.equal(body.live_sent, true);
   assert.equal(body.media_id, "17999999");
   assert.equal(body.account.username, "dexters.hats");
-  assert.deepEqual(calls, { stage: 1, create: 1, publish: 1 });
+  assert.deepEqual(calls, { stage: 1, create: 1, status: 1, publish: 1 });
   assert.equal(JSON.stringify(body).includes("SYNTHETIC_TOKEN"), false);
 });
 
@@ -186,7 +240,22 @@ test("container creation failure is safe to retry and never attempts final publi
   const body = await response.json();
   assert.equal(response.status, 503);
   assert.equal(body.retry_safe, true);
-  assert.deepEqual(calls, { stage: 1, create: 1, publish: 0 });
+  assert.deepEqual(calls, { stage: 1, create: 1, status: 0, publish: 0 });
+});
+
+test("container processing timeout never attempts final publish and is safe to retry", async () => {
+  const { handler, calls } = publishFixture({
+    waitForContainer: async () => {
+      calls.status += 1;
+      throw new InstagramPublishError("processing_timeout");
+    },
+  });
+  const response = await handler(request(validBody));
+  const body = await response.json();
+  assert.equal(response.status, 503);
+  assert.equal(body.code, "INSTAGRAM_MEDIA_PROCESSING");
+  assert.equal(body.retry_safe, true);
+  assert.deepEqual(calls, { stage: 1, create: 1, status: 1, publish: 0 });
 });
 
 test("final publish failure is marked ambiguous so the UI cannot blindly retry and duplicate", async () => {
@@ -201,5 +270,5 @@ test("final publish failure is marked ambiguous so the UI cannot blindly retry a
   assert.equal(response.status, 502);
   assert.equal(body.code, "INSTAGRAM_PUBLISH_AMBIGUOUS");
   assert.equal(body.retry_safe, false);
-  assert.deepEqual(calls, { stage: 1, create: 1, publish: 1 });
+  assert.deepEqual(calls, { stage: 1, create: 1, status: 1, publish: 1 });
 });
