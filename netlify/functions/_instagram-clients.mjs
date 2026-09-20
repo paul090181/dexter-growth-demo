@@ -1,3 +1,4 @@
+import { INSTAGRAM_AUTHORIZATION_SCOPE, INSTAGRAM_IDENTITY_SCOPE } from "./_instagram-oauth.mjs";
 import growthwiseDev from "../../clients/growthwise-dev.json" with { type: "json" };
 import dextersHats from "../../clients/dexters-hats.json" with { type: "json" };
 
@@ -8,7 +9,12 @@ const CLIENT_CONFIGS = [
 
 export const INSTAGRAM_CLIENTS = Object.freeze(Object.fromEntries(CLIENT_CONFIGS.map(([businessId, config, returnDestinationId]) => {
   if (config.business_id !== businessId) throw new Error("Instagram client configuration mismatch.");
-  return [businessId, Object.freeze({ business_id: businessId, returnDestinationId })];
+  const reviewPublishEnabled = config.integrations?.instagram?.review_publish_enabled === true;
+  return [businessId, Object.freeze({
+    business_id: businessId,
+    returnDestinationId,
+    authorizationScope: reviewPublishEnabled ? INSTAGRAM_AUTHORIZATION_SCOPE : INSTAGRAM_IDENTITY_SCOPE,
+  })];
 })));
 
 export const INSTAGRAM_RETURN_DESTINATIONS = Object.freeze({
