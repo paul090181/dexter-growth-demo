@@ -20,7 +20,8 @@
     "facebook": "optional",
     "instagram": {
       "token_env": "DEXTERS_HATS_INSTAGRAM_ACCESS_TOKEN",
-      "account_id_env": "DEXTERS_HATS_INSTAGRAM_ACCOUNT_ID"
+      "account_id_env": "DEXTERS_HATS_INSTAGRAM_ACCOUNT_ID",
+      "review_publish_enabled": true
     },
     "marketplace": "assisted",
     "square": "optional"

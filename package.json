@@ -5,7 +5,7 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "test:instagram": "node --test tests/publishing/instagram-crypto.test.mjs tests/publishing/instagram-store.test.mjs tests/publishing/instagram-oauth-provider.test.mjs tests/publishing/instagram-oauth.test.mjs tests/publishing/instagram-connection.test.mjs tests/publishing/instagram-connection-ui.test.mjs tests/publishing/instagram-safety-regression.test.mjs",
+    "test:instagram": "node --test tests/publishing/instagram-crypto.test.mjs tests/publishing/instagram-store.test.mjs tests/publishing/instagram-oauth-provider.test.mjs tests/publishing/instagram-oauth.test.mjs tests/publishing/instagram-connection.test.mjs tests/publishing/instagram-connection-ui.test.mjs tests/publishing/instagram-media.test.mjs tests/publishing/instagram-publishing.test.mjs tests/publishing/instagram-safety-regression.test.mjs",
     "test:publishing": "node --test tests/publishing/*.test.mjs"
   },
   "dependencies": {

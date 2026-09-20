@@ -5,6 +5,11 @@ export const INSTAGRAM_REFRESH_TOKEN_ENDPOINT = "https://graph.instagram.com/ref
 export const INSTAGRAM_IDENTITY_ENDPOINT = "https://graph.instagram.com/me";
 export const INSTAGRAM_IDENTITY_FIELDS = "user_id,username";
 export const INSTAGRAM_IDENTITY_SCOPE = "instagram_business_basic";
+export const INSTAGRAM_CONTENT_PUBLISH_SCOPE = "instagram_business_content_publish";
+export const INSTAGRAM_AUTHORIZATION_SCOPE = [
+  INSTAGRAM_IDENTITY_SCOPE,
+  INSTAGRAM_CONTENT_PUBLISH_SCOPE,
+].join(",");
 
 const DEFAULT_MAX_RESPONSE_BYTES = 32 * 1024;
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -114,13 +119,16 @@ export function callbackUri(publicOrigin) {
   return `${origin.origin}/.netlify/functions/instagram-oauth-callback`;
 }
 
-export function buildAuthorizationUrl({ appId, callbackUri: redirectUri, state }) {
+export function buildAuthorizationUrl({ appId, callbackUri: redirectUri, state, scope = INSTAGRAM_IDENTITY_SCOPE }) {
+  if (![INSTAGRAM_IDENTITY_SCOPE, INSTAGRAM_AUTHORIZATION_SCOPE].includes(scope)) {
+    throw new TypeError("Invalid Instagram authorization scope.");
+  }
   const url = new URL(INSTAGRAM_AUTHORIZATION_ENDPOINT);
   url.search = new URLSearchParams({
     client_id: requireText(appId, "app ID"),
     redirect_uri: requireText(redirectUri, "callback URI"),
     response_type: "code",
-    scope: INSTAGRAM_IDENTITY_SCOPE,
+    scope,
     state: requireText(state, "state"),
   }).toString();
   return url.toString();

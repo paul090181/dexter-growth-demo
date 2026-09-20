@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { createInstagramCrypto } from "./_instagram-crypto.mjs";
 import { getInstagramClient } from "./_instagram-clients.mjs";
-import { buildAuthorizationUrl, callbackUri } from "./_instagram-oauth.mjs";
+import { buildAuthorizationUrl, callbackUri, INSTAGRAM_AUTHORIZATION_SCOPE } from "./_instagram-oauth.mjs";
 import { instagramDatabase } from "./_instagram-store.mjs";
 
 const ENDPOINT_PATH = "/.netlify/functions/instagram-oauth-start";
@@ -75,14 +75,14 @@ async function readBody(request) {
   return body;
 }
 
-function validateAuthorizationUrl(value, { expectedAppId, expectedCallbackUri, expectedState }) {
+function validateAuthorizationUrl(value, { expectedAppId, expectedCallbackUri, expectedState, expectedScope }) {
   let url;
   try { url = new URL(value); } catch { throw new Error("UNSAFE_AUTHORIZATION_URL"); }
   const expected = {
     client_id: expectedAppId,
     redirect_uri: expectedCallbackUri,
     response_type: "code",
-    scope: "instagram_business_basic",
+    scope: expectedScope,
     state: expectedState,
   };
   if (url.protocol !== "https:" || url.origin !== "https://www.instagram.com"
@@ -128,7 +128,10 @@ export function createInstagramOAuthStartHandler(options = {}) {
     try { body = await readBody(request); } catch { return response(400, { error: "Invalid request." }); }
     let client;
     try { client = getClient(body.business_id); } catch { return response(400, { error: "Invalid request." }); }
-    if (!client || client.business_id !== body.business_id || typeof client.returnDestinationId !== "string") return response(400, { error: "Invalid request." });
+    if (!client || client.business_id !== body.business_id || typeof client.returnDestinationId !== "string"
+      || ![INSTAGRAM_AUTHORIZATION_SCOPE, "instagram_business_basic"].includes(client.authorizationScope)) {
+      return response(400, { error: "Invalid request." });
+    }
 
     const startedAt = now();
     let allowed;
@@ -144,8 +147,18 @@ export function createInstagramOAuthStartHandler(options = {}) {
       });
       const expectedAppId = appId();
       const expectedCallbackUri = callbackUri(origin);
-      const authorizationUrl = buildUrl({ appId: expectedAppId, callbackUri: expectedCallbackUri, state });
-      const parsed = validateAuthorizationUrl(authorizationUrl, { expectedAppId, expectedCallbackUri, expectedState: state });
+      const authorizationUrl = buildUrl({
+        appId: expectedAppId,
+        callbackUri: expectedCallbackUri,
+        state,
+        scope: client.authorizationScope,
+      });
+      const parsed = validateAuthorizationUrl(authorizationUrl, {
+        expectedAppId,
+        expectedCallbackUri,
+        expectedState: state,
+        expectedScope: client.authorizationScope,
+      });
       return response(200, { authorization_url: parsed.toString() });
     } catch {
       return response(503, { error: "Instagram connection could not be started." });

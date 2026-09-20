@@ -155,3 +155,7 @@ For an application rollback:
 On 2026-09-18, Deploy Preview #12 ran the temporary synthetic PostgreSQL acceptance harness against its isolated Netlify Database branch and validated the original one-account/one-business design. On 2026-09-20, the product policy changed to permit the same Instagram account to be authorized independently for multiple GrowthWise businesses. Migration `20260920095500_allow-shared-instagram-accounts` removes the obsolete cross-tenant uniqueness constraint while retaining one credential row per business and tenant-bound encryption.
 
 Fresh acceptance for this amendment must prove that two businesses can connect the same professional Instagram account, that each receives a separate encrypted credential, and that neither tenant can read or modify the other's credential. Instagram publishing, media containers, webhooks, messaging, and comment automation remain disabled.
+
+### Deploy Preview OAuth origin
+
+For manual OAuth acceptance on a Netlify Deploy Preview, `GROWTHWISE_PUBLIC_ORIGIN` in the `deploy-preview` context must match the active preview hostname exactly (for example, `https://deploy-preview-13--euphonious-beijinho-db4b4d.netlify.app`). The OAuth start endpoint intentionally rejects a request whose browser origin does not match the configured public origin. Changing this value requires a fresh preview deploy before it takes effect.
