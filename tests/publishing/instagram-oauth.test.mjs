@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createInstagramOAuthStartHandler } from "../../netlify/functions/instagram-oauth-start.mjs";
 import { createInstagramOAuthCallbackHandler } from "../../netlify/functions/instagram-oauth-callback.mjs";
-import { INSTAGRAM_AUTHORIZATION_SCOPE } from "../../netlify/functions/_instagram-oauth.mjs";
+import { INSTAGRAM_AUTHORIZATION_SCOPE, INSTAGRAM_IDENTITY_SCOPE } from "../../netlify/functions/_instagram-oauth.mjs";
 
 const ORIGIN = "https://growthwise.example";
 const ADMIN = "SENTINEL_ADMIN_KEY_DO_NOT_LEAK";
@@ -34,11 +34,14 @@ function fixture(overrides = {}) {
       return { state: generated.state };
     } },
     getClient: (id) => {
-      const destinations = { "growthwise-dev": "growthwise-dev-integration", "dexters-hats": "dexter-integration" };
-      if (!destinations[id]) throw new Error("not found");
-      return { business_id: id, returnDestinationId: destinations[id] };
+      const clients = {
+        "growthwise-dev": { returnDestinationId: "growthwise-dev-integration", authorizationScope: INSTAGRAM_IDENTITY_SCOPE },
+        "dexters-hats": { returnDestinationId: "dexter-integration", authorizationScope: INSTAGRAM_AUTHORIZATION_SCOPE },
+      };
+      if (!clients[id]) throw new Error("not found");
+      return { business_id: id, ...clients[id] };
     },
-    buildUrl: ({ appId, callbackUri, state }) => `https://www.instagram.com/oauth/authorize?client_id=${encodeURIComponent(appId)}&redirect_uri=${encodeURIComponent(callbackUri)}&state=${encodeURIComponent(state)}&scope=${encodeURIComponent(INSTAGRAM_AUTHORIZATION_SCOPE)}&response_type=code`,
+    buildUrl: ({ appId, callbackUri, state, scope }) => `https://www.instagram.com/oauth/authorize?client_id=${encodeURIComponent(appId)}&redirect_uri=${encodeURIComponent(callbackUri)}&state=${encodeURIComponent(state)}&scope=${encodeURIComponent(scope)}&response_type=code`,
     now: () => new Date("2026-09-17T12:00:00.000Z"),
     rateLimiter: { consume: async () => true },
     ...overrides,
@@ -140,11 +143,11 @@ test("valid start returns only one safe HTTPS Meta authorization URL", async () 
 });
 
 test("OAuth start rejects authorization URL credentials fragments duplicate extra or overridden parameters", async () => {
-  const base = `https://www.instagram.com/oauth/authorize?client_id=synthetic-app-id&redirect_uri=https%3A%2F%2Fgrowthwise.example%2F.netlify%2Ffunctions%2Finstagram-oauth-callback&response_type=code&scope=${encodeURIComponent(INSTAGRAM_AUTHORIZATION_SCOPE)}&state=v1.synthetic-1.tag`;
+  const base = `https://www.instagram.com/oauth/authorize?client_id=synthetic-app-id&redirect_uri=https%3A%2F%2Fgrowthwise.example%2F.netlify%2Ffunctions%2Finstagram-oauth-callback&response_type=code&scope=${encodeURIComponent(INSTAGRAM_IDENTITY_SCOPE)}&state=v1.synthetic-1.tag`;
   const unsafe = [
     base.replace("https://", "https://user:password@"),
     `${base}#fragment`, `${base}&extra=true`, `${base}&state=override`,
-    base.replace(encodeURIComponent(INSTAGRAM_AUTHORIZATION_SCOPE), encodeURIComponent("instagram_business_basic")),
+    base.replace(encodeURIComponent(INSTAGRAM_IDENTITY_SCOPE), encodeURIComponent(INSTAGRAM_AUTHORIZATION_SCOPE)),
     base.replace("redirect_uri=https%3A%2F%2Fgrowthwise.example%2F.netlify%2Ffunctions%2Finstagram-oauth-callback", "redirect_uri=https%3A%2F%2Fevil.example%2Fcallback"),
   ];
   for (const value of unsafe) {
@@ -339,6 +342,7 @@ test("shared provider identity is still written only to the callback transaction
   const response = await fixture.handler(callbackRequest("state=v1.valid.tag&code=ok"));
   assert.equal(fixture.calls.connect[0].businessId, "dexters-hats");
   assert.equal(fixture.calls.connect[0].accountId, "42");
+  assert.equal(fixture.calls.connect[0].payload.scope, INSTAGRAM_AUTHORIZATION_SCOPE);
   assert.equal(response.headers.get("location"), `${ORIGIN}/?instagram=connected`);
 });
 
@@ -346,7 +350,7 @@ test("successful callback encrypts binds and marks consumed_success", async () =
   const fixture = callbackFixture(); const response = await fixture.handler(callbackRequest("state=v1.valid.tag&code=ok"));
   assert.equal(response.status, 303); assert.equal(fixture.calls.connect[0].businessId, "growthwise-dev");
   assert.equal(fixture.calls.connect[0].payload.access_token, "SENTINEL_LONG_TOKEN");
-  assert.equal(fixture.calls.connect[0].payload.scope, INSTAGRAM_AUTHORIZATION_SCOPE);
+  assert.equal(fixture.calls.connect[0].payload.scope, INSTAGRAM_IDENTITY_SCOPE);
   assert.equal(fixture.calls.connect[0].transactionKey, "derived-key");
   assert.equal(fixture.calls.finish.length, 0);
 });
