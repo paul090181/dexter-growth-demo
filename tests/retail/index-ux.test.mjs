@@ -53,3 +53,17 @@ test("product photos persist locally for retry and reuse", () => {
   assert.match(html, /data-recent-photo-id/);
   assert.match(html, /saveProductPhotoToDevice/);
 });
+
+test("new product flow offers inventory-only or add-and-promote choices", () => {
+  assert.match(html, /id="addInventoryOnlyChoice"/);
+  assert.match(html, /id="addAndPromoteChoice"/);
+  assert.match(html, />Add to Inventory</);
+  assert.match(html, />Add \+ Promote Now</);
+});
+
+test("promote products can choose an existing Square product", () => {
+  assert.match(html, /id="promotionProductSearch"/);
+  assert.match(html, /CHOOSE AN EXISTING PRODUCT/);
+  assert.match(html, /retail-product-promotion/);
+  assert.match(html, /Product Spotlight/);
+});
