@@ -5,7 +5,7 @@ import { createInstagramCrypto } from "../../netlify/functions/_instagram-crypto
 
 const clients = {
   "growthwise-dev": { business_id: "growthwise-dev", integrations: { instagram: { token_env: "GW_TEST_META_TOKEN", account_id_env: "GW_TEST_IG_ACCOUNT_ID" } } },
-  "dexters-hats": { business_id: "dexters-hats", integrations: { instagram: { token_env: "DEXTER_META_TOKEN", account_id_env: "DEXTER_IG_ACCOUNT_ID" } } },
+  "dexters-hats": { business_id: "dexters-hats", integrations: { instagram: { token_env: "DEXTER_META_TOKEN", account_id_env: "DEXTER_IG_ACCOUNT_ID", review_publish_enabled: true } } },
 };
 const now = () => new Date("2026-09-17T01:02:03.000Z");
 function request(businessId = "growthwise-dev", { key = "admin", method = "GET" } = {}) {
@@ -63,6 +63,31 @@ test("valid stored OAuth credential and active binding returns Connected", async
   assert.deepEqual(body.account, { username: "growth.wise1", name: "GrowthWise" });
   assert.equal(updates[0].status, "active");
   assert.equal(updates[0].businessId, "growthwise-dev");
+});
+
+test("Dexter connection health requires publishing scope before reporting Connected", async () => {
+  const { options: missingPublish } = stored({
+    row: { business_id: "dexters-hats" },
+    decryptCredential: async () => ({
+      access_token: "synthetic-access-secret",
+      account_id: "ig-account-secret",
+      scope: "instagram_business_basic",
+    }),
+  });
+  const missingBody = await (await createInstagramConnectionHandler(missingPublish)(request("dexters-hats"))).json();
+  assert.equal(missingBody.state, "Needs Attention");
+
+  const { options: ready } = stored({
+    row: { business_id: "dexters-hats" },
+    decryptCredential: async () => ({
+      access_token: "synthetic-access-secret",
+      account_id: "ig-account-secret",
+      scope: "instagram_business_basic instagram_business_content_publish",
+    }),
+  });
+  const readyBody = await (await createInstagramConnectionHandler(ready)(request("dexters-hats"))).json();
+  assert.equal(readyBody.state, "Connected");
+  assert.equal(readyBody.account.username, "growth.wise1");
 });
 
 test("stored credential decrypts from its authenticated binding before exact identity verification", async () => {
