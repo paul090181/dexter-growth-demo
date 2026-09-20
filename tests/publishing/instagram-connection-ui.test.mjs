@@ -38,6 +38,29 @@ test("connect sends X-GrowthWise-Key and business_id to same-origin start", asyn
   assert.deepEqual(JSON.parse(request.init.body), { business_id: "growthwise-dev" });
 });
 
+test("missing admin key is treated as locked setup instead of an Instagram failure", async () => {
+  let requests = 0;
+  const c = controller({
+    adminKey: "",
+    fetchImpl: async () => { requests += 1; return ok({ state: "Not Connected", action: "Connect Instagram." }); },
+  });
+  await c.loadHealth();
+  assert.equal(c.getView().state, "Not Connected");
+  assert.match(c.getView().action, /GrowthWise access key/i);
+  assert.equal(await c.connect(), false);
+  assert.equal(requests, 0);
+});
+
+test("start endpoint auth and rate-limit errors surface safe recovery guidance", async () => {
+  const unauthorized = controller({ fetchImpl: async () => new Response(JSON.stringify({ error: "Invalid GrowthWise access code." }), { status: 401 }) });
+  assert.equal(await unauthorized.connect(), false);
+  assert.match(unauthorized.getView().action, /Unlock GrowthWise/i);
+
+  const limited = controller({ fetchImpl: async () => new Response(JSON.stringify({ error: "Try connecting Instagram again later." }), { status: 429 }) });
+  assert.equal(await limited.connect(), false);
+  assert.match(limited.getView().action, /30 seconds/i);
+});
+
 test("simultaneous connect calls produce one start request and one navigation", async () => {
   let requests = 0;
   let navigations = 0;
