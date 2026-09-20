@@ -155,3 +155,10 @@ test("Lead Assistant includes Smart Auto shadow-mode pilot controls", () => {
   assert.match(html, /AUTO ACK \+ DEXTER/);
   assert.match(html, /HUMAN ONLY/);
 });
+
+test("Lead Assistant can unlock inline without leaving the workflow", () => {
+  assert.match(html, /id="retailLeadUnlock"/);
+  assert.match(html, /Stay right here in Leads/);
+  assert.match(html, /id="retailLeadUnlockKey"/);
+  assert.match(html, /id="retailLeadUnlockBtn"/);
+});
