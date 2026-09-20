@@ -3,6 +3,7 @@ let products = [];
 let selectedProduct = null;
 let lastLead = null;
 let leads = [];
+let automationSettings = { mode: "shadow", pause_auto_replies: false };
 
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
@@ -17,6 +18,57 @@ function decisionLabel(decision){
   if(decision==="auto_reply") return "LOW-RISK REPLY";
   if(decision==="auto_reply_then_review") return "REPLY + DEXTER REVIEW";
   return "DEXTER REVIEW";
+}
+
+function renderAutomationMode(){
+  document.querySelectorAll("[data-lead-mode]").forEach(btn=>{
+    btn.classList.toggle("active", btn.dataset.leadMode === automationSettings.mode);
+  });
+  const badge=$("#retailLeadModeBadge");
+  if(badge) badge.textContent = automationSettings.mode === "draft_only" ? "DRAFT ONLY" : "SHADOW MODE";
+  const notice=$("#retailLeadAutomationNotice");
+  if(notice) notice.textContent = automationSettings.mode === "draft_only"
+    ? "Draft Only is active. GrowthWise writes replies, but does not score them for future automatic sending."
+    : "No customer messages are being sent automatically. Shadow Mode is observation only.";
+}
+
+function renderAutomationStats(){
+  const safe=leads.filter(l=>l.automation_class==="safe_auto").length;
+  const ack=leads.filter(l=>l.automation_class==="safe_ack_then_review").length;
+  const human=leads.filter(l=>l.automation_class==="human_only").length;
+  if($("#retailLeadSafeCount")) $("#retailLeadSafeCount").textContent=String(safe);
+  if($("#retailLeadAckCount")) $("#retailLeadAckCount").textContent=String(ack);
+  if($("#retailLeadHumanCount")) $("#retailLeadHumanCount").textContent=String(human);
+}
+
+async function loadAutomationSettings(){
+  const adminKey=key(); if(!adminKey) return;
+  try{
+    const r=await fetch(`/.netlify/functions/retail-lead-settings?business_id=${BUSINESS_ID}`,{headers:{"X-GrowthWise-Key":adminKey},cache:"no-store"});
+    const data=await r.json().catch(()=>({}));
+    if(r.ok && data.settings) automationSettings={...automationSettings,...data.settings};
+  }catch{}
+  renderAutomationMode();
+}
+
+async function saveAutomationMode(mode){
+  const adminKey=key();
+  if(!adminKey){showStatus("error","Unlock GrowthWise first.");return;}
+  if(!["draft_only","shadow"].includes(mode)) return;
+  try{
+    const r=await fetch(`/.netlify/functions/retail-lead-settings?business_id=${BUSINESS_ID}`,{
+      method:"PUT",
+      headers:{"Content-Type":"application/json","X-GrowthWise-Key":adminKey},
+      body:JSON.stringify({mode,pause_auto_replies:false})
+    });
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(data.error||"Could not update Smart Auto mode.");
+    automationSettings={...automationSettings,...data.settings};
+    renderAutomationMode();
+    showStatus("ok", mode==="shadow"
+      ? "✓ Shadow Mode is active. GrowthWise will record what it would automate, but nothing will send automatically."
+      : "✓ Draft Only is active. Dexter reviews and sends every reply.");
+  }catch(e){showStatus("error",e.message||"Could not update Smart Auto mode.");}
 }
 
 function renderProductSearch(){
@@ -46,6 +98,19 @@ function renderLeadResult(data){
   const badge=$("#retailLeadDecision"); badge.textContent=decisionLabel(data.decision); badge.className=`lead-decision ${data.decision==="auto_reply"?"safe":data.decision==="auto_reply_then_review"?"review":"human"}`;
   $("#retailLeadIntent").textContent=`Intent: ${(data.intent||"other").replaceAll("_"," ")} · Risk: ${data.risk_level||"—"}`;
   $("#retailLeadReason").textContent=data.reason||"GrowthWise evaluated the message against known product facts and store guardrails.";
+  const automationBox=$("#retailLeadAutomationDecision");
+  if(automationBox){
+    const cls=data.automation_class==="safe_auto"?"safe":data.automation_class==="safe_ack_then_review"?"review":"human";
+    const label=data.automation_class==="safe_auto"
+      ? "SHADOW RESULT · WOULD AUTO-REPLY"
+      : data.automation_class==="safe_ack_then_review"
+        ? "SHADOW RESULT · WOULD ACKNOWLEDGE, THEN ALERT DEXTER"
+        : "SHADOW RESULT · WOULD WAIT FOR DEXTER";
+    automationBox.className=`lead-automation-decision ${cls}`;
+    automationBox.textContent = automationSettings.mode==="draft_only"
+      ? "Draft Only · no automation decision is being used for sending."
+      : `${label} — ${data.automation_reason||"GrowthWise scored this conversation for the Smart Auto pilot."}`;
+  }
   $("#retailLeadReply").value=data.reply||"";
   $("#retailLeadNext").innerHTML=`<strong>Next:</strong> ${esc(data.follow_up_action||"Dexter reviews before sending.")}`;
 }
@@ -64,11 +129,21 @@ async function runLead(){
       message,
       history:$("#retailLeadHistory").value.trim(),
       product:selectedProduct,
+      automation_mode:automationSettings.mode,
       business:{name:"Dexter's Hats & Caps"}
     })});
     const data=await r.json().catch(()=>({})); if(!r.ok) throw new Error(data.error||`Lead assistant failed (HTTP ${r.status}).`);
     renderLeadResult(data);
-    showStatus(data.decision==="review_required"?"error":"ok", data.decision==="auto_reply"?"✓ Safe draft ready. Dexter still reviews before sending during the pilot.":"✓ Draft ready. GrowthWise flagged the part Dexter needs to decide or verify.");
+    const shadowText = automationSettings.mode==="shadow"
+      ? data.automation_class==="safe_auto"
+        ? "✓ Shadow Mode: GrowthWise would have auto-replied. Dexter still sends this one manually."
+        : data.automation_class==="safe_ack_then_review"
+          ? "✓ Shadow Mode: GrowthWise would send the acknowledgement, then alert Dexter for the decision."
+          : "✓ Shadow Mode: GrowthWise would wait for Dexter."
+      : data.decision==="auto_reply"
+        ? "✓ Safe draft ready. Dexter reviews before sending."
+        : "✓ Draft ready. GrowthWise flagged the part Dexter needs to decide or verify.";
+    showStatus(data.decision==="review_required"?"error":"ok", shadowText);
     await loadLeads();
   }catch(e){showStatus("error",e.message||"GrowthWise could not draft the reply.");}
   finally{btn.disabled=false;btn.textContent="Draft Customer Reply";}
@@ -79,14 +154,17 @@ async function loadLeads(){
   try{
     const r=await fetch(`/.netlify/functions/retail-lead-assistant?business_id=${BUSINESS_ID}`,{headers:{"X-GrowthWise-Key":adminKey},cache:"no-store"});
     const data=await r.json().catch(()=>({})); if(!r.ok) return;
-    leads=Array.isArray(data.leads)?data.leads:[]; renderLeads();
+    leads=Array.isArray(data.leads)?data.leads:[]; renderLeads(); renderAutomationStats();
   }catch{}
 }
 
 function renderLeads(){
   const root=$("#retailLeadList"); if(!root) return;
   if(!leads.length){root.innerHTML='<div class="inventory-empty">Customer questions handled through GrowthWise will appear here.</div>';return;}
-  root.innerHTML=leads.slice(0,12).map(l=>`<div class="retail-lead-card"><div class="retail-lead-card-top"><strong>${esc(l.customer_name||l.source||"Customer")}</strong><span>${esc(l.status||"new")}</span></div><small>${esc(l.product_name||l.source||"")}</small><p>${esc((l.message||"").slice(0,180))}</p><div class="retail-lead-card-actions">${l.status!=="replied"?`<button data-lead-status="replied" data-lead-id="${l.id}">Mark Replied</button>`:""}${l.status!=="closed"?`<button data-lead-status="closed" data-lead-id="${l.id}">Close</button>`:""}</div></div>`).join("");
+  root.innerHTML=leads.slice(0,12).map(l=>{
+    const auto=l.automation_class==="safe_auto"?"SAFE AUTO":l.automation_class==="safe_ack_then_review"?"ACK + REVIEW":l.automation_class==="human_only"?"HUMAN ONLY":"";
+    return `<div class="retail-lead-card"><div class="retail-lead-card-top"><strong>${esc(l.customer_name||l.source||"Customer")}</strong><span>${esc(l.status||"new")}</span></div><small>${esc(l.product_name||l.source||"")}${auto?" · "+esc(auto):""}</small><p>${esc((l.message||"").slice(0,180))}</p><div class="retail-lead-card-actions">${l.status!=="replied"?`<button data-lead-status="replied" data-lead-id="${l.id}">Mark Replied</button>`:""}${l.status!=="closed"?`<button data-lead-status="closed" data-lead-id="${l.id}">Close</button>`:""}</div></div>`;
+  }).join("");
   root.querySelectorAll("[data-lead-status]").forEach(btn=>btn.onclick=()=>updateLead(btn.dataset.leadId,btn.dataset.leadStatus));
 }
 
@@ -124,8 +202,9 @@ export function mountRetailLeads(){
   $("#retailLeadSampleBtn")?.addEventListener("click",loadSample);
   $("#retailLeadCopyBtn")?.addEventListener("click",copyReply);
   $("#retailLeadShareBtn")?.addEventListener("click",shareReply);
+  document.querySelectorAll("[data-lead-mode]").forEach(btn=>btn.addEventListener("click",()=>saveAutomationMode(btn.dataset.leadMode)));
   window.addEventListener("growthwise:inventory-updated",e=>{products=Array.isArray(e.detail?.products)?e.detail.products:[];renderProductSearch();});
-  window.addEventListener("growthwise:admin-key-ready",()=>loadLeads());
-  document.querySelectorAll('[data-nav="leads"]').forEach(btn=>btn.addEventListener("click",()=>{products=Array.isArray(window.growthwiseInventoryProducts)?window.growthwiseInventoryProducts:products;renderProductSearch();loadLeads();}));
-  renderProductSearch(); renderLeads(); if(key()) loadLeads();
+  window.addEventListener("growthwise:admin-key-ready",()=>{loadAutomationSettings();loadLeads();});
+  document.querySelectorAll('[data-nav="leads"]').forEach(btn=>btn.addEventListener("click",()=>{products=Array.isArray(window.growthwiseInventoryProducts)?window.growthwiseInventoryProducts:products;renderProductSearch();loadAutomationSettings();loadLeads();}));
+  renderProductSearch(); renderLeads(); renderAutomationMode(); renderAutomationStats(); if(key()){loadAutomationSettings();loadLeads();}
 }
