@@ -25,6 +25,31 @@ function normalizeProduct(product) {
 }
 function hasAny(message, patterns) { return patterns.some((re) => re.test(String(message || "").toLowerCase())); }
 
+function asksPrice(message) {
+  return hasAny(message, [/how\s+much/,/price/,/cost/,/what.*\$/]);
+}
+function asksAvailability(message) {
+  return hasAny(message, [/in\s+stock/,/available/,/still\s+have/,/do\s+you\s+have/,/got\s+this/]);
+}
+function productFactLead(product, message) {
+  if (!product) return "";
+  const parts = [];
+  const name = product.name || "That item";
+  const priceWanted = asksPrice(message);
+  const stockWanted = asksAvailability(message);
+
+  if (stockWanted && product.quantity !== null) {
+    if (product.quantity > 0) parts.push(`${name} is currently showing in stock`);
+    else parts.push(`${name} is currently showing out of stock`);
+  }
+  if (priceWanted && product.price) {
+    const amount = Number(product.price);
+    parts.push(Number.isFinite(amount) ? `the current listed price is $${amount.toFixed(2)}` : `the current listed price is $${product.price}`);
+  }
+  if (!parts.length) return "";
+  return parts.join(", ") + ".";
+}
+
 export default async (request) => {
   if (!["GET", "POST", "PATCH"].includes(request.method)) return json(405, { error: "Method not allowed." });
 
@@ -119,9 +144,21 @@ export default async (request) => {
   const complaint = hasAny(message, [/complaint/,/angry/,/upset/,/terrible/,/unacceptable/,/rip[ -]?off/,/scam/,/wrong\s+item/]);
 
   if (discount) {
-    intent="discount"; risk="medium"; decision="auto_reply_then_review"; reply="Thanks for asking. I can have Dexter review the price or any available offer and get back to you."; reason="Pricing exceptions and discounts require store approval."; followUp="Dexter reviews whether any discount or promotion applies.";
+    intent="discount"; risk="medium"; decision="auto_reply_then_review";
+    const verifiedFacts = productFactLead(product, message);
+    reply = verifiedFacts
+      ? `${verifiedFacts} Dexter still needs to review whether any different price or offer is available.`
+      : "Thanks for asking. I can have Dexter review the price or any available offer and get back to you.";
+    reason="GrowthWise can answer verified product facts immediately, but pricing exceptions and discounts require store approval.";
+    followUp="Dexter reviews whether any discount or promotion applies.";
   } else if (hold) {
-    intent="hold"; risk="medium"; decision="auto_reply_then_review"; reply="Thanks — I can have Dexter confirm whether the item can be held for you. I don't want to promise a hold until he confirms it."; reason="A hold changes inventory availability and requires store confirmation."; followUp="Dexter confirms whether a hold is allowed and for how long.";
+    intent="hold"; risk="medium"; decision="auto_reply_then_review";
+    const verifiedFacts = productFactLead(product, message);
+    reply = verifiedFacts
+      ? `${verifiedFacts} Dexter still needs to confirm whether it can be held for you, so I don't want to promise the hold until he confirms it.`
+      : "Thanks — I can have Dexter confirm whether the item can be held for you. I don't want to promise a hold until he confirms it.";
+    reason="GrowthWise can answer verified product facts immediately, but a hold changes inventory availability and requires store confirmation.";
+    followUp="Dexter confirms whether a hold is allowed and for how long.";
   } else if (returns) {
     intent="return_refund"; risk="high"; decision="review_required"; reply="Thanks for reaching out. Dexter will review the purchase details and get back to you about the available options."; reason="Returns, exchanges and refunds require a human review."; followUp="Dexter reviews the purchase details and store policy before replying.";
   } else if (custom) {
