@@ -53,13 +53,6 @@ const FINALIZE_CONNECTED_TRANSACTION = `
   RETURNING transaction_key
 `;
 
-const LOCK_ACCOUNT_BINDINGS = `
-  SELECT business_id, account_binding_key
-  FROM instagram_credentials
-  WHERE account_binding_key = ANY($1::text[])
-  FOR UPDATE
-`;
-
 const READ_CREDENTIAL = `
   SELECT business_id, account_binding_key, encrypted_credential,
     encryption_key_version, status, token_expires_at, username, display_name,
@@ -146,10 +139,6 @@ export function createInstagramStore({ getPool = netlifyPool, crypto } = {}) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
-      const ownership = await client.query(LOCK_ACCOUNT_BINDINGS, [permittedBindingKeys]);
-      if (ownership.rows.some((row) => row.business_id !== value.businessId)) {
-        throw safeStoreError("ACCOUNT_ALREADY_CONNECTED");
-      }
       const result = await client.query(CONNECT_CREDENTIAL, [
         value.businessId,
         accountBindingKey,
@@ -173,8 +162,7 @@ export function createInstagramStore({ getPool = netlifyPool, crypto } = {}) {
       return result.rows[0];
     } catch (error) {
       try { await client.query("ROLLBACK"); } catch { /* preserve the original safe failure */ }
-      if (["ACCOUNT_REBIND_FORBIDDEN", "ACCOUNT_ALREADY_CONNECTED", "OAUTH_TRANSACTION_FINISH_FAILED"].includes(error?.message)) throw error;
-      if (error?.code === "23505") throw safeStoreError("ACCOUNT_ALREADY_CONNECTED", error);
+      if (["ACCOUNT_REBIND_FORBIDDEN", "OAUTH_TRANSACTION_FINISH_FAILED"].includes(error?.message)) throw error;
       throw safeStoreError("CREDENTIAL_CONNECT_FAILED", error);
     } finally {
       client.release();
