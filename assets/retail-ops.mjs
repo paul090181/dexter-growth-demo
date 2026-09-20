@@ -74,10 +74,13 @@ function renderOrders(){
     if(o.status==="ordered") actions+=`<button data-status="confirmed" data-id="${o.id}">Vendor Confirmed</button>`;
     if(["ordered","confirmed"].includes(o.status)) actions+=`<button data-status="shipped" data-id="${o.id}">Mark Shipped</button>`;
     if(["ordered","confirmed","shipped"].includes(o.status)) actions+=`<button class="primary-action" data-receive="${o.id}">Receive into Square</button>`;
+    actions+=`<button data-save-pdf="${o.id}">Save PDF</button><button data-share-pdf="${o.id}">Send / Share</button>`;
     return `<div class="po-card"><div class="po-card-top"><div><div class="tag">${esc(o.po_number)}</div><h3>${esc(o.vendor_name)}</h3></div><span class="po-status ${esc(o.status)}">${esc(o.status)}</span></div><div class="po-card-meta">Total: <strong>${money(o.total)}</strong> · Expected: ${o.expected_at?new Date(o.expected_at).toLocaleDateString():"Not set"}<br>${o.tracking_number?`${esc(o.carrier||"Carrier")} · ${esc(o.tracking_number)}`:"No tracking yet"}</div><div class="po-line-summary">${lines}</div>${actions?`<div class="po-actions">${actions}</div>`:""}</div>`;
   }).join("");
   root.querySelectorAll("[data-status]").forEach(b=>b.onclick=()=>advance(b.dataset.id,b.dataset.status));
   root.querySelectorAll("[data-receive]").forEach(b=>b.onclick=()=>receive(b.dataset.receive));
+  root.querySelectorAll("[data-save-pdf]").forEach(b=>b.onclick=()=>saveOrderPdf(b.dataset.savePdf));
+  root.querySelectorAll("[data-share-pdf]").forEach(b=>b.onclick=()=>shareOrderPdf(b.dataset.sharePdf));
   renderRestock(); renderMoney();
 }
 
@@ -122,6 +125,61 @@ async function saveDraft(){
     const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||"Could not save purchase order.");
     draft=[];["#poVendorName","#poVendorContact","#poExpectedDate","#poShipping","#poTax","#poNotes"].forEach(s=>$(s).value="");renderDraft();showComposer(false);await loadOrders(adminKey);tell("Purchase order saved ✓",`${data.order.po_number} is ready. Mark it Sent / Ordered after the wholesaler receives the order.`);
   }catch(e){status.className="create-status error";status.textContent=e.message||"GrowthWise could not save the purchase order.";}finally{button.disabled=false;button.textContent="Save Draft";}
+}
+
+async function fetchOrderPdf(id){
+  const adminKey=key();
+  if(!adminKey) throw new Error("Unlock GrowthWise first.");
+  const r=await fetch(`/.netlify/functions/retail-order-pdf?business_id=${encodeURIComponent(BUSINESS_ID)}&order_id=${encodeURIComponent(id)}`,{
+    method:"GET",
+    headers:{"X-GrowthWise-Key":adminKey},
+    cache:"no-store"
+  });
+  if(!r.ok){
+    const data=await r.json().catch(()=>({}));
+    throw new Error(data.error||"GrowthWise could not create the purchase order PDF.");
+  }
+  const order=orders.find(o=>o.id===id);
+  const filename=`${(order?.po_number||"purchase-order").replace(/[^A-Za-z0-9._-]+/g,"-")}.pdf`;
+  const blob=await r.blob();
+  return {blob,filename,order};
+}
+
+async function saveOrderPdf(id){
+  try{
+    const {blob,filename}=await fetchOrderPdf(id);
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+    tell("PDF ready ✓",`${filename} was prepared for saving on this device.`);
+  }catch(e){
+    tell("Could not save PDF",e.message||"GrowthWise could not create the purchase order PDF.");
+  }
+}
+
+async function shareOrderPdf(id){
+  try{
+    const {blob,filename,order}=await fetchOrderPdf(id);
+    const file=new File([blob],filename,{type:"application/pdf"});
+    if(navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
+      await navigator.share({
+        title:`Purchase Order ${order?.po_number||""}`.trim(),
+        text:`GrowthWise purchase order ${order?.po_number||""} for ${order?.vendor_name||"vendor"}.`,
+        files:[file]
+      });
+      return;
+    }
+    await saveOrderPdf(id);
+    tell("PDF saved", "This browser cannot send PDF files directly. GrowthWise saved the PDF so you can share it from your device.");
+  }catch(e){
+    if(e?.name==="AbortError") return;
+    tell("Could not share PDF",e.message||"GrowthWise could not prepare this purchase order for sharing.");
+  }
 }
 
 async function advance(id,status){
