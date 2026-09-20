@@ -37,8 +37,8 @@ function formatDate(value) {
   });
 }
 
-function wrapText(text, font, size, maxWidth) {
-  const words = cleanAscii(text).split(/s+/).filter(Boolean);
+export function wrapText(text, font, size, maxWidth) {
+  const words = cleanAscii(text).split(/\s+/).filter(Boolean);
   if (!words.length) return [""];
   const lines = [];
   let line = "";
