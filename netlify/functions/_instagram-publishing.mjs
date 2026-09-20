@@ -1,8 +1,8 @@
+import { INSTAGRAM_CONTENT_PUBLISH_SCOPE } from "./_instagram-oauth.mjs";
+
 const DEFAULT_GRAPH_VERSION = "v26.0";
 const DEFAULT_TIMEOUT_MS = 15_000;
 const DEFAULT_MAX_RESPONSE_BYTES = 32 * 1024;
-
-export const INSTAGRAM_CONTENT_PUBLISH_SCOPE = "instagram_business_content_publish";
 
 export class InstagramPublishError extends Error {
   constructor(code, { status = null } = {}) {
