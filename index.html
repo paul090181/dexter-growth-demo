@@ -217,6 +217,17 @@
   .workflow-quick-nav-shell{padding-left:8px;padding-right:8px}
   .workflow-quick-nav button{min-width:86px;padding:9px 8px;font-size:9.5px}
 }
+
+.instagram-first-task{grid-column:1/-1;background:#0e1b2b!important;border-color:#0e1b2b!important;min-height:112px!important}
+.instagram-first-task .task-icon{background:#fff!important;color:#0e1b2b!important}
+.instagram-first-task strong,.instagram-first-task small{color:#fff!important}
+.instagram-first-task small{opacity:.82}
+.instagram-quick-intro{border:1px solid #d8e1e8;border-radius:18px;padding:16px;background:linear-gradient(180deg,#f7fafc,#eef4f7);margin-bottom:14px}
+.instagram-quick-intro.hidden{display:none}
+.instagram-quick-intro h3{margin:6px 0}.instagram-quick-intro p{margin:0;color:#5e6c77;line-height:1.45}
+.instagram-quick-steps{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}.instagram-quick-steps span{background:#0e1b2b;color:#fff;border-radius:999px;padding:7px 9px;font-size:11px;font-weight:850}
+.instagram-quick-unlock{margin-top:12px;border-top:1px solid #dce4e9;padding-top:12px}.instagram-quick-unlock.hidden{display:none}.instagram-quick-unlock label{display:block;font-size:12px;font-weight:850;color:#42515e;margin-bottom:6px}.instagram-quick-unlock>div{display:grid;grid-template-columns:1fr auto;gap:7px}.instagram-quick-unlock input{border:1px solid #cad4dc;border-radius:11px;padding:11px;min-width:0}.instagram-quick-unlock button{border:0;border-radius:11px;background:#0e1b2b;color:#fff;padding:0 14px;font-weight:850}.instagram-quick-unlock small{display:block;color:#6a7680;margin-top:6px;line-height:1.35}
+.instagram-draft-status{margin:10px 0 0;border-radius:12px;padding:10px 12px;font-size:12px;font-weight:750;background:#eef3f6;color:#354553}.instagram-draft-status.hidden{display:none}.instagram-draft-status.ok{background:#e8f5ea;color:#285e32}.instagram-draft-status.error{background:#fbecea;color:#8b3c34}
 </style>
 
 
@@ -230,8 +241,8 @@
   <div class="phone-shell">
     <div class="workflow-quick-nav-shell" aria-label="GrowthWise sections">
       <nav class="workflow-quick-nav">
+        <button type="button" class="workflow-nav-btn" data-nav="promotion" data-instagram-quick>Instagram</button>
         <button type="button" class="workflow-nav-btn" data-nav="product">Add Products</button>
-        <button type="button" class="workflow-nav-btn" data-nav="promotion">Promote</button>
         <button type="button" class="workflow-nav-btn" data-nav="results">Inventory</button>
         <button type="button" class="workflow-nav-btn" data-nav="orders">Orders</button>
         <button type="button" class="workflow-nav-btn" data-nav="money">Money</button>
@@ -251,8 +262,8 @@
       <section class="screen active" id="home">
         <div class="hero">
           <div class="eyebrow">GOOD MORNING</div>
-          <h1>Dexter, GrowthWise is finding your best opportunities today.</h1>
-          <p>Live inventory, recent sales and AI suggestions turn into simple actions you can review and use.</p>
+          <h1>Dexter, start with what you need right now.</h1>
+          <p>Make an Instagram post from a hat photo in a few taps. The rest of GrowthWise is here whenever you are ready for it.</p>
         </div>
 
         <div class="task-launcher" aria-label="Main GrowthWise actions">
@@ -260,15 +271,20 @@
             <div class="tag">WHAT DO YOU WANT TO DO?</div>
           </div>
           <div class="task-launcher-grid">
+            <button type="button" class="instagram-first-task" data-nav="promotion" data-instagram-quick>
+              <span class="task-icon">◎</span>
+              <strong>Instagram Post</strong>
+              <small>Take a hat photo · GrowthWise writes the caption · review &amp; post</small>
+            </button>
             <button type="button" data-nav="product">
               <span class="task-icon">＋</span>
               <strong>Add New Products</strong>
               <small>Take photos, read tags &amp; add to Square</small>
             </button>
-            <button type="button" data-nav="promotion">
+            <button type="button" data-nav="promotion" data-full-promotion>
               <span class="task-icon">↗</span>
-              <strong>Promote Products</strong>
-              <small>Create Facebook &amp; Instagram posts</small>
+              <strong>More Promotion Tools</strong>
+              <small>Existing products, Facebook and store promotions when you want them</small>
             </button>
             <button type="button" data-nav="results">
               <span class="task-icon">▥</span>
@@ -468,12 +484,30 @@
         <div class="section-head">
           <button class="back" data-nav="home">‹</button>
           <div>
-            <div class="eyebrow">PROMOTIONS</div>
-            <h2>Promote Products</h2>
+            <div class="eyebrow" id="promotionEyebrow">PROMOTIONS</div>
+            <h2 id="promotionScreenTitle">Promote Products</h2>
           </div>
         </div>
 
-        <div class="promo-product-picker">
+        <div class="instagram-quick-intro hidden" id="instagramQuickIntro">
+          <div class="tag">INSTAGRAM FIRST</div>
+          <h3>Take a photo. GrowthWise does the writing.</h3>
+          <p>No Square changes. No Facebook posting. GrowthWise will use the photo to draft an Instagram caption, and nothing posts until you approve it.</p>
+          <div class="instagram-quick-steps">
+            <span>1. Photo</span><span>2. Review caption</span><span>3. Post</span>
+          </div>
+          <div class="instagram-quick-unlock hidden" id="instagramQuickUnlock">
+            <label for="instagramQuickKey">Unlock GrowthWise</label>
+            <div>
+              <input id="instagramQuickKey" type="password" placeholder="GrowthWise access key" autocomplete="current-password" />
+              <button type="button" id="instagramQuickUnlockBtn">Unlock</button>
+            </div>
+            <small>This checks Instagram only. It does not read or change Square.</small>
+          </div>
+          <button type="button" class="ghost" id="openFullPromotionToolsBtn" style="width:100%;margin-top:10px">Use more promotion tools instead</button>
+        </div>
+
+        <div class="promo-product-picker" id="promotionProductPicker">
           <div class="tag">CHOOSE AN EXISTING PRODUCT</div>
           <h3>What do you want to promote?</h3>
           <p>Search the products already in Square. GrowthWise will use the product details to prepare the post.</p>
@@ -484,13 +518,13 @@
           <div id="promotionSelectedProduct" class="promo-selected-product hidden"></div>
         </div>
 
-        <div class="promo-toggle">
+        <div class="promo-toggle" id="promotionTypeToggle">
           <button type="button" id="promoSpotlightBtn" class="active">Product Spotlight</button>
           <button type="button" id="promoTuesdayBtn">Tuesday</button>
           <button type="button" id="promoWednesdayBtn">Wednesday</button>
         </div>
 
-        <div class="promo-card">
+        <div class="promo-card" id="promotionStrategyCard">
           <div class="tag" id="promoDayTag">TUESDAY OFFER</div>
           <div class="offer-banner">
             <strong id="promoOfferTitle">Free Accessory Tuesday</strong>
@@ -511,7 +545,7 @@
 
         <div class="photo-studio">
           <div class="tag">PHOTO</div>
-          <h3>Add the image you want customers to see</h3>
+          <h3 id="promotionPhotoHeading">Add the image you want customers to see</h3>
           <div class="photo-drop">
             <input id="promoPhotoInput" type="file" accept="image/*" />
             <input id="promoCameraInput" type="file" accept="image/*" capture="environment" />
@@ -521,6 +555,8 @@
             </div>
             <p>Use the original photo or let GrowthWise prepare a clean-background version.</p>
           </div>
+
+          <div class="instagram-draft-status hidden" id="instagramDraftStatus"></div>
 
           <div class="recent-photo-library hidden" id="recentPromotionPhotoLibrary">
             <div class="recent-photo-head">
@@ -557,14 +593,14 @@
 
         <div class="promo-card">
           <div class="tag">REVIEW ONCE</div>
-          <label for="promotionCaptionEditor" style="display:block;font-size:12px;font-weight:850;color:#596673;margin-bottom:7px">Post copy</label>
+          <label for="promotionCaptionEditor" id="promotionCaptionLabel" style="display:block;font-size:12px;font-weight:850;color:#596673;margin-bottom:7px">Post copy</label>
           <textarea id="promotionCaptionEditor" class="fb-caption-editor" maxlength="2200"></textarea>
           <div class="copy-row">
             <button type="button" class="copy-primary" id="copyPromotionCaption">Copy post</button>
             <button type="button" class="copy-secondary" id="copyOfferPromo">Copy offer only</button>
           </div>
 
-          <div class="channel-picker">
+          <div class="channel-picker" id="promotionChannelPicker">
             <div class="tag">PUBLISH TO</div>
             <label><input id="promotionFacebookChannel" type="checkbox" checked /> Facebook</label>
             <label><input id="promotionInstagramChannel" type="checkbox" checked /> Instagram</label>
@@ -578,7 +614,7 @@
           <div class="fb-publish-status hidden" id="promotionPublishStatus"></div>
         </div>
 
-        <div class="promo-card">
+        <div class="promo-card" id="promotionWhyCard">
           <div class="tag">WHY THIS PROMOTION</div>
           <p id="promoMeasurement"></p>
         </div>
