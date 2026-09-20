@@ -128,6 +128,7 @@
 .intake-results{margin-top:12px}.intake-results.hidden{display:none}
 .product-packet-tip{margin-top:12px;border-radius:14px;padding:12px;background:#eef4f6;line-height:1.4}.product-packet-tip strong,.product-packet-tip span{display:block}.product-packet-tip span{font-size:13px;color:#5e6b76;margin-top:3px}
 .product-packet{margin-top:12px;border:1px solid #e0e5e8;border-radius:15px;padding:12px;background:#fff}.product-packet.hidden{display:none}.product-packet-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.product-packet-head strong{font-size:13px;color:#33414e}.product-packet-head button{border:0;background:transparent;color:#8a672b;font-weight:800}.product-packet-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:10px 0}.product-packet-thumb{aspect-ratio:1/1;border-radius:11px;overflow:hidden;background:#eef1f3;position:relative}.product-packet-thumb img{width:100%;height:100%;object-fit:cover}.product-packet-thumb button{position:absolute;right:3px;top:3px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(20,28,36,.82);color:#fff;font-size:14px;line-height:22px;padding:0}.product-packet .primary{width:100%}
+.quick-quantity{margin-top:12px;border:1px solid #e1e5e8;border-radius:14px;padding:12px;background:#fff}.quick-quantity.hidden{display:none}.quick-quantity strong{display:block;font-size:13px;color:#34414d;margin-bottom:8px}.quick-quantity>div{display:flex;flex-wrap:wrap;gap:7px}.quick-quantity button{min-width:38px;border:1px solid #d9dfe3;border-radius:10px;padding:8px 10px;background:#f8fafb;color:#25323d;font-weight:850}
 .intake-result-card{border:1px solid #e2e6e9;border-radius:14px;padding:12px;margin-top:9px;background:#fff}
 .intake-result-card strong{display:block;color:#17222e}.intake-result-meta{font-size:12px;color:#67727d;margin-top:5px;line-height:1.45}
 .intake-result-card button{margin-top:10px;border:0;border-radius:11px;padding:10px 12px;font-weight:850;background:#eef1f3;color:#17222e}
@@ -480,6 +481,18 @@
 
           <div class="create-status hidden" id="productIntakeStatus"></div>
           <div class="intake-results hidden" id="productIntakeResults"></div>
+          <div class="quick-quantity hidden" id="quickQuantityPicker">
+            <strong>How many are you adding?</strong>
+            <div>
+              <button type="button" data-quick-qty="1">1</button>
+              <button type="button" data-quick-qty="2">2</button>
+              <button type="button" data-quick-qty="3">3</button>
+              <button type="button" data-quick-qty="4">4</button>
+              <button type="button" data-quick-qty="5">5</button>
+              <button type="button" data-quick-qty="6">6</button>
+              <button type="button" data-quick-qty="10">10</button>
+            </div>
+          </div>
           <button type="button" class="primary hidden" id="quickSquareApproveBtn" style="margin-top:12px">Approve &amp; Add to Square</button>
         </div>
 
@@ -1207,17 +1220,22 @@ function applyIntakeProduct(index){
   document.getElementById('generated').classList.remove('hidden');
 
   const quickApprove = document.getElementById('quickSquareApproveBtn');
-  const hasRetailPrice = product.price_type === 'retail' && Number(product.price) >= 0;
+  const quickQuantity = document.getElementById('quickQuantityPicker');
+  const hasRetailPrice = product.price_type === 'retail' && product.price !== '' && Number.isFinite(Number(product.price)) && Number(product.price) >= 0;
   const hasQuantity = product.quantity !== '' && Number.isInteger(Number(product.quantity)) && Number(product.quantity) >= 0;
   const hasName = Boolean(product.product_name);
+  quickQuantity.classList.toggle('hidden', hasQuantity);
   quickApprove.classList.toggle('hidden', !(hasName && hasRetailPrice && hasQuantity));
 
   const status = document.getElementById('productIntakeStatus');
   status.className = 'create-status ok';
   if(product.price_type === 'wholesale' && product.price){
     status.textContent = `✓ Product details filled. GrowthWise found a wholesale/cost price of ${product.price}, so it left retail price blank for you to confirm.`;
+  }else if(!hasRetailPrice || !hasQuantity){
+    const missing = [!hasRetailPrice ? 'retail price' : '', !hasQuantity ? 'quantity' : ''].filter(Boolean);
+    status.textContent = `✓ GrowthWise filled the product details. It still needs ${missing.join(' and ')} before Square. ${!hasRetailPrice ? 'Snap the price tag if you have it. ' : ''}${!hasQuantity ? 'Choose the quantity below.' : ''}`;
   }else{
-    status.textContent = '✓ Product details filled. Review only the highlighted/uncertain information before publishing.';
+    status.textContent = '✓ Product details filled. Review anything GrowthWise flagged, then approve it for Square.';
   }
 }
 
@@ -1420,6 +1438,24 @@ document.getElementById('productIntakeMode').addEventListener('change', ()=>{
 
 document.getElementById('quickSquareApproveBtn').addEventListener('click', ()=>{
   document.getElementById('saveSquareBtn').click();
+});
+
+document.querySelectorAll('[data-quick-qty]').forEach(button=>{
+  button.addEventListener('click',()=>{
+    const qty = Number(button.dataset.quickQty);
+    document.getElementById('inventoryInput').value = String(qty);
+    document.getElementById('quickQuantityPicker').classList.add('hidden');
+
+    const hasName = Boolean(document.getElementById('productNameInput').value.trim());
+    const price = Number(document.getElementById('priceInput').value);
+    const hasPrice = document.getElementById('priceInput').value !== '' && Number.isFinite(price) && price >= 0;
+    document.getElementById('quickSquareApproveBtn').classList.toggle('hidden', !(hasName && hasPrice));
+    const status = document.getElementById('productIntakeStatus');
+    if(hasName && hasPrice){
+      status.className = 'create-status ok';
+      status.textContent = `✓ Product is ready for Square with quantity ${qty}. Review and approve below.`;
+    }
+  });
 });
 
 const newProductGalleryInput = document.getElementById('newProductGalleryInput');
