@@ -24,6 +24,17 @@ function normalizeProduct(product) {
   };
 }
 function hasAny(message, patterns) { return patterns.some((re) => re.test(String(message || "").toLowerCase())); }
+function sourceTypeFromLabel(source) {
+  const value = String(source || "").toLowerCase();
+  if (value.includes("instagram")) return "instagram";
+  if (value.includes("facebook")) return "facebook";
+  if (value.includes("email")) return "email";
+  if (value.includes("website")) return "website";
+  if (value.includes("text") || value.includes("sms")) return "sms";
+  if (value.includes("phone")) return "phone";
+  if (value.includes("manual")) return "manual";
+  return "other";
+}
 
 function asksPrice(message) {
   return hasAny(message, [/how\s+much/,/price/,/cost/,/what.*\$/]);
@@ -72,7 +83,12 @@ export default async (request) => {
     let body; try { body = await request.json(); } catch { return json(400, { error: "Invalid request." }); }
     const id = clean(body.id, 120), status = clean(body.status, 40);
     if (!id || !["new","replied","follow-up","closed"].includes(status)) return json(400, { error: "Valid lead and status are required." });
-    const rows = await db.sql`UPDATE retail_customer_leads SET status = ${status}, updated_at = CURRENT_TIMESTAMP WHERE id = ${id} AND business_id = ${businessId} RETURNING *`;
+    const rows = await db.sql`UPDATE retail_customer_leads
+      SET status = ${status},
+          unread = CASE WHEN ${status} = 'new' THEN unread ELSE FALSE END,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${id} AND business_id = ${businessId}
+      RETURNING *`;
     if (!rows.length) return json(404, { error: "Lead not found." });
     return json(200, { ok: true, lead: rows[0] });
   }
@@ -84,6 +100,7 @@ export default async (request) => {
   // Live delivery is intentionally disabled until a supported messaging channel is connected.
   const automationMode = requestedAutomationMode === "draft_only" ? "draft_only" : "shadow";
   const source = clean(body.source, 120) || "Customer message";
+  const sourceType = sourceTypeFromLabel(source);
   const customerName = clean(body.customer_name, 120);
   const customerContact = clean(body.customer_contact, 180);
   const message = clean(body.message, 4000);
@@ -209,10 +226,10 @@ export default async (request) => {
   const linkedProduct = productMatch === "matched" ? product : null;
   const id = crypto.randomUUID();
   await db.sql`INSERT INTO retail_customer_leads
-    (id,business_id,source,customer_name,customer_contact,message,square_item_id,square_variation_id,product_name,intent,risk_level,decision,suggested_reply,follow_up_action,status,
-     automation_mode,automation_class,would_auto_send,delivery_action,automation_reason)
-    VALUES (${id},${businessId},${source},${customerName || null},${customerContact || null},${message},${linkedProduct?.item_id || null},${linkedProduct?.variation_id || null},${linkedProduct?.name || null},${intent},${risk},${decision},${reply},${followUp},'new',
-     ${automationMode},${automationClass},${wouldAutoSend},${deliveryAction},${automationReason})`;
+    (id,business_id,source,source_type,customer_name,customer_contact,message,square_item_id,square_variation_id,product_name,intent,risk_level,decision,suggested_reply,follow_up_action,status,
+     automation_mode,automation_class,would_auto_send,delivery_action,automation_reason,received_at,unread)
+    VALUES (${id},${businessId},${source},${sourceType},${customerName || null},${customerContact || null},${message},${linkedProduct?.item_id || null},${linkedProduct?.variation_id || null},${linkedProduct?.name || null},${intent},${risk},${decision},${reply},${followUp},'new',
+     ${automationMode},${automationClass},${wouldAutoSend},${deliveryAction},${automationReason},CURRENT_TIMESTAMP,TRUE)`;
 
   return json(200, {
     ok: true, id, model, intent, product_match: productMatch, risk_level: risk, decision, reply, reason, follow_up_action: followUp,
