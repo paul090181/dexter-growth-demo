@@ -1660,7 +1660,54 @@ async function publishNewProductToFacebook(form, message){
     })
   });
   const data = await response.json().catch(()=>({}));
-  if(!response.ok) throw new Error(data.error || `Facebook publish failed (HTTP ${response.status}).`);
+  if(!response.ok){
+    const error = new Error(data.error || `Facebook publish failed (HTTP ${response.status}).`);
+    error.code = data.code || 'FACEBOOK_PUBLISH_FAILED';
+    throw error;
+  }
+  return data;
+}
+
+async function newProductImageForInstagram(){
+  const dataUrl = newProductPromotionImageDataUrl || newProductImageDataUrl;
+  if(!dataUrl) return '';
+  const image = await new Promise((resolve, reject)=>{
+    const img = new Image();
+    img.onload = ()=>resolve(img);
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+  const maxEdge = 1600;
+  const scale = Math.min(1, maxEdge / Math.max(image.width, image.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.9);
+}
+
+async function publishNewProductToInstagram(form, message){
+  const imageDataUrl = await newProductImageForInstagram();
+  const response = await fetch('/.netlify/functions/instagram-publish', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-GrowthWise-Key': form.adminKey
+    },
+    body: JSON.stringify({
+      business_id: 'dexters-hats',
+      caption: message,
+      image_data_url: imageDataUrl,
+      reviewed: true
+    })
+  });
+  const data = await response.json().catch(()=>({}));
+  if(!response.ok){
+    const error = new Error(data.error || `Instagram publish failed (HTTP ${response.status}).`);
+    error.code = data.code || 'INSTAGRAM_PUBLISH_FAILED';
+    error.retrySafe = data.retry_safe;
+    throw error;
+  }
   return data;
 }
 
@@ -1671,18 +1718,18 @@ saveSquareBtn.addEventListener('click', async ()=>{
 
   saveSquareBtn.disabled = true;
   saveSquareBtn.textContent = 'Creating in Square…';
-  setCreateStatus('loading','Sending the product securely to Square Sandbox…');
+  setCreateStatus('loading','Creating the product in Square…');
 
   try{
     const created = await createProductInSquare(form);
     void sendDexterPublishingShadow(form, created);
-    setCreateStatus('ok', `✓ ${created.name || form.productName} created in Square Sandbox at $${created.price || form.price.toFixed(2)} with ${created.quantity ?? form.quantity} in stock.`);
+    setCreateStatus('ok', `✓ ${created.name || form.productName} created in Square at $${created.price || form.price.toFixed(2)} with ${created.quantity ?? form.quantity} in stock.`);
     document.getElementById('websiteTitle').textContent = created.name || [form.brand, form.productName].filter(Boolean).join(' ');
     sessionStorage.setItem('growthwise_admin_key', form.adminKey);
     form.adminKeyInput.value = '';
     await loadLiveSquareData(form.adminKey);
     await loadLiveSalesData(form.adminKey);
-    openModal('Product created in Square ✓', `${created.name || form.productName} was created in Dexter’s Hats TEST with a starting inventory of ${created.quantity ?? form.quantity}.`);
+    openModal('Product created in Square ✓', `${created.name || form.productName} was created with a starting inventory of ${created.quantity ?? form.quantity}.`);
   }catch(err){
     setCreateStatus('error', err.message || 'GrowthWise could not create the product.');
   }finally{
@@ -1698,51 +1745,103 @@ addAndPromoteBtn.addEventListener('click', async ()=>{
   const error = validateNewProductForm(form, true);
   if(error){ setCreateStatus('error', error); return; }
 
+  const useFacebook = document.getElementById('newProductFacebookChannel').checked;
+  const useInstagram = document.getElementById('newProductInstagramChannel').checked;
   let message = document.getElementById('newProductCaption').value.trim();
-  if(!message) message = buildNewProductCaption();
-  if(!message){ setCreateStatus('error', 'Review or prepare the Facebook caption first.'); return; }
+  if((useFacebook || useInstagram) && !message) message = buildNewProductCaption();
+  if((useFacebook || useInstagram) && !message){
+    setCreateStatus('error', 'Review or prepare the post copy first.');
+    return;
+  }
+  if(useInstagram && message.length > 2200){
+    setCreateStatus('error', 'Instagram copy must be 2,200 characters or fewer.');
+    return;
+  }
 
-  const photoLabel = newProductPromotionImageKind === 'cleaned' ? 'cleaned product photo' : 'selected original product photo';
+  const channels = [
+    'Square',
+    useFacebook ? 'Facebook' : '',
+    useInstagram ? 'Instagram' : ''
+  ].filter(Boolean);
+  const name = [form.brand, form.productName].filter(Boolean).join(' ') || form.productName;
+  const photoLabel = newProductPromotionImageKind === 'cleaned' ? 'cleaned product photo' : 'selected product photo';
   const confirmed = window.confirm(
-    `Add ${[form.brand, form.productName].filter(Boolean).join(' ') || form.productName} to Square and publish the ${photoLabel} + caption to Facebook now?`
+    `Create ${name} in Square and publish the reviewed ${photoLabel} + copy to ${channels.slice(1).join(' and ') || 'no social channels'}?`
   );
   if(!confirmed) return;
 
   addAndPromoteBtn.disabled = true;
   saveSquareBtn.disabled = true;
-  addAndPromoteBtn.textContent = 'Adding to Square…';
-  setCreateStatus('loading', 'Step 1 of 2: creating the product in Square…');
+  addAndPromoteBtn.textContent = 'Creating…';
+  setCreateStatus('loading', 'Creating the product in Square…');
 
   let created;
+  const published = [];
+  const failures = [];
   try{
     created = await createProductInSquare(form);
     void sendDexterPublishingShadow(form, created);
     sessionStorage.setItem('growthwise_admin_key', form.adminKey);
-    setCreateStatus('loading', `✓ ${created.name || form.productName} created in Square. Step 2 of 2: publishing to Facebook…`);
-    addAndPromoteBtn.textContent = 'Publishing to Facebook…';
+    published.push('Square');
 
-    const facebook = await publishNewProductToFacebook(form, message);
-    setCreateStatus('ok', `✓ ${created.name || form.productName} added to Square and published to ${facebook.page_name || 'Facebook'}.`);
-    document.getElementById('websiteTitle').textContent = created.name || [form.brand, form.productName].filter(Boolean).join(' ');
+    if(useFacebook){
+      addAndPromoteBtn.textContent = 'Posting to Facebook…';
+      setCreateStatus('loading', `✓ Square saved. Publishing the reviewed post to Facebook…`);
+      try{
+        const facebook = await publishNewProductToFacebook(form, message);
+        published.push(facebook.page_name || 'Facebook');
+      }catch(err){
+        failures.push(`Facebook: ${err.message || 'publish failed'}`);
+      }
+    }
+
+    if(useInstagram){
+      addAndPromoteBtn.textContent = 'Posting to Instagram…';
+      setCreateStatus('loading', `✓ Square saved${useFacebook ? ' · Facebook step complete' : ''}. Publishing the reviewed post to Instagram…`);
+      try{
+        const instagram = await publishNewProductToInstagram(form, message);
+        published.push(`Instagram @${instagram.account?.username || 'connected account'}`);
+      }catch(err){
+        if(err.code === 'INSTAGRAM_PUBLISH_AMBIGUOUS'){
+          failures.push('Instagram: final status was uncertain — check Instagram before retrying.');
+        }else if(err.code === 'PUBLISHING_PERMISSION_REQUIRED'){
+          failures.push('Instagram: reconnect Instagram in Connected Apps to approve publishing.');
+        }else{
+          failures.push(`Instagram: ${err.message || 'publish failed'}`);
+        }
+      }
+    }
+
+    document.getElementById('websiteTitle').textContent = created.name || name;
     document.getElementById('generated').classList.remove('hidden');
     await loadLiveSquareData(form.adminKey);
     await loadLiveSalesData(form.adminKey);
-    openModal(
-      'Added & promoted ✓',
-      `${created.name || form.productName} is now in Dexter’s Hats TEST Square inventory and the approved product post was published to ${facebook.page_name || 'the connected Facebook Page'}.`
-    );
+
+    if(failures.length){
+      setCreateStatus('error', `✓ Saved to ${published.join(', ')}. Needs attention: ${failures.join(' · ')}`);
+      openModal(
+        'Product saved — one channel needs attention',
+        `GrowthWise completed: ${published.join(', ')}. ${failures.join(' ')} Do not recreate the Square item.`
+      );
+    }else{
+      setCreateStatus('ok', `✓ Done: ${published.join(' · ')}.`);
+      openModal(
+        'Product created & published ✓',
+        `${created.name || name} was added to Square and the reviewed post was sent to ${published.slice(1).join(' and ') || 'your selected channels'}.`
+      );
+    }
   }catch(err){
     if(created){
-      setCreateStatus('error', `Square succeeded, but Facebook did not publish: ${err.message || 'Unknown Facebook error.'}`);
-      openModal('Square saved — Facebook needs attention', `The product was created in Square, but Facebook did not publish. You can retry the Facebook post without creating the Square item again.`);
+      setCreateStatus('error', `Square succeeded, but publishing needs attention: ${err.message || 'Unknown error.'}`);
+      openModal('Square saved — publishing needs attention', 'The product already exists in Square. Fix the channel issue before retrying social publishing.');
     }else{
-      setCreateStatus('error', err.message || 'GrowthWise could not add and promote the product.');
+      setCreateStatus('error', err.message || 'GrowthWise could not create and publish the product.');
     }
   }finally{
     form.adminKeyInput.value = '';
     addAndPromoteBtn.disabled = false;
     saveSquareBtn.disabled = false;
-    addAndPromoteBtn.textContent = 'Add to Square & Promote';
+    addAndPromoteBtn.textContent = 'Create & Publish';
   }
 });
 
