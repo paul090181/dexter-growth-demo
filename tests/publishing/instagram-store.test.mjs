@@ -55,17 +55,9 @@ function credentialPool({ failWrite = false, failCommit = false } = {}) {
         rows.clear(); for (const [key, row] of staged) rows.set(key, row);
         staged = undefined; return { rows: [] };
       }
-      if (/SELECT business_id, account_binding_key/.test(text)) {
-        return { rows: [...staged.values()].filter((row) => values[0].includes(row.account_binding_key)).map((row) => ({
-          business_id: row.business_id,
-          account_binding_key: row.account_binding_key,
-        })) };
-      }
       if (/INSERT INTO instagram_credentials/.test(text)) {
         if (failWrite) throw new Error("write failed");
         const existingBusiness = staged.get(values[0]);
-        const owner = [...staged.values()].find((row) => row.account_binding_key === values[1]);
-        if (owner && owner.business_id !== values[0]) throw Object.assign(new Error("unique"), { code: "23505" });
         if (existingBusiness && !values[9].includes(existingBusiness.account_binding_key)) return { rows: [] };
         const row = {
           business_id: values[0], account_binding_key: values[1],
@@ -202,19 +194,34 @@ test("migration prevents tenant and return destination mutation", async () => {
   assert.match(migration, /BEFORE UPDATE ON instagram_oauth_transactions/);
 });
 
-test("account_binding_key is unique across tenants and the same Instagram account cannot bind to tenant B", async () => {
+test("same Instagram account can bind independently to multiple tenants", async () => {
   const pool = credentialPool();
   const database = credentialStore(pool);
-  await database.connectCredential(credentialInput("tenant-a"));
-  await assert.rejects(database.connectCredential(credentialInput("tenant-b")), /ACCOUNT_ALREADY_CONNECTED/);
-  assert.equal(pool.rows.size, 1);
-  assert.equal(pool.rows.get("tenant-a").business_id, "tenant-a");
+  await database.connectCredential(credentialInput("tenant-a", "ig-123", "SYNTHETIC_TOKEN_A"));
+  await database.connectCredential(credentialInput("tenant-b", "ig-123", "SYNTHETIC_TOKEN_B"));
+  assert.equal(pool.rows.size, 2);
+  assert.equal(pool.rows.get("tenant-a").account_binding_key, pool.rows.get("tenant-b").account_binding_key);
+  assert.notEqual(
+    pool.rows.get("tenant-a").encrypted_credential.ciphertext,
+    pool.rows.get("tenant-b").encrypted_credential.ciphertext,
+  );
+  assert.equal(
+    (await database.readDecryptedCredential({ businessId: "tenant-a", accountId: "ig-123" })).payload.access_token,
+    "SYNTHETIC_TOKEN_A",
+  );
+  assert.equal(
+    (await database.readDecryptedCredential({ businessId: "tenant-b", accountId: "ig-123" })).payload.access_token,
+    "SYNTHETIC_TOKEN_B",
+  );
 });
 
-test("credential creation and account ownership occur transactionally", async () => {
+test("credential creation remains transactional per tenant", async () => {
   const pool = credentialPool();
   await credentialStore(pool).connectCredential(credentialInput());
-  assert.deepEqual(pool.calls.slice(0, 4).map(({ text }) => text === "BEGIN" || text === "COMMIT" ? text : /SELECT/.test(text) ? "LOCK" : "WRITE"), ["BEGIN", "LOCK", "WRITE", "COMMIT"]);
+  assert.deepEqual(
+    pool.calls.slice(0, 3).map(({ text }) => text === "BEGIN" || text === "COMMIT" ? text : "WRITE"),
+    ["BEGIN", "WRITE", "COMMIT"],
+  );
   assert.equal(pool.rows.get("tenant-a").status, "active");
 });
 
@@ -294,10 +301,12 @@ test("binding-secret rotation lets the owning tenant migrate its binding without
   assert.deepEqual((await credentialStore(pool, rotated).readDecryptedCredential({ businessId: "tenant-a", accountId: "ig-123" })).payload.access_token, "ROTATED_SYNTHETIC_TOKEN");
 });
 
-test("rotated binding secret cannot let tenant B steal an account stored with the old binding", async () => {
+test("binding-secret rotation preserves tenant isolation when an Instagram account is shared", async () => {
   const pool = credentialPool();
   const oldCrypto = testCrypto("state-secret-at-least-16", "old-binding-secret-at-least-16");
-  await credentialStore(pool, oldCrypto).connectCredential(credentialInput("tenant-a"));
+  await credentialStore(pool, oldCrypto).connectCredential(
+    credentialInput("tenant-a", "ig-123", "SYNTHETIC_TOKEN_A"),
+  );
   const rotated = createInstagramCrypto({
     stateSecrets: { current: { id: "state-v1", key: "state-secret-at-least-16" } },
     bindingSecrets: {
@@ -306,11 +315,19 @@ test("rotated binding secret cannot let tenant B steal an account stored with th
     },
     credentialKeys: { current: { id: "enc-v1", key: Buffer.alloc(32, 7).toString("base64url") } },
   });
-  await assert.rejects(
-    credentialStore(pool, rotated).connectCredential(credentialInput("tenant-b")),
-    /ACCOUNT_ALREADY_CONNECTED/,
+  const rotatedStore = credentialStore(pool, rotated);
+  await rotatedStore.connectCredential(
+    credentialInput("tenant-b", "ig-123", "SYNTHETIC_TOKEN_B"),
   );
-  assert.deepEqual([...pool.rows.keys()], ["tenant-a"]);
+  assert.deepEqual([...pool.rows.keys()].sort(), ["tenant-a", "tenant-b"]);
+  assert.equal(
+    (await credentialStore(pool, oldCrypto).readDecryptedCredential({ businessId: "tenant-a", accountId: "ig-123" })).payload.access_token,
+    "SYNTHETIC_TOKEN_A",
+  );
+  assert.equal(
+    (await rotatedStore.readDecryptedCredential({ businessId: "tenant-b", accountId: "ig-123" })).payload.access_token,
+    "SYNTHETIC_TOKEN_B",
+  );
 });
 
 test("credential transaction always releases its checked-out client", async () => {
@@ -354,13 +371,17 @@ test("failed OAuth success finalization rolls back the credential write", async 
   assert.equal(released, true);
 });
 
-test("credential migration enforces primary ownership and unique binding", async () => {
-  const migrationUrl = new URL("../../netlify/database/migrations/20260917173000_instagram-oauth/migration.sql", import.meta.url);
-  const migration = await readFile(migrationUrl, "utf8");
-  assert.match(migrationUrl.pathname, /\/netlify\/database\/migrations\/\d+_[a-z0-9-]+\/migration\.sql$/);
-  assert.match(migration, /business_id text PRIMARY KEY/);
-  assert.match(migration, /account_binding_key text UNIQUE NOT NULL/);
-  assert.match(migration, /encrypted_credential jsonb NOT NULL/);
+test("credential migrations keep one row per business while allowing shared Instagram accounts", async () => {
+  const initialMigrationUrl = new URL("../../netlify/database/migrations/20260917173000_instagram-oauth/migration.sql", import.meta.url);
+  const sharedAccountMigrationUrl = new URL("../../netlify/database/migrations/20260920095500_allow-shared-instagram-accounts/migration.sql", import.meta.url);
+  const initialMigration = await readFile(initialMigrationUrl, "utf8");
+  const sharedAccountMigration = await readFile(sharedAccountMigrationUrl, "utf8");
+  assert.match(initialMigrationUrl.pathname, /\/netlify\/database\/migrations\/\d+_[a-z0-9-]+\/migration\.sql$/);
+  assert.match(sharedAccountMigrationUrl.pathname, /\/netlify\/database\/migrations\/\d+_[a-z0-9-]+\/migration\.sql$/);
+  assert.match(initialMigration, /business_id text PRIMARY KEY/);
+  assert.match(initialMigration, /account_binding_key text UNIQUE NOT NULL/);
+  assert.match(initialMigration, /encrypted_credential jsonb NOT NULL/);
+  assert.match(sharedAccountMigration, /DROP CONSTRAINT IF EXISTS instagram_credentials_account_binding_key_key/);
 });
 
 test("database migrations use Netlify's numbered directory layout", async () => {
