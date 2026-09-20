@@ -237,6 +237,13 @@
 .pilot-result-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}.pilot-result-buttons button{border:1px solid #ccd6dd;border-radius:11px;background:#eef2f5;padding:10px;font-weight:850;color:#334552}.pilot-result-buttons button.active{background:#0e1b2b;color:#fff;border-color:#0e1b2b}
 .referral-card{background:linear-gradient(180deg,#fffdf7,#f8f5eb);border-color:#e6dcc1}.referral-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:13px}
 @media(max-width:390px){.pilot-steps{grid-template-columns:1fr}.referral-actions{grid-template-columns:1fr 1fr}}
+
+.lead-assistant-card{border:1px solid #dce4e9;border-radius:18px;background:#fff;padding:16px;margin-bottom:14px}.lead-assistant-card h3{margin:6px 0}.lead-assistant-card>p,.helper-text{color:#66737e;line-height:1.45;margin:0 0 10px}.lead-assistant-card label{display:block;font-size:12px;font-weight:850;color:#53616d;margin-top:11px}.lead-assistant-card input,.lead-assistant-card select,.lead-assistant-card textarea{width:100%;margin-top:6px;border:1px solid #d6dee3;border-radius:11px;padding:11px;font:inherit;background:#fff}.lead-assistant-card textarea{min-height:92px;resize:vertical}
+.lead-product-results{display:grid;gap:7px;max-height:230px;overflow-y:auto;margin-top:8px}.lead-product-result{border:1px solid #dfe5e9;border-radius:12px;background:#f8fafb;padding:10px;text-align:left}.lead-product-result strong,.lead-product-result small{display:block}.lead-product-result small{color:#697681;margin-top:3px}
+.lead-selected-product{border:1px solid #ccd9e1;background:#eef4f7;border-radius:12px;padding:11px;margin-top:9px}.lead-selected-product strong,.lead-selected-product small{display:block}.lead-selected-product small{color:#61717c;margin-top:3px}.lead-selected-product button{border:0;background:transparent;color:#765d2b;font-weight:850;padding:7px 0 0}
+.lead-history-details{margin-top:11px}.lead-history-details summary{font-size:12px;font-weight:850;color:#53616d;cursor:pointer}.lead-assistant-actions,.lead-reply-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.lead-result-box{border:1px solid #dce5ea;border-radius:15px;background:#f9fbfc;padding:13px;margin-top:12px}.lead-result-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.lead-decision{font-size:9px;font-weight:950;border-radius:999px;padding:6px 8px}.lead-decision.safe{background:#e8f5ea;color:#285e32}.lead-decision.review{background:#fff5dd;color:#725817}.lead-decision.human{background:#fbecea;color:#8c3f35}.lead-intent{font-size:11px;color:#687580;margin-top:7px}.lead-reason{margin-top:9px;background:#eef2f4;border-radius:10px;padding:9px;font-size:11px;line-height:1.4;color:#566570}.lead-next{font-size:11px;color:#52616d;line-height:1.45;margin-top:10px}
+.retail-lead-card{border:1px solid #dfe5e9;border-radius:13px;padding:11px;margin-top:8px;background:#fbfcfd}.retail-lead-card-top{display:flex;justify-content:space-between;gap:8px}.retail-lead-card-top span{font-size:9px;font-weight:900;text-transform:uppercase;background:#edf1f4;border-radius:999px;padding:4px 6px}.retail-lead-card small{color:#6f7b84}.retail-lead-card p{font-size:11px;color:#52616d;line-height:1.4;margin:7px 0}.retail-lead-card-actions{display:flex;gap:7px}.retail-lead-card-actions button{border:0;border-radius:9px;background:#e9eef1;padding:8px 9px;font-size:10px;font-weight:850}
 </style>
 
 
@@ -255,6 +262,7 @@
         <button type="button" class="workflow-nav-btn" data-nav="results">Inventory</button>
         <button type="button" class="workflow-nav-btn" data-nav="orders">Orders</button>
         <button type="button" class="workflow-nav-btn" data-nav="money">Money</button>
+        <button type="button" class="workflow-nav-btn" data-nav="leads">Leads</button>
         <button type="button" class="workflow-nav-btn" data-nav="chat">Ask AI</button>
       </nav>
     </div>
@@ -310,6 +318,11 @@
               <strong>Money</strong>
               <small>Sales, inventory value, vendor orders &amp; costs</small>
             </button>
+            <button type="button" data-nav="leads">
+              <span class="task-icon">✉</span>
+              <strong>Lead Assistant</strong>
+              <small>Turn customer DMs, texts &amp; questions into safe replies</small>
+            </button>
             <button type="button" data-nav="chat">
               <span class="task-icon">✦</span>
               <strong>Ask GrowthWise</strong>
@@ -334,7 +347,8 @@
             <button type="button" data-nav="promotion" data-full-promotion><strong>3. Promote Existing Product</strong><small>Choose something already in inventory</small></button>
             <button type="button" data-nav="orders"><strong>4. Orders &amp; Restocking</strong><small>Create, track and receive a PO</small></button>
             <button type="button" data-nav="money"><strong>5. Money</strong><small>See sales, inventory and purchasing together</small></button>
-            <button type="button" data-nav="chat"><strong>6. Ask GrowthWise</strong><small>Use the AI assistant for business help</small></button>
+            <button type="button" data-nav="leads"><strong>6. Lead Assistant</strong><small>Paste a customer question and draft a reply</small></button>
+            <button type="button" data-nav="chat"><strong>7. Ask GrowthWise</strong><small>Use the AI assistant for business help</small></button>
           </div>
 
           <div class="pilot-feedback">
@@ -348,6 +362,7 @@
               <option value="inventory">Inventory</option>
               <option value="orders-restocking">Orders &amp; Restocking</option>
               <option value="money">Money</option>
+              <option value="lead-assistant">Lead Assistant</option>
               <option value="ask-growthwise">Ask GrowthWise</option>
               <option value="navigation">Navigation / Ease of Use</option>
             </select>
@@ -899,6 +914,89 @@
           <div class="content-card">
             <div class="tag">PRODUCT</div>
             <h3 id="websiteTitle">New Product</h3>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="leads">
+        <div class="section-head">
+          <button class="back" data-nav="home">‹</button>
+          <div>
+            <div class="eyebrow">CUSTOMERS</div>
+            <h2>Lead Assistant</h2>
+          </div>
+        </div>
+
+        <div class="lead-assistant-card">
+          <div class="tag">GROWTHWISE RETAIL LEAD ASSISTANT</div>
+          <h3>Paste the customer's message. GrowthWise helps with the reply.</h3>
+          <p>Use this for Instagram DMs, Facebook messages, texts, website questions or follow-up conversations. During the pilot, nothing is sent automatically.</p>
+
+          <div class="two-col">
+            <label>Where did the message come from?
+              <select id="retailLeadSource">
+                <option>Instagram DM</option>
+                <option>Facebook Messenger</option>
+                <option>Text message</option>
+                <option>Website</option>
+                <option>Phone follow-up</option>
+                <option>Other</option>
+              </select>
+            </label>
+            <label>Customer name
+              <input id="retailLeadCustomer" placeholder="Optional" autocomplete="name" />
+            </label>
+          </div>
+
+          <label>Customer contact
+            <input id="retailLeadContact" placeholder="Optional phone, email or username" autocomplete="off" />
+          </label>
+
+          <div class="tag" style="margin-top:15px">MATCH A PRODUCT · OPTIONAL</div>
+          <p class="helper-text">Choose the Square product if the customer is asking about a specific hat. GrowthWise can then use its verified price and current stock.</p>
+          <input id="retailLeadProductSearch" class="inventory-search" placeholder="Search Square products…" autocomplete="off" />
+          <div id="retailLeadProductResults" class="lead-product-results"></div>
+          <div id="retailLeadSelectedProduct" class="lead-selected-product hidden"></div>
+
+          <label>Customer message
+            <textarea id="retailLeadMessage" placeholder="Paste the customer's exact message here…"></textarea>
+          </label>
+
+          <details class="lead-history-details">
+            <summary>Previous conversation (optional)</summary>
+            <textarea id="retailLeadHistory" placeholder="Paste earlier messages only if they matter to the reply."></textarea>
+          </details>
+
+          <div class="lead-assistant-actions">
+            <button type="button" class="ghost" id="retailLeadSampleBtn">Load Example</button>
+            <button type="button" class="primary" id="retailLeadRunBtn">Draft Customer Reply</button>
+          </div>
+          <div class="create-status hidden" id="retailLeadStatus"></div>
+
+          <div class="lead-result-box hidden" id="retailLeadResult">
+            <div class="lead-result-head">
+              <strong>GrowthWise recommendation</strong>
+              <span id="retailLeadDecision" class="lead-decision human">DEXTER REVIEW</span>
+            </div>
+            <div id="retailLeadIntent" class="lead-intent"></div>
+            <div id="retailLeadReason" class="lead-reason"></div>
+            <label>Suggested customer reply
+              <textarea id="retailLeadReply"></textarea>
+            </label>
+            <div class="lead-reply-actions">
+              <button type="button" class="primary" id="retailLeadCopyBtn">Copy Reply</button>
+              <button type="button" class="ghost" id="retailLeadShareBtn">Send / Share</button>
+            </div>
+            <div id="retailLeadNext" class="lead-next"></div>
+          </div>
+        </div>
+
+        <div class="lead-assistant-card">
+          <div class="tag">RECENT CUSTOMER QUESTIONS</div>
+          <h3>Follow-up list</h3>
+          <p>GrowthWise keeps the questions you run through the assistant so Dexter can see what still needs attention.</p>
+          <div id="retailLeadList">
+            <div class="inventory-empty">Customer questions handled through GrowthWise will appear here.</div>
           </div>
         </div>
       </section>
@@ -3754,6 +3852,10 @@ loadLiveSquareData().then(()=>{
 <script type="module">
   import { mountRetailOps } from "./assets/retail-ops.mjs";
   mountRetailOps();
+</script>
+<script type="module">
+  import { mountRetailLeads } from "./assets/retail-leads.mjs";
+  mountRetailLeads();
 </script>
 <script type="module">
   import { mountInstagramConnection } from "./assets/instagram-connection.mjs";
