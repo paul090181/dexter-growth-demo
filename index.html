@@ -398,7 +398,8 @@
         </div>
 
         <div class="promo-toggle">
-          <button type="button" id="promoTuesdayBtn" class="active">Tuesday</button>
+          <button type="button" id="promoSpotlightBtn" class="active">Product Spotlight</button>
+          <button type="button" id="promoTuesdayBtn">Tuesday</button>
           <button type="button" id="promoWednesdayBtn">Wednesday</button>
         </div>
 
@@ -837,6 +838,18 @@ document.querySelectorAll('[data-nav]').forEach(el=>{
 });
 
 const promotionTemplates = {
+  spotlight: {
+    dayTag: "PRODUCT SPOTLIGHT",
+    title: "Choose a product to promote",
+    rule: "Select an existing Square product above and GrowthWise will prepare the post.",
+    goal: "Create customer interest",
+    guardrail: "Review before publishing",
+    advice: "Choose an item already in inventory. GrowthWise will use only its known product details and your reviewed photo.",
+    facebook: "",
+    instagram: "",
+    offerOnly: "",
+    measurement: "Use this for a normal product feature without adding a discount or offer."
+  },
   tuesday: {
     dayTag: "TUESDAY OFFER",
     title: "Free Accessory Tuesday",
@@ -881,7 +894,9 @@ Wednesday only • Eligible items`,
   }
 };
 
-let activePromotionDay = 'tuesday';
+let activePromotionDay = 'spotlight';
+let selectedExistingPromotionProduct = null;
+let promotionProductDrafts = {};
 let selectedPromotionImageDataUrl = '';
 let selectedPromotionFile = null;
 let selectedPromotionPreviewUrl = '';
@@ -905,9 +920,10 @@ function resetPromotionPublishState(){
 
 function renderPromotion(day){
   activePromotionDay = day;
-  const p = promotionTemplates[day];
+  const p = promotionProductDrafts[day] || promotionTemplates[day];
   if(!p) return;
 
+  document.getElementById('promoSpotlightBtn').classList.toggle('active', day === 'spotlight');
   document.getElementById('promoTuesdayBtn').classList.toggle('active', day === 'tuesday');
   document.getElementById('promoWednesdayBtn').classList.toggle('active', day === 'wednesday');
   document.getElementById('promoDayTag').textContent = p.dayTag;
@@ -930,8 +946,18 @@ async function copyPromotionText(text, successLabel){
   }
 }
 
-document.getElementById('promoTuesdayBtn').addEventListener('click',()=>renderPromotion('tuesday'));
-document.getElementById('promoWednesdayBtn').addEventListener('click',()=>renderPromotion('wednesday'));
+document.getElementById('promoSpotlightBtn').addEventListener('click',()=>{
+  if(selectedExistingPromotionProduct) buildExistingProductPromotion(selectedExistingPromotionProduct, 'spotlight');
+  else renderPromotion('spotlight');
+});
+document.getElementById('promoTuesdayBtn').addEventListener('click',()=>{
+  if(selectedExistingPromotionProduct) buildExistingProductPromotion(selectedExistingPromotionProduct, 'tuesday');
+  else renderPromotion('spotlight');
+});
+document.getElementById('promoWednesdayBtn').addEventListener('click',()=>{
+  if(selectedExistingPromotionProduct) buildExistingProductPromotion(selectedExistingPromotionProduct, 'wednesday');
+  else renderPromotion('wednesday');
+});
 document.getElementById('copyPromotionCaption').addEventListener('click',()=>{
   copyPromotionText(document.getElementById('promotionCaptionEditor').value, 'Post copy copied to your clipboard.');
 });
@@ -1451,7 +1477,8 @@ function applyIntakeProduct(index){
   workflowResult.textContent = '✓ Product workflow complete';
   workflowResult.classList.remove('attention');
   document.getElementById('saveSquareBtn').classList.remove('hidden');
-  document.getElementById('addAndPromoteBtn').textContent = 'Create & Publish';
+  document.getElementById('addAndPromoteBtn').textContent = 'Add + Promote Now';
+  setNewProductWorkflowMode('inventory');
 
   document.getElementById('brandInput').value = product.brand || '';
   document.getElementById('productNameInput').value = product.product_name || '';
@@ -2207,6 +2234,26 @@ function stateForNewProduct(form){
   return newProductPublishState;
 }
 
+let newProductWorkflowMode = 'inventory';
+
+function setNewProductWorkflowMode(mode){
+  newProductWorkflowMode = mode === 'promote' ? 'promote' : 'inventory';
+  const promote = newProductWorkflowMode === 'promote';
+  document.getElementById('addInventoryOnlyChoice').classList.toggle('active', !promote);
+  document.getElementById('addAndPromoteChoice').classList.toggle('active', promote);
+  document.getElementById('newProductPromotionOptions').classList.toggle('hidden', !promote);
+  document.getElementById('addAndPromoteBtn').classList.toggle('hidden', !promote);
+  document.getElementById('saveSquareBtn').classList.toggle('hidden', promote);
+
+  if(promote && !document.getElementById('newProductCaption').value.trim()){
+    buildNewProductCaption();
+  }
+}
+
+document.getElementById('addInventoryOnlyChoice').addEventListener('click',()=>setNewProductWorkflowMode('inventory'));
+document.getElementById('addAndPromoteChoice').addEventListener('click',()=>setNewProductWorkflowMode('promote'));
+setNewProductWorkflowMode('inventory');
+
 saveSquareBtn.addEventListener('click', async ()=>{
   const form = getNewProductForm();
   const error = validateNewProductForm(form, false);
@@ -2245,7 +2292,7 @@ saveSquareBtn.addEventListener('click', async ()=>{
   }finally{
     form.adminKeyInput.value = '';
     saveSquareBtn.disabled = false;
-    saveSquareBtn.textContent = 'Approve & Add to Square';
+    saveSquareBtn.textContent = 'Add to Inventory';
   }
 });
 
@@ -2385,7 +2432,7 @@ addAndPromoteBtn.addEventListener('click', async ()=>{
     form.adminKeyInput.value = '';
     addAndPromoteBtn.disabled = false;
     saveSquareBtn.disabled = false;
-    if(!state.created) addAndPromoteBtn.textContent = 'Create & Publish';
+    if(!state.created) addAndPromoteBtn.textContent = 'Add + Promote Now';
   }
 });
 
@@ -2426,6 +2473,144 @@ document.getElementById('connectSquare').addEventListener('click',()=>openModal(
 document.getElementById('squareBtn').addEventListener('click',()=>show('settings'));
 
 let growthwiseInventoryProducts = [];
+
+function renderPromotionProductResults(){
+  const results = document.getElementById('promotionProductResults');
+  const search = document.getElementById('promotionProductSearch');
+  if(!results || !search) return;
+
+  const query = search.value.trim().toLowerCase();
+  const products = growthwiseInventoryProducts
+    .filter(product=>{
+      const haystack = [
+        product.item_name, product.variation_name, product.sku, product.upc, product.description
+      ].filter(Boolean).join(' ').toLowerCase();
+      return !query || haystack.includes(query);
+    })
+    .slice(0, 10);
+
+  if(!growthwiseInventoryProducts.length){
+    results.innerHTML = '<div class="inventory-empty">Unlock GrowthWise on Home to load current inventory.</div>';
+    return;
+  }
+  if(!products.length){
+    results.innerHTML = '<div class="inventory-empty">No products match that search.</div>';
+    return;
+  }
+
+  results.innerHTML = products.map(product=>{
+    const id = escapeHtml(product.variation_id || product.item_id || product.item_name);
+    const variation = product.variation_name && product.variation_name !== 'Default'
+      ? ` · ${escapeHtml(product.variation_name)}` : '';
+    const price = product.price ? `${escapeHtml(product.price)}` : 'No price';
+    const quantity = Number(product.quantity) || 0;
+    return `<button type="button" class="promo-product-result" data-promo-product-id="${id}">
+      <strong>${escapeHtml(product.item_name || 'Unnamed product')}</strong>
+      <small>${price}${variation} · ${quantity} in stock</small>
+      <span>Choose ›</span>
+    </button>`;
+  }).join('');
+
+  results.querySelectorAll('[data-promo-product-id]').forEach(button=>{
+    button.addEventListener('click',()=>{
+      const id = button.dataset.promoProductId;
+      const product = growthwiseInventoryProducts.find(p=>
+        String(p.variation_id || p.item_id || p.item_name) === id
+      );
+      if(product) chooseExistingProductForPromotion(product);
+    });
+  });
+}
+
+async function chooseExistingProductForPromotion(product){
+  selectedExistingPromotionProduct = product;
+  promotionProductDrafts = {};
+  const selected = document.getElementById('promotionSelectedProduct');
+  const price = product.price ? `${product.price}` : 'No price';
+  const quantity = Number(product.quantity) || 0;
+  selected.innerHTML = `<strong>✓ ${escapeHtml(product.item_name || 'Selected product')}</strong>
+    <small>${escapeHtml(price)} · ${quantity} in stock${product.variation_name && product.variation_name !== 'Default' ? ' · ' + escapeHtml(product.variation_name) : ''}</small>`;
+  selected.classList.remove('hidden');
+  document.getElementById('promotionProductResults').classList.add('hidden');
+  await buildExistingProductPromotion(product, activePromotionDay || 'spotlight');
+}
+
+async function buildExistingProductPromotion(product, day='spotlight'){
+  activePromotionDay = day;
+  const adminKey = sessionStorage.getItem('growthwise_admin_key') || '';
+  if(!adminKey){
+    openModal('Unlock GrowthWise first', 'Return Home and unlock GrowthWise so it can build the post from your Square inventory.');
+    return;
+  }
+
+  const approvedPromotion = day === 'tuesday'
+    ? promotionTemplates.tuesday.offerOnly
+    : day === 'wednesday' ? promotionTemplates.wednesday.offerOnly : '';
+
+  document.getElementById('promoAdvice').textContent = 'GrowthWise is preparing a product-specific post…';
+  document.getElementById('promotionCaptionEditor').value = '';
+
+  try{
+    const response = await fetch('/.netlify/functions/retail-product-promotion', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-GrowthWise-Key': adminKey
+      },
+      body: JSON.stringify({ product, approved_promotion: approvedPromotion })
+    });
+    const data = await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error || `Promotion draft failed (HTTP ${response.status}).`);
+
+    const quantity = Number(product.quantity) || 0;
+    const detail = [
+      product.price ? `${product.price}` : '',
+      quantity === 1 ? '1 in stock' : `${quantity} in stock`,
+      approvedPromotion
+    ].filter(Boolean).join(' · ');
+
+    promotionProductDrafts[day] = {
+      dayTag: day === 'spotlight' ? 'PRODUCT SPOTLIGHT' : promotionTemplates[day].dayTag,
+      title: data.headline || product.item_name || 'Product spotlight',
+      rule: detail || product.item_name || 'Existing inventory product',
+      goal: 'Promote existing inventory',
+      guardrail: 'Review before publishing',
+      advice: data.why_this_idea || data.angle || 'GrowthWise prepared this from the selected Square product.',
+      facebook: data.facebook_caption || '',
+      instagram: data.instagram_caption || data.facebook_caption || '',
+      offerOnly: approvedPromotion,
+      measurement: `Selected from current Square inventory. ${data.photo_note || 'Add or choose a current product photo before publishing to Instagram.'}`
+    };
+    renderPromotion(day);
+    document.getElementById('promoPhotoStatus').textContent =
+      data.photo_note || 'Add or choose a current photo of this product before publishing.';
+  }catch(err){
+    const fallback = [
+      `Now available at Dexter’s Hats & Caps: ${product.item_name || 'this item'}.`,
+      product.description || '',
+      product.price ? `Price: ${product.price}.` : '',
+      approvedPromotion
+    ].filter(Boolean).join('\n\n');
+    promotionProductDrafts[day] = {
+      dayTag: day === 'spotlight' ? 'PRODUCT SPOTLIGHT' : promotionTemplates[day].dayTag,
+      title: product.item_name || 'Product spotlight',
+      rule: [product.price ? `${product.price}` : '', approvedPromotion].filter(Boolean).join(' · '),
+      goal: 'Promote existing inventory',
+      guardrail: 'Review before publishing',
+      advice: 'GrowthWise used the known Square product details. Review the copy before posting.',
+      facebook: fallback,
+      instagram: fallback,
+      offerOnly: approvedPromotion,
+      measurement: 'Add or choose a current product photo before publishing to Instagram.'
+    };
+    renderPromotion(day);
+  }
+}
+
+document.getElementById('promotionProductSearch').addEventListener('input', ()=>{
+  document.getElementById('promotionProductResults').classList.remove('hidden');
+  renderPromotionProductResults();
+});
 
 let growthwiseSalesSnapshot = null;
 let growthwiseAiSuggestions = [];
@@ -2552,6 +2737,7 @@ function renderInventory(products = [], summary = {}, generatedAt = null){
   document.getElementById('inventoryUpdated').textContent = formatInventoryUpdated(generatedAt);
 
   filterInventoryList();
+  renderPromotionProductResults();
 }
 
 function filterInventoryList(){
