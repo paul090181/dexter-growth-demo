@@ -26,17 +26,38 @@ const runtimeFiles = async () => [
   ...await filesUnder("integrations", (file) => file.endsWith(".mjs")),
 ];
 
-test("runtime and client files contain no instagram_business_content_publish", async () => {
+test("Instagram publishing permission is limited to the OAuth configuration", async () => {
   const files = [...await runtimeFiles(), ...await filesUnder("clients", (file) => file.endsWith(".json"))];
-  assert.doesNotMatch(await joined(files), /instagram_business_content_publish/);
+  const containing = [];
+  for (const file of files) {
+    if ((await read(file)).includes("instagram_business_content_publish")) containing.push(file);
+  }
+  assert.deepEqual(containing.sort(), [
+    "netlify/functions/_instagram-oauth.mjs",
+  ]);
 });
 
-test("runtime files contain no Instagram publish or media-container endpoint", async () => {
-  const source = await joined(await runtimeFiles());
-  const assembled = source.replace(/[\s"'`+]/g, "");
-  assert.doesNotMatch(assembled, /graph\.instagram\.com[^;)]*(?:\/media(?:\b|\/)|media_publish)/i);
-  assert.doesNotMatch(source, /\b(?:media_publish|container_id|createMediaContainer|publishMedia|InstagramWebhook|registerWebhook|subscribeWebhook)\b/i);
+test("Instagram live endpoints exist only in the explicit publishing provider and no webhooks or messaging were added", async () => {
+  const files = await runtimeFiles();
+  const liveEndpointFiles = [];
+  for (const file of files) {
+    const source = await read(file);
+    if (/media_publish|\/${?id}?\/media|\/media\b/.test(source)) liveEndpointFiles.push(file);
+  }
+  assert.deepEqual(liveEndpointFiles.sort(), [
+    "netlify/functions/_instagram-publishing.mjs",
+  ]);
+  const source = await joined(files);
+  const assembled = source.replace(/[\s"'\`+]/g, "");
+  assert.doesNotMatch(source, /\b(?:InstagramWebhook|registerWebhook|subscribeWebhook|instagram_business_manage_messages|instagram_business_manage_comments)\b/i);
   assert.doesNotMatch(assembled, /instagram.{0,160}webhooks?|webhooks?.{0,160}instagram/i);
+});
+
+test("Instagram publish handler requires explicit reviewed confirmation before staging or provider calls", async () => {
+  const source = await read("netlify/functions/instagram-publish.mjs");
+  assert.match(source, /body\.reviewed\s*!==\s*true/);
+  assert.match(source, /Review and confirmation are required before publishing/);
+  assert.doesNotMatch(await joined(await filesUnder("core/publishing", (file) => file.endsWith(".mjs"))), /instagram-publish|media_publish/);
 });
 
 test("Publishing Core source preserves live_sent false invariant", async () => {
