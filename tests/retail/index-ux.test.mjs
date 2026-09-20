@@ -67,3 +67,12 @@ test("promote products can choose an existing Square product", () => {
   assert.match(html, /retail-product-promotion/);
   assert.match(html, /Product Spotlight/);
 });
+
+test("GrowthWise one-stop retail shell exposes Orders and Money", () => {
+  assert.match(html, /Orders &amp; Restocking/);
+  assert.match(html, /<h2>Money<\/h2>/);
+  assert.match(html, /id="purchaseOrderComposer"/);
+  assert.match(html, /retail-order-receive/);
+  assert.match(html, /Receive into Square/);
+  assert.match(html, /GROWTHWISE RESTOCK ASSISTANT/);
+});
