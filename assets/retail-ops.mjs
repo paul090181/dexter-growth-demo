@@ -126,4 +126,21 @@ async function saveDraft(){
 
 async function advance(id,status){
   const body={id,status};
-  if(status==
+  if(status==="shipped"){body.carrier=window.prompt("Carrier (optional):","")||"";body.tracking_number=window.prompt("Tracking number (optional):","")||"";}
+  try{const r=await fetch(`/.netlify/functions/retail-orders?business_id=${BUSINESS_ID}`,{method:"PATCH",headers:{"Content-Type":"application/json","X-GrowthWise-Key":key()},body:JSON.stringify(body)});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||"Could not update order.");await loadOrders();}catch(e){tell("Order update failed",e.message||"GrowthWise could not update this order.");}
+}
+async function receive(id){
+  const o=orders.find(x=>x.id===id);if(!o||!window.confirm(`Receive ${o.po_number} now? GrowthWise will add the ordered quantities to Square inventory and mark the order received.`))return;
+  try{const r=await fetch("/.netlify/functions/retail-order-receive",{method:"POST",headers:{"Content-Type":"application/json","X-GrowthWise-Key":key()},body:JSON.stringify({business_id:BUSINESS_ID,order_id:id})});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||"Could not receive order.");await loadOrders();if(typeof window.loadLiveSquareData==="function")await window.loadLiveSquareData(key());tell("Order received ✓",`${o.po_number} was marked received and its linked quantities were added to Square inventory.`);}catch(e){tell("Could not receive order",e.message||"GrowthWise left the order open so inventory is not double-counted.");}
+}
+
+export function mountRetailOps(){
+  products=Array.isArray(window.growthwiseInventoryProducts)?window.growthwiseInventoryProducts:[];sales=window.growthwiseSalesSnapshot||null;
+  $("#newPurchaseOrderBtn")?.addEventListener("click",()=>showComposer(true));$("#cancelPurchaseOrderBtn")?.addEventListener("click",()=>showComposer(false));$("#savePurchaseOrderBtn")?.addEventListener("click",saveDraft);$("#poProductSearch")?.addEventListener("input",renderSearch);$("#poShipping")?.addEventListener("input",totalDraft);$("#poTax")?.addEventListener("input",totalDraft);
+  $("#accountingComingSoonBtn")?.addEventListener("click",()=>tell("Accounting connector","GrowthWise is tracking sales, vendor orders and wholesale costs. The next step is connecting the bookkeeping platform Dexter actually uses so reviewed transactions can sync instead of being entered twice."));
+  document.querySelectorAll('[data-nav="orders"],[data-nav="money"]').forEach(b=>b.addEventListener("click",()=>{if(key())loadOrders();}));
+  window.addEventListener("growthwise:admin-key-ready",()=>loadOrders());
+  window.addEventListener("growthwise:inventory-updated",e=>{products=Array.isArray(e.detail?.products)?e.detail.products:[];renderRestock();renderMoney();renderSearch();});
+  window.addEventListener("growthwise:sales-updated",e=>{sales=e.detail||null;renderRestock();renderMoney();});
+  window.loadRetailOrders=loadOrders;renderRestock();renderMoney();renderDraft();if(key())loadOrders();
+}
