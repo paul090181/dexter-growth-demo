@@ -92,8 +92,10 @@ export function createInstagramConnectionHandler(options = {}) {
         const scopes = Array.isArray(payload?.scope)
           ? payload.scope
           : typeof payload?.scope === "string" ? payload.scope.split(/[\s,]+/).filter(Boolean) : [];
+        const publishingRequired = client.integrations?.instagram?.review_publish_enabled === true;
         if (typeof accountId !== "string" || !accountId || typeof accessToken !== "string" || !accessToken
           || !scopes.includes("instagram_business_basic")
+          || (publishingRequired && !scopes.includes("instagram_business_content_publish"))
           || !crypto.accountBindingKeys(accountId).includes(row.account_binding_key)) return attention(businessId, checkedAt);
         let identity;
         try {
