@@ -83,7 +83,7 @@ test("Dexter workflow headings float like the automotive pilot", () => {
   assert.match(html, /workflow-quick-nav-shell/);
   assert.match(html, /position:fixed/);
   assert.match(html, /Add Products/);
-  assert.match(html, />Promote</);
+  assert.match(html, />Instagram</);
   assert.match(html, />Inventory</);
   assert.match(html, />Orders</);
   assert.match(html, />Money</);
