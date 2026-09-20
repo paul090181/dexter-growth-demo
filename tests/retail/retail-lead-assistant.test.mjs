@@ -31,3 +31,11 @@ test("retail lead UI can ground replies in Square inventory and share them", () 
   assert.match(ui, /navigator\.share/);
   assert.match(ui, /Mark Replied/);
 });
+
+test("retail lead assistant preserves verified facts while escalating risky requests", () => {
+  assert.match(backend, /productFactLead/);
+  assert.match(backend, /currently showing in stock/);
+  assert.match(backend, /current listed price/);
+  assert.match(backend, /Dexter still needs to confirm whether it can be held/);
+  assert.match(backend, /answer verified product facts immediately/);
+});
