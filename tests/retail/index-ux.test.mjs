@@ -19,7 +19,7 @@ test("camera-first intake and unified publishing controls are present", () => {
   assert.match(html, /id="productIntakeGalleryInput"/);
   assert.match(html, /id="newProductFacebookChannel"/);
   assert.match(html, /id="newProductInstagramChannel"/);
-  assert.match(html, />Create &amp; Publish</);
+  assert.match(html, />Add \+ Promote Now</);
 });
 
 test("integration plumbing lives under Connected Apps instead of the home opportunity stack", () => {
