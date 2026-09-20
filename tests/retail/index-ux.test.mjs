@@ -83,7 +83,7 @@ test("Dexter workflow headings float like the automotive pilot", () => {
   assert.match(html, /workflow-quick-nav-shell/);
   assert.match(html, /position:fixed/);
   assert.match(html, /Add Products/);
-  assert.match(html, />Instagram</);
+  assert.match(html, />Marketing</);
   assert.match(html, />Inventory</);
   assert.match(html, />Orders</);
   assert.match(html, />Money</);
@@ -169,4 +169,17 @@ test("workflow header shows all seven actions in a fixed 4-over-3 grid", () => {
   assert.match(html, /workflow-quick-nav button:nth-child\(n\+5\)\{grid-column:span 4\}/);
   assert.match(html, /padding-top:calc\(104px \+ env\(safe-area-inset-top,0px\)\)/);
   assert.doesNotMatch(html, /activeWorkflowNav\?\.scrollIntoView/);
+});
+
+test("Marketing is platform-level while Dexter defaults only Instagram on", () => {
+  assert.match(html, /data-nav="promotion" data-full-promotion>Marketing<\/button>/);
+  assert.match(html, /id="promotionInstagramChannel" type="checkbox" checked/);
+  assert.match(html, /id="promotionFacebookChannel" type="checkbox" \/>/);
+  assert.match(html, /id="promotionWebsiteChannel" type="checkbox" disabled/);
+  assert.match(html, /id="promotionTikTokChannel" type="checkbox" disabled/);
+  assert.match(html, /id="promotionSnapchatChannel" type="checkbox" disabled/);
+  assert.match(html, /id="promotionYouTubeChannel" type="checkbox" disabled/);
+  assert.match(html, /Publish Selected/);
+  assert.match(html, /if\(facebook\) facebook\.checked = false/);
+  assert.match(html, /if\(instagram\) instagram\.checked = true/);
 });
