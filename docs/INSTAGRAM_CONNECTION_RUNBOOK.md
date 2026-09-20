@@ -50,18 +50,19 @@ Do not reuse a value between these families. Record version identifiers and enco
 
 ## Database migration guardrails
 
-The OAuth security store is PostgreSQL-backed through `@netlify/database`; it must not use Netlify Blobs. The repository migration is `netlify/database/migrations/20260917173000_instagram-oauth/migration.sql`, using Netlify's required `<number>_<lowercase-slug>/migration.sql` layout, and creates:
+The OAuth security store is PostgreSQL-backed through `@netlify/database`; it must not use Netlify Blobs. The schema is created by `netlify/database/migrations/20260917173000_instagram-oauth/migration.sql` and amended by `netlify/database/migrations/20260920095500_allow-shared-instagram-accounts/migration.sql`, using Netlify's required `<number>_<lowercase-slug>/migration.sql` layout.
 
-* `instagram_oauth_transactions`, including immutable tenant/return-destination identity and one-time status transitions; and
-* `instagram_credentials`, including one row per business, encrypted credential data, and a database-enforced unique account-binding key.
+* `instagram_oauth_transactions` keeps immutable tenant/return-destination identity and one-time status transitions.
+* `instagram_credentials` keeps one encrypted credential row per GrowthWise business. The same verified Instagram account may be authorized separately for more than one business; each tenant retains its own encrypted credential and OAuth lifecycle.
+* `account_binding_key` remains a cryptographic identity check for the connected Instagram account, but it is intentionally not unique across businesses.
 
 Before any production deployment:
 
 1. Use an isolated, explicitly authorized Deploy Preview database branch. Netlify automatically applies the checked-in migration before the preview acceptance test runs.
 2. Review the migration and take the database backup/rollback precaution required by the current Netlify Database procedure.
 3. Confirm the Deploy Preview migration completed automatically. The acceptance test must not apply migration SQL itself or drop application tables, triggers, or functions.
-4. Verify the primary key, unique account-binding constraint, status checks, and transaction-identity immutability in that isolated database.
-5. Run `node --test tests/integration/instagram-database.test.mjs` with `CONTEXT=deploy-preview` and `INSTAGRAM_DATABASE_INTEGRATION=isolated-deploy-preview` in that preview context. It must prove one winner for concurrent claims, rollback behavior, database-enforced ownership uniqueness, encryption-at-rest, scoped cleanup, and same-owner reconnect.
+4. Verify the business primary key, absence of a cross-tenant uniqueness constraint on `account_binding_key`, status checks, and transaction-identity immutability in that isolated database.
+5. Run `node --test tests/integration/instagram-database.test.mjs` with `CONTEXT=deploy-preview` and `INSTAGRAM_DATABASE_INTEGRATION=isolated-deploy-preview` in that preview context. It must prove one winner for concurrent claims, rollback behavior, shared-account support across separate tenants, encryption-at-rest, scoped cleanup, tenant isolation, and same-business reconnect.
 6. Record the exact migration revision and test evidence without recording rows, ciphertext, connection strings, or secrets.
 7. Only after review may the normal deployment process apply the same checked-in migration. This implementation task does not apply a migration or initialize a production database.
 
@@ -113,7 +114,7 @@ The authenticated health response, not the callback query, is authoritative:
 * **Connected** — the encrypted credential is usable, current identity verification succeeded, and the verified identity matches both the tenant-bound encrypted data and account-binding key. The UI may show only `Connected to @username`, safe display name, and check time.
 * **Needs Attention** — the credential is expired, revoked, corrupt, incomplete, scope-deficient, identity-mismatched, unverifiable, or temporarily cannot be verified. The UI gives a generic **Reconnect** action and never echoes provider errors.
 
-Reconnect creates a new one-time transaction and follows the same server-side flow. The owning tenant may update its credential for the same verified account. A binding owned by another tenant must fail closed; it must never be stolen or silently rebound. Reconnect must not use caller-supplied account identity or return destination.
+Reconnect creates a new one-time transaction and follows the same server-side flow. A business may update its credential for the same verified account. The same Instagram account may also be independently authorized for another GrowthWise business; this creates a separate tenant-scoped encrypted credential rather than sharing a credential row. Reconnect must not use caller-supplied account identity or return destination, and one tenant must never read, overwrite, decrypt, or revoke another tenant's credential.
 
 ## Failure triage
 
@@ -125,7 +126,7 @@ Use a correlation ID and safe event category only. Never ask Paul or a customer 
 | Provider cancellation | Expect the fixed `cancelled` hint, remove it, then fetch health. Start again only at the user's request. |
 | Invalid/expired/replayed state | Confirm server time and database availability. Start a fresh flow; never reset a transaction to pending or exchange the old code manually. |
 | Callback attention | Use only the normalized failure category. Check app/tester eligibility, exact callback, database health, and provider availability without exposing the provider response. |
-| Account already owned | Stop. Confirm tenant ownership through approved records. Do not delete/reassign the binding or retry under another tenant without a separately reviewed ownership-transfer process. |
+| Same Instagram account used by multiple businesses | Allowed. Confirm each business completed its own OAuth flow and has its own tenant-scoped encrypted credential. Investigate only if one tenant can read or modify another tenant's record. |
 | Needs Attention after prior success | Retry read-only health after a temporary outage. If expiry, revocation, identity mismatch, scope loss, or decryption failure persists, reconnect. Never declare Connected from cached UI state. |
 | Database or crypto ambiguity | Fail closed. Preserve records for restricted investigation; do not switch to Blobs, plaintext, a legacy token, or a check-then-write workaround. |
 
@@ -148,6 +149,6 @@ For an application rollback:
 
 ## Database acceptance evidence
 
-On 2026-09-18, Deploy Preview #12 ran the temporary synthetic PostgreSQL acceptance harness against its isolated Netlify Database branch after the checked-in migration was applied. All six required checks passed: migration compatibility, concurrent one-time claim/replay rejection, cross-tenant ownership uniqueness, same-owner reconnect, transactional rollback, and encrypted persistence. The temporary acceptance function, UI, test, and enable flag were removed after this evidence was captured.
+On 2026-09-18, Deploy Preview #12 ran the temporary synthetic PostgreSQL acceptance harness against its isolated Netlify Database branch and validated the original one-account/one-business design. On 2026-09-20, the product policy changed to permit the same Instagram account to be authorized independently for multiple GrowthWise businesses. Migration `20260920095500_allow-shared-instagram-accounts` removes the obsolete cross-tenant uniqueness constraint while retaining one credential row per business and tenant-bound encryption.
 
-The remaining manual milestone is identity-only OAuth acceptance with the professional tester account. That acceptance must not enable Instagram publishing, media containers, webhooks, messaging, or comment automation.
+Fresh acceptance for this amendment must prove that two businesses can connect the same professional Instagram account, that each receives a separate encrypted credential, and that neither tenant can read or modify the other's credential. Instagram publishing, media containers, webhooks, messaging, and comment automation remain disabled.
