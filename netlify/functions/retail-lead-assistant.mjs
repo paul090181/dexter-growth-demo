@@ -147,7 +147,11 @@ export default async (request) => {
   const custom = hasAny(message, [/custom/,/special\s+order/,/order\s+one/]);
   const complaint = hasAny(message, [/complaint/,/angry/,/upset/,/terrible/,/unacceptable/,/rip[ -]?off/,/scam/,/wrong\s+item/]);
 
-  if (productMatch === "mismatch" || productMatch === "uncertain") {
+  const productSpecificWithoutMatch =
+    productMatch === "no_product" &&
+    (asksPrice(message) || asksAvailability(message) || hold || discount);
+
+  if (productMatch === "mismatch" || productMatch === "uncertain" || productSpecificWithoutMatch) {
     intent="product_clarification";
     risk="low";
     decision="auto_reply";
@@ -156,7 +160,9 @@ export default async (request) => {
       : "Just to make sure I'm checking the right item, which product are you asking about? You can send the name or style, or a photo, and I'll check the current price and availability.";
     reason = productMatch === "mismatch"
       ? "The customer's message appears inconsistent with the selected product, so GrowthWise will not use that product's price or inventory."
-      : "GrowthWise could not confidently confirm that the selected product is the item the customer means.";
+      : productMatch === "uncertain"
+        ? "GrowthWise could not confidently confirm that the selected product is the item the customer means."
+        : "The customer is asking a product-specific question, but no product has been identified yet.";
     followUp = "Wait for the customer to identify the product, then match the correct Square item before answering product-specific questions.";
   } else if (discount) {
     intent="discount"; risk="medium"; decision="auto_reply_then_review";
@@ -200,11 +206,12 @@ export default async (request) => {
     decision === "auto_reply_then_review" ? "Shadow Mode would send only the safe acknowledgement, then route the decision or verification to Dexter." :
     "GrowthWise judged this message unsuitable for automatic sending.";
 
+  const linkedProduct = productMatch === "matched" ? product : null;
   const id = crypto.randomUUID();
   await db.sql`INSERT INTO retail_customer_leads
     (id,business_id,source,customer_name,customer_contact,message,square_item_id,square_variation_id,product_name,intent,risk_level,decision,suggested_reply,follow_up_action,status,
      automation_mode,automation_class,would_auto_send,delivery_action,automation_reason)
-    VALUES (${id},${businessId},${source},${customerName || null},${customerContact || null},${message},${product?.item_id || null},${product?.variation_id || null},${product?.name || null},${intent},${risk},${decision},${reply},${followUp},'new',
+    VALUES (${id},${businessId},${source},${customerName || null},${customerContact || null},${message},${linkedProduct?.item_id || null},${linkedProduct?.variation_id || null},${linkedProduct?.name || null},${intent},${risk},${decision},${reply},${followUp},'new',
      ${automationMode},${automationClass},${wouldAutoSend},${deliveryAction},${automationReason})`;
 
   return json(200, {
