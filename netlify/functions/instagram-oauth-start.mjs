@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { createInstagramCrypto } from "./_instagram-crypto.mjs";
 import { getInstagramClient } from "./_instagram-clients.mjs";
-import { buildAuthorizationUrl, callbackUri } from "./_instagram-oauth.mjs";
+import { buildAuthorizationUrl, callbackUri, INSTAGRAM_AUTHORIZATION_SCOPE } from "./_instagram-oauth.mjs";
 import { instagramDatabase } from "./_instagram-store.mjs";
 
 const ENDPOINT_PATH = "/.netlify/functions/instagram-oauth-start";
@@ -82,7 +82,7 @@ function validateAuthorizationUrl(value, { expectedAppId, expectedCallbackUri, e
     client_id: expectedAppId,
     redirect_uri: expectedCallbackUri,
     response_type: "code",
-    scope: "instagram_business_basic",
+    scope: INSTAGRAM_AUTHORIZATION_SCOPE,
     state: expectedState,
   };
   if (url.protocol !== "https:" || url.origin !== "https://www.instagram.com"
