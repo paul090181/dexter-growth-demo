@@ -98,3 +98,11 @@ test("Orders refreshes and searches the same Square inventory used elsewhere", (
   assert.match(html, /RECENT_SQUARE_PRODUCTS_KEY/);
   assert.match(html, /mergeRecentSquareProducts/);
 });
+
+test("purchase orders can be saved or shared as PDF", () => {
+  assert.match(retailOps, /Save PDF/);
+  assert.match(retailOps, /Send \/ Share/);
+  assert.match(retailOps, /retail-order-pdf/);
+  assert.match(retailOps, /navigator\.share/);
+  assert.match(retailOps, /application\/pdf/);
+});
