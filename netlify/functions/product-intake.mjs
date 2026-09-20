@@ -27,6 +27,20 @@ function clean(value, max = 4000) {
   return String(value ?? "").trim().slice(0, max);
 }
 
+function moneyText(value) {
+  const raw = clean(value, 40).replaceAll(",", "").replace(/^\$/u, "");
+  if (!raw) return "";
+  const number = Number(raw);
+  return Number.isFinite(number) && number >= 0 ? number.toFixed(2) : "";
+}
+
+function quantityText(value) {
+  const raw = clean(value, 30);
+  if (!/^\d+$/u.test(raw)) return "";
+  const number = Number(raw);
+  return Number.isSafeInteger(number) && number >= 0 ? String(number) : "";
+}
+
 function imageList(body) {
   const raw = Array.isArray(body?.images) ? body.images : [body?.image_data_url].filter(Boolean);
   if (!raw.length || raw.length > MAX_IMAGES) throw new Error("IMAGE_COUNT");
@@ -114,10 +128,10 @@ export function normalizeProductIntake(result) {
       color: clean(product?.color, 100),
       size: clean(product?.size, 100),
       material: clean(product?.material, 180),
-      price: clean(product?.price, 40),
+      price: moneyText(product?.price),
       price_type: ["retail", "wholesale", "unknown"].includes(product?.price_type)
         ? product.price_type : "unknown",
-      quantity: clean(product?.quantity, 30),
+      quantity: quantityText(product?.quantity),
       description: clean(product?.description, 1600),
       confidence: ["high", "medium", "low"].includes(product?.confidence)
         ? product.confidence : "low",
