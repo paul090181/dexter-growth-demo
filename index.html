@@ -1105,6 +1105,9 @@ let newProductPromotionImageKind = 'original';
 
 let productIntakeProducts = [];
 let productIntakePromotion = null;
+let productIntakePacketFiles = [];
+let productIntakePacketUrls = [];
+let productIntakeDetectedBarcodes = new Set();
 
 async function intakeImageDataUrl(file){
   const dataUrl = await new Promise((resolve, reject)=>{
@@ -1203,6 +1206,12 @@ function applyIntakeProduct(index){
   document.getElementById('websiteTitle').textContent = fullName;
   document.getElementById('generated').classList.remove('hidden');
 
+  const quickApprove = document.getElementById('quickSquareApproveBtn');
+  const hasRetailPrice = product.price_type === 'retail' && Number(product.price) >= 0;
+  const hasQuantity = product.quantity !== '' && Number.isInteger(Number(product.quantity)) && Number(product.quantity) >= 0;
+  const hasName = Boolean(product.product_name);
+  quickApprove.classList.toggle('hidden', !(hasName && hasRetailPrice && hasQuantity));
+
   const status = document.getElementById('productIntakeStatus');
   status.className = 'create-status ok';
   if(product.price_type === 'wholesale' && product.price){
@@ -1212,30 +1221,136 @@ function applyIntakeProduct(index){
   }
 }
 
-async function runProductIntake(files){
+async function detectProductPacketBarcode(file){
+  if(!('BarcodeDetector' in window) || !file) return [];
+  try{
+    const bitmap = await createImageBitmap(file);
+    const detector = new BarcodeDetector();
+    const results = await detector.detect(bitmap);
+    if(typeof bitmap.close === 'function') bitmap.close();
+    return results
+      .map(result=>String(result.rawValue || '').trim())
+      .filter(value=>/^\d{8,14}$/.test(value));
+  }catch{
+    return [];
+  }
+}
+
+function renderProductPacket(){
+  const wrap = document.getElementById('productIntakePacket');
+  const grid = document.getElementById('productPacketGrid');
+  const count = document.getElementById('productPacketCount');
+  const analyze = document.getElementById('analyzeProductPacketBtn');
+
+  if(!productIntakePacketFiles.length){
+    wrap.classList.add('hidden');
+    grid.innerHTML = '';
+    count.textContent = '0 of 4 photos';
+    analyze.disabled = true;
+    return;
+  }
+
+  wrap.classList.remove('hidden');
+  count.textContent =
+    `${productIntakePacketFiles.length} of 4 photos${productIntakeDetectedBarcodes.size ? ' · barcode detected' : ''}`;
+  analyze.disabled = false;
+  grid.innerHTML = productIntakePacketFiles.map((file,index)=>`
+    <div class="product-packet-thumb">
+      <img src="${productIntakePacketUrls[index]}" alt="Product intake photo ${index+1}" />
+      <button type="button" data-packet-remove="${index}" aria-label="Remove photo ${index+1}">×</button>
+    </div>
+  `).join('');
+
+  grid.querySelectorAll('[data-packet-remove]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const index = Number(btn.dataset.packetRemove);
+      const url = productIntakePacketUrls[index];
+      if(url) URL.revokeObjectURL(url);
+      productIntakePacketFiles.splice(index,1);
+      productIntakePacketUrls.splice(index,1);
+      productIntakeDetectedBarcodes = new Set();
+      renderProductPacket();
+    });
+  });
+}
+
+async function addProductPacketFiles(files){
+  const incoming = [...(files || [])].filter(file=>file?.type?.startsWith('image/'));
+  if(!incoming.length) return;
+
+  const available = Math.max(0, 4 - productIntakePacketFiles.length);
+  if(!available){
+    openModal('Four photos is enough', 'GrowthWise already has four images for this product. Remove one if you want to replace it.');
+    return;
+  }
+
+  const accepted = incoming.slice(0, available);
+  for(const file of accepted){
+    productIntakePacketFiles.push(file);
+    productIntakePacketUrls.push(URL.createObjectURL(file));
+
+    if(document.getElementById('productIntakeMode').value === 'product' && !newProductImageDataUrl && productIntakePacketFiles.length === 1){
+      handleNewProductPhoto(file, false);
+    }
+
+    const barcodes = await detectProductPacketBarcode(file);
+    for(const barcode of barcodes) productIntakeDetectedBarcodes.add(barcode);
+  }
+
+  renderProductPacket();
+
+  const status = document.getElementById('productIntakeStatus');
+  status.className = 'create-status ok';
+  status.textContent = document.getElementById('productIntakeMode').value === 'order_form'
+    ? `✓ ${productIntakePacketFiles.length} page/photo${productIntakePacketFiles.length === 1 ? '' : 's'} ready. Add more if needed, then tap Read order form.`
+    : `✓ ${productIntakePacketFiles.length} product photo${productIntakePacketFiles.length === 1 ? '' : 's'} ready. Add the tag/barcode if you have them, then build the product.`;
+}
+
+function clearProductPacket(){
+  for(const url of productIntakePacketUrls){
+    if(url) URL.revokeObjectURL(url);
+  }
+  productIntakePacketFiles = [];
+  productIntakePacketUrls = [];
+  productIntakeDetectedBarcodes = new Set();
+  productIntakeProducts = [];
+  productIntakePromotion = null;
+  renderProductPacket();
+  document.getElementById('productIntakeResults').classList.add('hidden');
+  document.getElementById('quickSquareApproveBtn').classList.add('hidden');
+  const status = document.getElementById('productIntakeStatus');
+  status.className = 'create-status hidden';
+  status.textContent = '';
+}
+
+async function runProductIntake(files = productIntakePacketFiles){
   const chosen = [...(files || [])].filter(file=>file?.type?.startsWith('image/')).slice(0,4);
   if(!chosen.length) return;
 
   const key = sessionStorage.getItem('growthwise_admin_key') || '';
   if(!key){
-    openModal('Unlock GrowthWise first', 'Return Home and enter the beta access key once. Then GrowthWise can scan product tags and order forms.');
+    openModal('Unlock GrowthWise first', 'Return Home and enter the GrowthWise access key once. Then GrowthWise can read the product photos.');
     return;
   }
 
   const status = document.getElementById('productIntakeStatus');
   const results = document.getElementById('productIntakeResults');
+  const mode = document.getElementById('productIntakeMode').value || 'product';
   status.className = 'create-status loading';
-  status.textContent = chosen.length > 1 ? `Reading ${chosen.length} images…` : 'Reading product details…';
+  status.textContent = mode === 'order_form'
+    ? `Reading ${chosen.length} order-form image${chosen.length === 1 ? '' : 's'}…`
+    : `Combining ${chosen.length} photo${chosen.length === 1 ? '' : 's'} into one product…`;
   results.classList.add('hidden');
+  document.getElementById('quickSquareApproveBtn').classList.add('hidden');
 
   try{
-    const mode = document.getElementById('productIntakeMode').value || 'auto';
     const images = [];
     for(const file of chosen) images.push(await intakeImageDataUrl(file));
 
-    if(mode !== 'order_form' && chosen.length === 1){
-      handleNewProductPhoto(chosen[0], false);
-    }
+    const barcodeHints = [...productIntakeDetectedBarcodes];
+    const context = mode === 'order_form'
+      ? 'These images are pages/photos from the same order form or invoice. Extract distinct line items conservatively.'
+      : `These images are a photo packet for one physical retail product. Merge product, tag, label, package, and barcode evidence into one record.${barcodeHints.length ? ` A local barcode detector read: ${barcodeHints.join(', ')}. Treat this as a strong hint and flag any visible conflict rather than guessing.` : ''}`;
 
     const response = await fetch('/.netlify/functions/product-intake', {
       method: 'POST',
@@ -1243,33 +1358,68 @@ async function runProductIntake(files){
         'Content-Type': 'application/json',
         'X-GrowthWise-Key': key
       },
-      body: JSON.stringify({ images, mode })
+      body: JSON.stringify({ images, mode, context })
     });
     const data = await response.json().catch(()=>({}));
     if(!response.ok) throw new Error(data.error || `Product scan failed (HTTP ${response.status}).`);
 
-    renderProductIntakeResults(data);
-    status.className = 'create-status ok';
-    status.textContent = data.products.length === 1
-      ? '✓ GrowthWise found one product. Tap Use this product to fill the form.'
-      : `✓ GrowthWise found ${data.products.length} products/lines. Pick the one you want to add now.`;
+    if(mode === 'product' && data.products?.length === 1 && barcodeHints.length === 1){
+      const aiUpc = String(data.products[0].upc || '');
+      if(!aiUpc || aiUpc === barcodeHints[0] || ('0' + aiUpc) === barcodeHints[0] || aiUpc === ('0' + barcodeHints[0])){
+        data.products[0].upc = barcodeHints[0];
+      }else{
+        data.products[0].needs_confirmation = [
+          ...(data.products[0].needs_confirmation || []),
+          `Barcode conflict: camera detector read ${barcodeHints[0]}, AI read ${aiUpc}`
+        ];
+      }
+    }
 
-    if(data.products.length === 1) applyIntakeProduct(0);
+    renderProductIntakeResults(data);
+
+    if(mode === 'product' && data.products.length === 1){
+      applyIntakeProduct(0);
+      status.className = 'create-status ok';
+      status.textContent = '✓ One product built from the photo packet. Review anything GrowthWise flagged, then approve it for Square.';
+    }else{
+      status.className = 'create-status ok';
+      status.textContent = data.products.length === 1
+        ? '✓ GrowthWise found one line. Tap Use this product.'
+        : `✓ GrowthWise found ${data.products.length} products/lines. Pick the one you want to add.`;
+    }
   }catch(err){
     console.error('GrowthWise Intake AI failed:', err);
     status.className = 'create-status error';
-    status.textContent = err.message || 'GrowthWise could not read that scan.';
-  }finally{
-    document.getElementById('productIntakeCameraInput').value = '';
-    document.getElementById('productIntakeGalleryInput').value = '';
+    status.textContent = err.message || 'GrowthWise could not read those photos.';
   }
 }
 
-document.getElementById('productIntakeCameraInput').addEventListener('change', (event)=>{
-  runProductIntake(event.target.files);
+document.getElementById('productIntakeCameraInput').addEventListener('change', async (event)=>{
+  await addProductPacketFiles(event.target.files);
+  event.target.value = '';
 });
-document.getElementById('productIntakeGalleryInput').addEventListener('change', (event)=>{
-  runProductIntake(event.target.files);
+document.getElementById('productIntakeGalleryInput').addEventListener('change', async (event)=>{
+  await addProductPacketFiles(event.target.files);
+  event.target.value = '';
+});
+document.getElementById('analyzeProductPacketBtn').addEventListener('click', ()=>runProductIntake());
+document.getElementById('clearProductPacketBtn').addEventListener('click', clearProductPacket);
+document.getElementById('productIntakeMode').addEventListener('change', ()=>{
+  const mode = document.getElementById('productIntakeMode').value;
+  const tip = document.getElementById('productPacketTip');
+  const analyze = document.getElementById('analyzeProductPacketBtn');
+  if(mode === 'order_form'){
+    tip.innerHTML = '<strong>Photograph the order form or invoice.</strong><span>Add up to four pages/photos. GrowthWise will read the line items and quantities without treating vendor cost as retail price.</span>';
+    analyze.textContent = 'Read order form';
+  }else{
+    tip.innerHTML = '<strong>Best results: take 2–3 pictures.</strong><span>Start with the product, then photograph the tag/label and barcode or box. GrowthWise combines them into one Square item.</span>';
+    analyze.textContent = 'Build product from photos';
+  }
+});
+
+
+document.getElementById('quickSquareApproveBtn').addEventListener('click', ()=>{
+  document.getElementById('saveSquareBtn').click();
 });
 
 const newProductGalleryInput = document.getElementById('newProductGalleryInput');
