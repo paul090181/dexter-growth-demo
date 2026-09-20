@@ -928,10 +928,14 @@ function handlePromotionPhoto(file){
 }
 
 promoPhotoInput.addEventListener('change', ()=>{
-  handlePromotionPhoto(promoPhotoInput.files && promoPhotoInput.files[0]);
+  const file = promoPhotoInput.files && promoPhotoInput.files[0];
+  handlePromotionPhoto(file);
+  if(file) saveProductPhotoToDevice(file, 'promotion').catch(()=>{});
 });
 promoCameraInput.addEventListener('change', ()=>{
-  handlePromotionPhoto(promoCameraInput.files && promoCameraInput.files[0]);
+  const file = promoCameraInput.files && promoCameraInput.files[0];
+  handlePromotionPhoto(file);
+  if(file) saveProductPhotoToDevice(file, 'promotion').catch(()=>{});
 });
 
 document.getElementById('removePromoPhotoBtn').addEventListener('click', ()=>{
@@ -1180,6 +1184,173 @@ let productIntakePacketFiles = [];
 let productIntakePacketUrls = [];
 let productIntakeDetectedBarcodes = new Set();
 
+const PRODUCT_PHOTO_DB = 'growthwise-product-photos-v1';
+const PRODUCT_PHOTO_STORE = 'photos';
+const PRODUCT_PHOTO_LIMIT = 30;
+let recentProductPhotoUrls = [];
+
+function openProductPhotoDb(){
+  return new Promise((resolve,reject)=>{
+    if(!('indexedDB' in window)) return reject(new Error('Device photo storage is unavailable in this browser.'));
+    const request = indexedDB.open(PRODUCT_PHOTO_DB, 1);
+    request.onupgradeneeded = ()=>{
+      const db = request.result;
+      if(!db.objectStoreNames.contains(PRODUCT_PHOTO_STORE)){
+        const store = db.createObjectStore(PRODUCT_PHOTO_STORE, { keyPath: 'id' });
+        store.createIndex('created_at', 'created_at');
+      }
+    };
+    request.onsuccess = ()=>resolve(request.result);
+    request.onerror = ()=>reject(request.error || new Error('Could not open device photo storage.'));
+  });
+}
+
+async function productPhotoRecords(){
+  const db = await openProductPhotoDb();
+  try{
+    return await new Promise((resolve,reject)=>{
+      const tx = db.transaction(PRODUCT_PHOTO_STORE, 'readonly');
+      const request = tx.objectStore(PRODUCT_PHOTO_STORE).getAll();
+      request.onsuccess = ()=>resolve((request.result || []).sort((a,b)=>b.created_at-a.created_at));
+      request.onerror = ()=>reject(request.error || new Error('Could not read saved product photos.'));
+    });
+  }finally{
+    db.close();
+  }
+}
+
+async function saveProductPhotoToDevice(file, source='product'){
+  if(!file?.type?.startsWith('image/')) return null;
+  const db = await openProductPhotoDb();
+  const record = {
+    id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    created_at: Date.now(),
+    name: file.name || `growthwise-photo-${Date.now()}.jpg`,
+    type: file.type || 'image/jpeg',
+    size: file.size || 0,
+    source,
+    blob: file,
+  };
+  try{
+    await new Promise((resolve,reject)=>{
+      const tx = db.transaction(PRODUCT_PHOTO_STORE, 'readwrite');
+      tx.objectStore(PRODUCT_PHOTO_STORE).put(record);
+      tx.oncomplete = resolve;
+      tx.onerror = ()=>reject(tx.error || new Error('Could not save product photo.'));
+      tx.onabort = ()=>reject(tx.error || new Error('Could not save product photo.'));
+    });
+  }finally{
+    db.close();
+  }
+  await pruneProductPhotoLibrary();
+  await renderRecentProductPhotos();
+  return record.id;
+}
+
+async function pruneProductPhotoLibrary(){
+  const records = await productPhotoRecords();
+  if(records.length <= PRODUCT_PHOTO_LIMIT) return;
+  const remove = records.slice(PRODUCT_PHOTO_LIMIT);
+  const db = await openProductPhotoDb();
+  try{
+    await new Promise((resolve,reject)=>{
+      const tx = db.transaction(PRODUCT_PHOTO_STORE, 'readwrite');
+      const store = tx.objectStore(PRODUCT_PHOTO_STORE);
+      for(const record of remove) store.delete(record.id);
+      tx.oncomplete = resolve;
+      tx.onerror = ()=>reject(tx.error || new Error('Could not trim product photo library.'));
+    });
+  }finally{
+    db.close();
+  }
+}
+
+async function clearSavedProductPhotos(){
+  const db = await openProductPhotoDb();
+  try{
+    await new Promise((resolve,reject)=>{
+      const tx = db.transaction(PRODUCT_PHOTO_STORE, 'readwrite');
+      tx.objectStore(PRODUCT_PHOTO_STORE).clear();
+      tx.oncomplete = resolve;
+      tx.onerror = ()=>reject(tx.error || new Error('Could not clear saved product photos.'));
+    });
+  }finally{
+    db.close();
+  }
+  await renderRecentProductPhotos();
+}
+
+async function savedProductPhoto(id){
+  const db = await openProductPhotoDb();
+  try{
+    return await new Promise((resolve,reject)=>{
+      const tx = db.transaction(PRODUCT_PHOTO_STORE, 'readonly');
+      const request = tx.objectStore(PRODUCT_PHOTO_STORE).get(id);
+      request.onsuccess = ()=>resolve(request.result || null);
+      request.onerror = ()=>reject(request.error || new Error('Could not load saved product photo.'));
+    });
+  }finally{
+    db.close();
+  }
+}
+
+async function renderRecentProductPhotos(){
+  const library = document.getElementById('recentProductPhotoLibrary');
+  const grid = document.getElementById('recentProductPhotoGrid');
+  if(!library || !grid) return;
+
+  for(const url of recentProductPhotoUrls) URL.revokeObjectURL(url);
+  recentProductPhotoUrls = [];
+
+  let records = [];
+  try{
+    records = await productPhotoRecords();
+  }catch{
+    library.classList.add('hidden');
+    return;
+  }
+
+  if(!records.length){
+    grid.innerHTML = '';
+    library.classList.add('hidden');
+    return;
+  }
+
+  library.classList.remove('hidden');
+  grid.innerHTML = records.slice(0,12).map((record,index)=>{
+    const url = URL.createObjectURL(record.blob);
+    recentProductPhotoUrls.push(url);
+    const ageMinutes = Math.max(0, Math.round((Date.now() - record.created_at) / 60000));
+    const age = ageMinutes < 1 ? 'now' : ageMinutes < 60 ? `${ageMinutes}m` : `${Math.floor(ageMinutes/60)}h`;
+    return `<button type="button" class="recent-photo-item" data-recent-photo-id="${escapeHtml(record.id)}" aria-label="Reuse saved product photo">
+      <img src="${url}" alt="Recent GrowthWise product photo" />
+      <span>${age}</span>
+    </button>`;
+  }).join('');
+
+  grid.querySelectorAll('[data-recent-photo-id]').forEach(button=>{
+    button.addEventListener('click', async ()=>{
+      if(productIntakePacketFiles.length >= 4){
+        openModal('Product packet is full', 'Remove one of the four current photos before adding a saved photo.');
+        return;
+      }
+      try{
+        const record = await savedProductPhoto(button.dataset.recentPhotoId);
+        if(!record) throw new Error('That saved photo is no longer available.');
+        const file = new File([record.blob], record.name || 'growthwise-saved-photo.jpg', {
+          type: record.type || record.blob.type || 'image/jpeg',
+          lastModified: record.created_at || Date.now(),
+        });
+        await addProductPacketFiles([file], { persist: false });
+        document.getElementById('productIntakeStatus').textContent =
+          '✓ Saved photo added to this product. Add another photo or build the product when ready.';
+      }catch(err){
+        openModal('Could not reuse photo', err.message || 'GrowthWise could not load that saved photo.');
+      }
+    });
+  });
+}
+
 async function intakeImageDataUrl(file){
   const dataUrl = await new Promise((resolve, reject)=>{
     const reader = new FileReader();
@@ -1372,7 +1543,7 @@ function renderProductPacket(){
   });
 }
 
-async function addProductPacketFiles(files){
+async function addProductPacketFiles(files, { persist = true } = {}){
   const incoming = [...(files || [])].filter(file=>file?.type?.startsWith('image/'));
   if(!incoming.length) return;
 
@@ -1393,6 +1564,14 @@ async function addProductPacketFiles(files){
 
     const barcodes = await detectProductPacketBarcode(file);
     for(const barcode of barcodes) productIntakeDetectedBarcodes.add(barcode);
+
+    if(persist){
+      try{
+        await saveProductPhotoToDevice(file, 'product-intake');
+      }catch(err){
+        console.warn('GrowthWise could not persist a recent product photo.', err?.message || err);
+      }
+    }
   }
 
   renderProductPacket();
@@ -1502,6 +1681,15 @@ document.getElementById('productIntakeGalleryInput').addEventListener('change', 
 });
 document.getElementById('analyzeProductPacketBtn').addEventListener('click', ()=>runProductIntake());
 document.getElementById('clearProductPacketBtn').addEventListener('click', clearProductPacket);
+document.getElementById('clearRecentProductPhotosBtn').addEventListener('click', async ()=>{
+  if(!window.confirm('Clear the recent product photos saved by GrowthWise on this device?')) return;
+  try{
+    await clearSavedProductPhotos();
+  }catch(err){
+    openModal('Could not clear photos', err.message || 'GrowthWise could not clear the saved photo library.');
+  }
+});
+void renderRecentProductPhotos();
 document.getElementById('productIntakeMode').addEventListener('change', ()=>{
   const mode = document.getElementById('productIntakeMode').value;
   const tip = document.getElementById('productPacketTip');
@@ -1598,10 +1786,14 @@ function handleNewProductPhoto(file, autoAnalyze=true){
 }
 
 newProductGalleryInput.addEventListener('change', ()=>{
-  handleNewProductPhoto(newProductGalleryInput.files && newProductGalleryInput.files[0]);
+  const file = newProductGalleryInput.files && newProductGalleryInput.files[0];
+  handleNewProductPhoto(file);
+  if(file) saveProductPhotoToDevice(file, 'product-photo').catch(()=>{});
 });
 newProductCameraInput.addEventListener('change', ()=>{
-  handleNewProductPhoto(newProductCameraInput.files && newProductCameraInput.files[0]);
+  const file = newProductCameraInput.files && newProductCameraInput.files[0];
+  handleNewProductPhoto(file);
+  if(file) saveProductPhotoToDevice(file, 'product-photo').catch(()=>{});
 });
 
 document.getElementById('newProductRemovePhotoBtn').addEventListener('click', ()=>{
