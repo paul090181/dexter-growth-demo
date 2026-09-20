@@ -138,6 +138,49 @@ test("product intake preserves wholesale classification instead of treating orde
   assert.equal(normalized.products[0].quantity, "12");
 });
 
+test("product intake tells the model to merge multiple views of one product into one record", async () => {
+  let instructionText = "";
+  const handler = createProductIntakeHandler({
+    env: (name) => ({
+      GROWTHWISE_ADMIN_KEY: "admin",
+      OPENAI_API_KEY: "key",
+    }[name] || ""),
+    fetchImpl: async (_url, init) => {
+      const body = JSON.parse(init.body);
+      instructionText = body.input[0].content[0].text;
+      return openAiResponse(structuredOutput({
+        scan_type: "mixed",
+        summary: "One product from three views",
+        products: [{
+          brand:"Brand", product_name:"Hat", style_sku:"A1", upc:"123456789012",
+          color:"Black", size:"L", material:"Wool", price:"79.95", price_type:"retail",
+          quantity:"2", description:"Black wool hat.", confidence:"high",
+          evidence:"Product photo, tag and barcode", needs_confirmation:[]
+        }],
+        promotion: { headline:"Feature the hat", angle:"Product spotlight", why_this_idea:"Product details are visible.", facebook_caption:"Hat.", instagram_caption:"Hat." },
+        uncertainty_notes: [],
+      }));
+    },
+  });
+
+  const response = await handler(request({
+    mode: "product",
+    context: "These images are one product packet.",
+    images: [
+      "data:image/jpeg;base64,/9j/product",
+      "data:image/jpeg;base64,/9j/tag",
+      "data:image/jpeg;base64,/9j/barcode",
+    ],
+  }));
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.products.length, 1);
+  assert.match(instructionText, /same physical product/i);
+  assert.match(instructionText, /merge evidence/i);
+  assert.match(instructionText, /one product packet/i);
+});
+
 test("product intake supports up to four scan images for multi-page order forms", async () => {
   let imageParts = 0;
   const handler = createProductIntakeHandler({
