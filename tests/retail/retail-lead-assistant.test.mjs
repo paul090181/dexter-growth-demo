@@ -39,3 +39,13 @@ test("retail lead assistant preserves verified facts while escalating risky requ
   assert.match(backend, /Dexter still needs to confirm whether it can be held/);
   assert.match(backend, /answer verified product facts immediately/);
 });
+
+test("retail lead assistant asks for product clarification before using mismatched facts", () => {
+  assert.match(backend, /product_match/);
+  assert.match(backend, /product_clarification/);
+  assert.match(backend, /which product are you asking about\?/);
+  assert.match(backend, /send the name or style, or a photo/);
+  assert.match(backend, /productSpecificWithoutMatch/);
+  assert.match(backend, /const linkedProduct = productMatch === "matched" \? product : null/);
+  assert.match(backend, /will not use that product's price or inventory/);
+});
