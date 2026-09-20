@@ -2,7 +2,7 @@ import growthwiseDev from "../../clients/growthwise-dev.json" with { type: "json
 import dextersHats from "../../clients/dexters-hats.json" with { type: "json" };
 import { createInstagramCrypto } from "./_instagram-crypto.mjs";
 import { instagramDatabase } from "./_instagram-store.mjs";
-import { verifyProfessionalIdentity } from "./_instagram-oauth.mjs";
+import { INSTAGRAM_CONTENT_PUBLISH_SCOPE, verifyProfessionalIdentity } from "./_instagram-oauth.mjs";
 
 const DEFAULT_CLIENTS = Object.freeze({
   [growthwiseDev.business_id]: growthwiseDev,
@@ -95,7 +95,7 @@ export function createInstagramConnectionHandler(options = {}) {
         const publishingRequired = client.integrations?.instagram?.review_publish_enabled === true;
         if (typeof accountId !== "string" || !accountId || typeof accessToken !== "string" || !accessToken
           || !scopes.includes("instagram_business_basic")
-          || (publishingRequired && !scopes.includes("instagram_business_content_publish"))
+          || (publishingRequired && !scopes.includes(INSTAGRAM_CONTENT_PUBLISH_SCOPE))
           || !crypto.accountBindingKeys(accountId).includes(row.account_binding_key)) return attention(businessId, checkedAt);
         let identity;
         try {
