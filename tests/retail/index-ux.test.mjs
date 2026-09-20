@@ -116,3 +116,22 @@ test("Dexter pilot leads with Instagram-only quick posting", () => {
   assert.match(html, /Post to Instagram/);
   assert.match(html, /instagramQuickUnlock/);
 });
+
+test("Dexter pilot stays broad while Instagram is the first test", () => {
+  assert.match(html, /DEXTER PILOT/);
+  assert.match(html, /Try GrowthWise one piece at a time/);
+  assert.match(html, /Instagram is a good first test, but the goal is to find out what works across the whole app/);
+  assert.match(html, /Add a Product/);
+  assert.match(html, /Promote Existing Product/);
+  assert.match(html, /Orders &amp; Restocking/);
+  assert.match(html, /Ask GrowthWise/);
+});
+
+test("Dexter can capture pilot feedback and share GrowthWise referrals", () => {
+  assert.match(html, /pilot-feedback/);
+  assert.match(html, /Worked/);
+  assert.match(html, /Needs improvement/);
+  assert.match(html, /Show GrowthWise/);
+  assert.match(html, /show-growthwise\.html\?ref=dexter-broadway/);
+  assert.match(html, /navigator\.share/);
+});
