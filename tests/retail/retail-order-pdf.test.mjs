@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createRetailOrderPdfHandler } from "../../netlify/functions/retail-order-pdf.mjs";
+import { createRetailOrderPdfHandler, wrapText } from "../../netlify/functions/retail-order-pdf.mjs";
 
 function request(orderId="order-1", key="admin"){
   return new Request(`https://example.test/.netlify/functions/retail-order-pdf?business_id=dexters-hats&order_id=${orderId}`,{
@@ -73,4 +73,16 @@ test("purchase order PDF returns 404 for unknown order", async()=>{
   });
   const response=await handler(request("missing"));
   assert.equal(response.status,404);
+});
+
+test("PDF word wrapping preserves the letter s in product names", () => {
+  const font = {
+    widthOfTextAtSize(text) {
+      return text.length * 5;
+    },
+  };
+  const lines = wrapText("Bowl & Basket Yellow Mustard", font, 9, 500);
+  assert.deepEqual(lines, ["Bowl & Basket Yellow Mustard"]);
+  assert.match(lines[0], /Basket/);
+  assert.match(lines[0], /Mustard/);
 });
