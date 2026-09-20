@@ -64,6 +64,13 @@ export function createInstagramPublishHandler(options = {}) {
       return json(415, { error: "JSON is required." });
     }
 
+    let requestUrl;
+    try { requestUrl = new URL(request.url); } catch { return json(400, { error: "Invalid Instagram publish request." }); }
+    if (requestUrl.protocol !== "https:" || requestUrl.pathname !== "/.netlify/functions/instagram-publish"
+      || requestUrl.username || requestUrl.password || requestUrl.search || requestUrl.hash) {
+      return json(400, { error: "Invalid Instagram publish request." });
+    }
+
     let body;
     try { body = await readRequestJson(request); }
     catch { return json(400, { error: "Invalid Instagram publish request." }); }
@@ -141,7 +148,7 @@ export function createInstagramPublishHandler(options = {}) {
       staged = await (options.stageImage ?? stageInstagramImage)({
         businessId,
         imageDataUrl: body.image_data_url,
-        publicOrigin: env("GROWTHWISE_PUBLIC_ORIGIN"),
+        publicOrigin: requestUrl.origin,
         now: current,
       });
     } catch (error) {
