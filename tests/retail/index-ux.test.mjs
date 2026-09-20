@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 
 const html = await readFile(new URL("../../index.html", import.meta.url), "utf8");
+const retailOps = await readFile(new URL("../../assets/retail-ops.mjs", import.meta.url), "utf8");
 
 test("Dexter inline application scripts remain syntactically valid", () => {
   const scripts = [...html.matchAll(/<script(?![^>]*type=["']module["'])[^>]*>([\s\S]*?)<\/script>/gi)];
@@ -72,7 +73,8 @@ test("GrowthWise one-stop retail shell exposes Orders and Money", () => {
   assert.match(html, /Orders &amp; Restocking/);
   assert.match(html, /<h2>Money<\/h2>/);
   assert.match(html, /id="purchaseOrderComposer"/);
-  assert.match(html, /retail-order-receive/);
-  assert.match(html, /Receive into Square/);
+  assert.match(retailOps, /retail-order-receive/);
+  assert.match(retailOps, /Receive into Square/);
+  assert.match(html, /assets\/retail-ops\.mjs/);
   assert.match(html, /GROWTHWISE RESTOCK ASSISTANT/);
 });
