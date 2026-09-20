@@ -6,6 +6,7 @@ import { verifyProfessionalIdentity, INSTAGRAM_CONTENT_PUBLISH_SCOPE } from "./_
 import { stageInstagramImage } from "./_instagram-media-store.mjs";
 import {
   createInstagramImageContainer,
+  waitForInstagramContainerReady,
   publishInstagramContainer,
   InstagramPublishError,
 } from "./_instagram-publishing.mjs";
@@ -173,6 +174,40 @@ export function createInstagramPublishHandler(options = {}) {
         code: "INSTAGRAM_PUBLISH_FAILED",
         error: temporary ? "Instagram is temporarily unavailable. No post was sent." : "Instagram could not prepare the post.",
         retry_safe: true,
+      });
+    }
+
+    let readiness;
+    try {
+      readiness = await (options.waitForContainer ?? waitForInstagramContainerReady)({
+        accessToken,
+        containerId: container.containerId,
+        graphApiVersion,
+        fetchImpl: options.fetchImpl ?? fetch,
+        sleepImpl: options.sleepImpl,
+        delaysMs: options.containerPollDelaysMs,
+      });
+    } catch (error) {
+      try { logger.warn("instagram_publish_failed", { stage: "container_status", code: error?.code ?? "local_error" }); } catch {}
+      const stillProcessing = error instanceof InstagramPublishError && error.code === "processing_timeout";
+      const temporary = error instanceof InstagramPublishError && error.code === "temporarily_unavailable";
+      return json(stillProcessing || temporary ? 503 : 502, {
+        code: stillProcessing ? "INSTAGRAM_MEDIA_PROCESSING" : "INSTAGRAM_PUBLISH_FAILED",
+        error: stillProcessing
+          ? "Instagram is still processing the image. No post was sent. Wait a moment before trying again."
+          : temporary
+            ? "Instagram is temporarily unavailable. No post was sent."
+            : "Instagram could not finish preparing the image. No post was sent.",
+        retry_safe: true,
+      });
+    }
+
+    if (readiness?.statusCode === "PUBLISHED") {
+      try { logger.warn("instagram_publish_failed", { stage: "container_status", code: "already_published" }); } catch {}
+      return json(502, {
+        code: "INSTAGRAM_PUBLISH_AMBIGUOUS",
+        error: "Instagram reports that this media container is already published. Check Instagram before trying again.",
+        retry_safe: false,
       });
     }
 
