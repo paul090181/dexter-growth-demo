@@ -37,23 +37,35 @@ test("Instagram publishing permission is limited to the OAuth configuration", as
   ]);
 });
 
-test("Instagram live endpoints exist only in the explicit publishing provider and no webhooks or messaging were added", async () => {
+test("Instagram live publishing stays isolated while inbound messaging is explicitly gated", async () => {
   const files = await runtimeFiles();
   const liveEndpointFiles = [];
+  const messagingPermissionFiles = [];
   for (const file of files) {
     const source = await read(file);
     if (/media_publish|\/${?id}?\/media|\/media\b/.test(source)) liveEndpointFiles.push(file);
+    if (source.includes("instagram_business_manage_messages")) messagingPermissionFiles.push(file);
   }
   assert.deepEqual(liveEndpointFiles.sort(), [
     "netlify/functions/_instagram-publishing.mjs",
     "netlify/functions/instagram-publish.mjs",
   ]);
-  const source = await joined(files);
-  const assembled = source.replace(/[\s"'\`+]/g, "");
-  assert.doesNotMatch(source, /\b(?:InstagramWebhook|registerWebhook|subscribeWebhook|instagram_business_manage_messages|instagram_business_manage_comments)\b/i);
-  assert.doesNotMatch(assembled, /instagram.{0,160}webhooks?|webhooks?.{0,160}instagram/i);
-});
+  assert.deepEqual(messagingPermissionFiles.sort(), [
+    "netlify/functions/_instagram-oauth.mjs",
+  ]);
 
+  const webhook = await read("netlify/functions/meta-webhook.mjs");
+  const webhookCore = await read("netlify/functions/_meta-webhook.mjs");
+  assert.match(webhook, /META_APP_SECRET/);
+  assert.match(webhook, /x-hub-signature-256/i);
+  assert.match(webhook, /GROWTHWISE_META_ACCOUNT_MAP/);
+  assert.match(webhookCore, /Facebook Messenger/);
+  assert.match(webhookCore, /Instagram DM/);
+  assert.doesNotMatch(webhook + webhookCore, /graph\.instagram\.com|graph\.facebook\.com|\/messages\b|media_publish/i);
+
+  const source = await joined(files);
+  assert.doesNotMatch(source, /\b(?:registerWebhook|subscribeWebhook|instagram_business_manage_comments)\b/i);
+});
 test("Instagram publish handler requires explicit reviewed confirmation before staging or provider calls", async () => {
   const source = await read("netlify/functions/instagram-publish.mjs");
   assert.match(source, /body\.reviewed\s*!==\s*true/);

@@ -5,7 +5,7 @@ import { createInstagramCrypto } from "../../netlify/functions/_instagram-crypto
 
 const clients = {
   "growthwise-dev": { business_id: "growthwise-dev", integrations: { instagram: { token_env: "GW_TEST_META_TOKEN", account_id_env: "GW_TEST_IG_ACCOUNT_ID" } } },
-  "dexters-hats": { business_id: "dexters-hats", integrations: { instagram: { token_env: "DEXTER_META_TOKEN", account_id_env: "DEXTER_IG_ACCOUNT_ID", review_publish_enabled: true } } },
+  "dexters-hats": { business_id: "dexters-hats", integrations: { instagram: { token_env: "DEXTER_META_TOKEN", account_id_env: "DEXTER_IG_ACCOUNT_ID", review_publish_enabled: true, messages_enabled: true } } },
 };
 const now = () => new Date("2026-09-17T01:02:03.000Z");
 function request(businessId = "growthwise-dev", { key = "admin", method = "GET" } = {}) {
