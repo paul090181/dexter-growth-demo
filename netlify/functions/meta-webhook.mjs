@@ -110,8 +110,10 @@ export function createMetaWebhookHandler({
     let accountMap;
     try {
       accountMap = parseMetaAccountMap(env("GROWTHWISE_META_ACCOUNT_MAP") || "");
-      const instagramRouter = routeInstagramBusiness ?? configuredInstagramRouter(env);
-      accountMap = await enrichInstagramAccountMap(payload, accountMap, instagramRouter);
+      if (payload?.object === "instagram") {
+        const instagramRouter = routeInstagramBusiness ?? configuredInstagramRouter(env);
+        accountMap = await enrichInstagramAccountMap(payload, accountMap, instagramRouter);
+      }
     } catch {
       return json(503, { error: "Meta account routing is not configured correctly." });
     }
