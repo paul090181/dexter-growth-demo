@@ -6,6 +6,7 @@ import {
   INSTAGRAM_AUTHORIZATION_SCOPE,
   INSTAGRAM_CONTENT_PUBLISH_SCOPE,
   INSTAGRAM_IDENTITY_SCOPE,
+  INSTAGRAM_MANAGE_MESSAGES_SCOPE,
   InstagramProviderError,
   buildAuthorizationUrl,
   exchangeAuthorizationCode,
@@ -42,7 +43,7 @@ test("authorization URL defaults to identity-only least privilege", () => {
   assert.equal(url.searchParams.get("state"), "v1.opaque.tag");
 });
 
-test("authorization URL can request the reviewed-publishing scope without unrelated permissions", () => {
+test("authorization URL can request reviewed publishing and messaging scopes without unrelated permissions", () => {
   const serialized = buildAuthorizationUrl({
     appId: "123",
     callbackUri: CALLBACK,
@@ -53,7 +54,8 @@ test("authorization URL can request the reviewed-publishing scope without unrela
   assert.equal(url.searchParams.get("scope"), INSTAGRAM_AUTHORIZATION_SCOPE);
   assert.equal(INSTAGRAM_AUTHORIZATION_SCOPE.split(",").includes(INSTAGRAM_IDENTITY_SCOPE), true);
   assert.equal(INSTAGRAM_AUTHORIZATION_SCOPE.split(",").includes(INSTAGRAM_CONTENT_PUBLISH_SCOPE), true);
-  assert.doesNotMatch(serialized, /business_id|return_to|code_challenge|manage_messages|manage_comments/);
+  assert.equal(INSTAGRAM_AUTHORIZATION_SCOPE.split(",").includes(INSTAGRAM_MANAGE_MESSAGES_SCOPE), true);
+  assert.doesNotMatch(serialized, /business_id|return_to|code_challenge|manage_comments/);
 });
 
 test("authorization URL rejects arbitrary scope escalation", () => {
@@ -61,7 +63,7 @@ test("authorization URL rejects arbitrary scope escalation", () => {
     appId: "123",
     callbackUri: CALLBACK,
     state: "v1.opaque.tag",
-    scope: "instagram_business_manage_messages",
+    scope: "instagram_business_manage_comments",
   }), /scope/i);
 });
 

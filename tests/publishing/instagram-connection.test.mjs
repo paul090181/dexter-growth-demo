@@ -65,7 +65,7 @@ test("valid stored OAuth credential and active binding returns Connected", async
   assert.equal(updates[0].businessId, "growthwise-dev");
 });
 
-test("Dexter connection health requires publishing scope before reporting Connected", async () => {
+test("Dexter connection health requires publishing and messaging scopes before reporting Connected", async () => {
   const { options: missingPublish } = stored({
     row: { business_id: "dexters-hats" },
     decryptCredential: async () => ({
@@ -77,12 +77,23 @@ test("Dexter connection health requires publishing scope before reporting Connec
   const missingBody = await (await createInstagramConnectionHandler(missingPublish)(request("dexters-hats"))).json();
   assert.equal(missingBody.state, "Needs Attention");
 
-  const { options: ready } = stored({
+  const { options: missingMessages } = stored({
     row: { business_id: "dexters-hats" },
     decryptCredential: async () => ({
       access_token: "synthetic-access-secret",
       account_id: "ig-account-secret",
       scope: "instagram_business_basic instagram_business_content_publish",
+    }),
+  });
+  const missingMessagesBody = await (await createInstagramConnectionHandler(missingMessages)(request("dexters-hats"))).json();
+  assert.equal(missingMessagesBody.state, "Needs Attention");
+
+  const { options: ready } = stored({
+    row: { business_id: "dexters-hats" },
+    decryptCredential: async () => ({
+      access_token: "synthetic-access-secret",
+      account_id: "ig-account-secret",
+      scope: "instagram_business_basic instagram_business_content_publish instagram_business_manage_messages",
     }),
   });
   const readyBody = await (await createInstagramConnectionHandler(ready)(request("dexters-hats"))).json();

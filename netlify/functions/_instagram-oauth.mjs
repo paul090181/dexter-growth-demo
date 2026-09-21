@@ -6,9 +6,11 @@ export const INSTAGRAM_IDENTITY_ENDPOINT = "https://graph.instagram.com/me";
 export const INSTAGRAM_IDENTITY_FIELDS = "user_id,username";
 export const INSTAGRAM_IDENTITY_SCOPE = "instagram_business_basic";
 export const INSTAGRAM_CONTENT_PUBLISH_SCOPE = "instagram_business_content_publish";
+export const INSTAGRAM_MANAGE_MESSAGES_SCOPE = "instagram_business_manage_messages";
 export const INSTAGRAM_AUTHORIZATION_SCOPE = [
   INSTAGRAM_IDENTITY_SCOPE,
   INSTAGRAM_CONTENT_PUBLISH_SCOPE,
+  INSTAGRAM_MANAGE_MESSAGES_SCOPE,
 ].join(",");
 
 const DEFAULT_MAX_RESPONSE_BYTES = 32 * 1024;

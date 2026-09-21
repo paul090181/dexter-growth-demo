@@ -2,7 +2,7 @@ import growthwiseDev from "../../clients/growthwise-dev.json" with { type: "json
 import dextersHats from "../../clients/dexters-hats.json" with { type: "json" };
 import { createInstagramCrypto } from "./_instagram-crypto.mjs";
 import { instagramDatabase } from "./_instagram-store.mjs";
-import { INSTAGRAM_CONTENT_PUBLISH_SCOPE, verifyProfessionalIdentity } from "./_instagram-oauth.mjs";
+import { INSTAGRAM_CONTENT_PUBLISH_SCOPE, INSTAGRAM_MANAGE_MESSAGES_SCOPE, verifyProfessionalIdentity } from "./_instagram-oauth.mjs";
 
 const DEFAULT_CLIENTS = Object.freeze({
   [growthwiseDev.business_id]: growthwiseDev,
@@ -93,9 +93,11 @@ export function createInstagramConnectionHandler(options = {}) {
           ? payload.scope
           : typeof payload?.scope === "string" ? payload.scope.split(/[\s,]+/).filter(Boolean) : [];
         const publishingRequired = client.integrations?.instagram?.review_publish_enabled === true;
+        const messagingRequired = client.integrations?.instagram?.messages_enabled === true;
         if (typeof accountId !== "string" || !accountId || typeof accessToken !== "string" || !accessToken
           || !scopes.includes("instagram_business_basic")
           || (publishingRequired && !scopes.includes(INSTAGRAM_CONTENT_PUBLISH_SCOPE))
+          || (messagingRequired && !scopes.includes(INSTAGRAM_MANAGE_MESSAGES_SCOPE))
           || !crypto.accountBindingKeys(accountId).includes(row.account_binding_key)) return attention(businessId, checkedAt);
         let identity;
         try {
