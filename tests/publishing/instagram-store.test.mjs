@@ -77,6 +77,17 @@ function credentialPool({ failWrite = false, failCommit = false } = {}) {
     async connect() { return client; },
     async query(text, values) {
       calls.push({ text, values });
+      if (/account_binding_key = ANY/.test(text)) {
+        const bindingKeys = values[0];
+        const businessIds = new Set(values[1]);
+        return {
+          rows: [...rows.values()]
+            .filter((row) => bindingKeys.includes(row.account_binding_key) && row.status === "active" && businessIds.has(row.business_id))
+            .sort((a, b) => a.business_id.localeCompare(b.business_id))
+            .slice(0, 2)
+            .map((row) => ({ business_id: row.business_id, account_binding_key: row.account_binding_key })),
+        };
+      }
       if (/FROM instagram_credentials/.test(text)) {
         const row = rows.get(values[0]);
         return { rows: row ? [{ ...row }] : [] };
@@ -212,6 +223,25 @@ test("same Instagram account can bind independently to multiple tenants", async 
   assert.equal(
     (await database.readDecryptedCredential({ businessId: "tenant-b", accountId: "ig-123" })).payload.access_token,
     "SYNTHETIC_TOKEN_B",
+  );
+});
+
+test("webhook account resolution uses secure bindings and fails closed on ambiguous shared accounts", async () => {
+  const pool = credentialPool();
+  const database = credentialStore(pool);
+  await database.connectCredential(credentialInput("tenant-a", "ig-123", "TOKEN_A"));
+  assert.equal(
+    await database.resolveBusinessByAccountId({ accountId: "ig-123", businessIds: ["tenant-a"] }),
+    "tenant-a",
+  );
+  assert.equal(
+    await database.resolveBusinessByAccountId({ accountId: "ig-123", businessIds: ["tenant-b"] }),
+    null,
+  );
+  await database.connectCredential(credentialInput("tenant-b", "ig-123", "TOKEN_B"));
+  assert.equal(
+    await database.resolveBusinessByAccountId({ accountId: "ig-123", businessIds: ["tenant-a", "tenant-b"] }),
+    null,
   );
 });
 

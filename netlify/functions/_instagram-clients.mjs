@@ -10,10 +10,12 @@ const CLIENT_CONFIGS = [
 export const INSTAGRAM_CLIENTS = Object.freeze(Object.fromEntries(CLIENT_CONFIGS.map(([businessId, config, returnDestinationId]) => {
   if (config.business_id !== businessId) throw new Error("Instagram client configuration mismatch.");
   const reviewPublishEnabled = config.integrations?.instagram?.review_publish_enabled === true;
+  const messagesEnabled = config.integrations?.instagram?.messages_enabled === true;
   return [businessId, Object.freeze({
     business_id: businessId,
     returnDestinationId,
-    authorizationScope: reviewPublishEnabled ? INSTAGRAM_AUTHORIZATION_SCOPE : INSTAGRAM_IDENTITY_SCOPE,
+    authorizationScope: reviewPublishEnabled || messagesEnabled ? INSTAGRAM_AUTHORIZATION_SCOPE : INSTAGRAM_IDENTITY_SCOPE,
+    messagesEnabled,
   })];
 })));
 

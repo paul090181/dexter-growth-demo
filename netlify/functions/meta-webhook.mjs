@@ -1,3 +1,6 @@
+import { createInstagramCrypto } from "./_instagram-crypto.mjs";
+import { INSTAGRAM_CLIENTS } from "./_instagram-clients.mjs";
+import { instagramDatabase } from "./_instagram-store.mjs";
 import { ingestRetailLead } from "./_retail-lead-ingest.mjs";
 import {
   normalizeMetaWebhookPayload,
@@ -26,9 +29,42 @@ function configuredEnv(name) {
   return globalThis.Netlify?.env?.get(name) ?? "";
 }
 
+function versions(env, name) {
+  return { current: { id: "v1", key: env(name) } };
+}
+
+function configuredInstagramRouter(env) {
+  const businessIds = Object.values(INSTAGRAM_CLIENTS)
+    .filter((client) => client.messagesEnabled === true)
+    .map((client) => client.business_id);
+  if (!businessIds.length) return async () => null;
+  const crypto = createInstagramCrypto({
+    stateSecrets: versions(env, "GROWTHWISE_INSTAGRAM_OAUTH_STATE_SECRET"),
+    bindingSecrets: versions(env, "GROWTHWISE_INSTAGRAM_ACCOUNT_BINDING_SECRET"),
+    credentialKeys: versions(env, "GROWTHWISE_INSTAGRAM_CREDENTIAL_ENCRYPTION_KEY"),
+  });
+  const store = instagramDatabase({ crypto });
+  return (accountId) => store.resolveBusinessByAccountId({ accountId, businessIds });
+}
+
+async function enrichInstagramAccountMap(payload, accountMap, routeInstagramBusiness) {
+  if (payload?.object !== "instagram" || typeof routeInstagramBusiness !== "function") return accountMap;
+  const instagram = { ...(accountMap.instagram || {}) };
+  const accountIds = [...new Set((Array.isArray(payload.entry) ? payload.entry : [])
+    .map((entry) => String(entry?.id ?? "").trim())
+    .filter(Boolean))];
+  for (const accountId of accountIds) {
+    if (instagram[accountId]) continue;
+    const businessId = await routeInstagramBusiness(accountId);
+    if (businessId) instagram[accountId] = businessId;
+  }
+  return { ...accountMap, instagram };
+}
+
 export function createMetaWebhookHandler({
   env = configuredEnv,
   ingest = (input) => ingestRetailLead(input, { ingestionTag: "meta_webhook" }),
+  routeInstagramBusiness,
   logger = console,
 } = {}) {
   return async function metaWebhookHandler(request) {
@@ -47,7 +83,7 @@ export function createMetaWebhookHandler({
 
     if (request.method !== "POST") return json(405, { error: "Method not allowed." });
 
-    const appSecret = env("META_APP_SECRET") || "";
+    const appSecret = env("META_APP_SECRET") || env("GROWTHWISE_INSTAGRAM_APP_SECRET") || "";
     if (!appSecret) return json(503, { error: "Meta webhook signature verification is not configured." });
 
     const declaredLength = Number(request.headers.get("content-length") || 0);
@@ -72,8 +108,11 @@ export function createMetaWebhookHandler({
     catch { return json(400, { error: "Invalid Meta webhook JSON." }); }
 
     let accountMap;
-    try { accountMap = parseMetaAccountMap(env("GROWTHWISE_META_ACCOUNT_MAP") || ""); }
-    catch {
+    try {
+      accountMap = parseMetaAccountMap(env("GROWTHWISE_META_ACCOUNT_MAP") || "");
+      const instagramRouter = routeInstagramBusiness ?? configuredInstagramRouter(env);
+      accountMap = await enrichInstagramAccountMap(payload, accountMap, instagramRouter);
+    } catch {
       return json(503, { error: "Meta account routing is not configured correctly." });
     }
 

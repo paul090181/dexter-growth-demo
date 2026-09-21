@@ -175,3 +175,27 @@ test("invalid webhook signature is rejected before ingest", async () => {
   assert.equal(response.status, 401);
   assert.equal(called, false);
 });
+
+
+test("Instagram webhook can resolve its tenant from the existing secure Instagram binding", async () => {
+  const raw = JSON.stringify(instagramPayload());
+  const signature = `sha256=${createHmac("sha256", SECRET).update(raw).digest("hex")}`;
+  const env = (name) => ({
+    META_APP_SECRET: SECRET,
+    GROWTHWISE_META_ACCOUNT_MAP: JSON.stringify({ facebook: {}, instagram: {} }),
+  })[name] || "";
+  const ingested = [];
+  const response = await createMetaWebhookHandler({
+    env,
+    routeInstagramBusiness: async (accountId) => accountId === "ig-456" ? "dexters-hats" : null,
+    ingest: async (event) => { ingested.push(event); return { duplicate: false, lead: { id: "lead-1" } }; },
+    logger: { info() {}, warn() {} },
+  })(new Request("https://growthwise.example/.netlify/functions/meta-webhook", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-hub-signature-256": signature },
+    body: raw,
+  }));
+  assert.equal(response.status, 200);
+  assert.equal(ingested.length, 1);
+  assert.equal(ingested[0].business_id, "dexters-hats");
+});
