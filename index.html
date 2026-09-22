@@ -30,6 +30,8 @@
 .live-unlock input{width:100%;border:1px solid #d8dde2;border-radius:12px;padding:11px 12px;font-size:14px}
 .live-unlock button{border:0;border-radius:12px;background:#0e1b2b;color:#fff;font-weight:800;padding:0 14px}
 .live-unlock small{display:block;color:#65717d;line-height:1.4;margin-top:8px}
+.founding-plan-card{margin:0 0 16px;border:1px solid #e5d8bb;background:linear-gradient(145deg,#fffaf0,#fff);border-radius:18px;padding:17px}
+.founding-plan-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.founding-plan-card h3{margin:5px 0 4px}.founding-plan-price{font-size:23px;font-weight:900;color:#0e1b2b;white-space:nowrap}.founding-plan-price small{font-size:12px;color:#68737e}.founding-plan-card p{margin:0 0 12px;color:#63707b;font-size:13px;line-height:1.45}.founding-plan-status{margin:10px 0 0;font-size:12px;font-weight:800;color:#596673}.founding-plan-card button:disabled{opacity:.5;cursor:not-allowed}
 
 .inventory-summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
 .inventory-stat{border:1px solid #e4e7ea;border-radius:16px;padding:15px;background:#fff}
@@ -433,6 +435,19 @@
             <button id="unlockLiveBtn" type="button" onclick="growthwiseUnlockSquare(event)">Unlock</button>
           </div>
           <small>Enter once per browser session to connect your live business data and publishing tools.</small>
+        </div>
+
+        <div class="founding-plan-card" id="foundingPlanCard">
+          <div class="founding-plan-head">
+            <div>
+              <div class="tag">SANDBOX CHECKOUT</div>
+              <h3>GrowthWise Founding Plan</h3>
+            </div>
+            <div class="founding-plan-price">$49<small>/month</small></div>
+          </div>
+          <p>Test the secure subscription checkout in Stripe’s sandbox. No live charge will be made.</p>
+          <button type="button" class="primary" id="foundingCheckoutBtn" disabled>Unlock GrowthWise to continue</button>
+          <div class="founding-plan-status" id="foundingPlanStatus">Status available after unlock.</div>
         </div>
 
         <script>
@@ -3968,6 +3983,71 @@ loadLiveSquareData().then(()=>{
   const key = sessionStorage.getItem('growthwise_admin_key') || '';
   if(key) loadLiveSalesData(key);
 });
+
+const foundingCheckoutBtn = document.getElementById('foundingCheckoutBtn');
+const foundingPlanStatus = document.getElementById('foundingPlanStatus');
+
+function updateFoundingCheckoutAccess(){
+  const key = sessionStorage.getItem('growthwise_admin_key') || '';
+  foundingCheckoutBtn.disabled = !key;
+  foundingCheckoutBtn.textContent = key ? 'Open sandbox checkout' : 'Unlock GrowthWise to continue';
+  return key;
+}
+
+async function refreshSubscriptionStatus(){
+  const key = updateFoundingCheckoutAccess();
+  if(!key) return;
+  try{
+    const response = await fetch('/.netlify/functions/subscription-status?business_id=dexters-hats', {
+      method: 'GET',
+      headers: { 'X-GrowthWise-Key': key },
+      cache: 'no-store'
+    });
+    const data = await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error || 'Status is temporarily unavailable.');
+    const labels = {
+      pilot: 'Pilot access', active: 'Active', trialing: 'Trialing', past_due: 'Payment needs attention',
+      canceled: 'Canceled', incomplete: 'Checkout pending', not_subscribed: 'Not started'
+    };
+    foundingPlanStatus.textContent = `Current status: ${labels[data.status] || data.status || 'Unknown'}`;
+  }catch(error){
+    foundingPlanStatus.textContent = error?.message || 'Status is temporarily unavailable.';
+  }
+}
+
+async function startFoundingCheckout(){
+  const key = updateFoundingCheckoutAccess();
+  if(!key) return;
+  foundingCheckoutBtn.disabled = true;
+  foundingCheckoutBtn.textContent = 'Opening Stripe…';
+  foundingPlanStatus.textContent = 'Creating a secure sandbox checkout…';
+  try{
+    const response = await fetch('/.netlify/functions/stripe-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-GrowthWise-Key': key },
+      body: JSON.stringify({ business_id: 'dexters-hats' })
+    });
+    const data = await response.json().catch(()=>({}));
+    if(!response.ok) throw new Error(data.error || 'Checkout is temporarily unavailable.');
+    const checkoutUrl = new URL(data.checkout_url);
+    if(checkoutUrl.protocol === 'https:' && checkoutUrl.hostname === 'checkout.stripe.com'){
+      window.location.href = checkoutUrl.href;
+      return;
+    }
+    throw new Error('Checkout returned an invalid destination.');
+  }catch(error){
+    foundingPlanStatus.textContent = error?.message || 'Checkout is temporarily unavailable.';
+    updateFoundingCheckoutAccess();
+  }
+}
+
+foundingCheckoutBtn.addEventListener('click', startFoundingCheckout);
+window.addEventListener('growthwise:admin-key-ready', refreshSubscriptionStatus);
+updateFoundingCheckoutAccess();
+const billingResult = new URLSearchParams(window.location.search).get('billing');
+if(billingResult === 'success') foundingPlanStatus.textContent = 'Checkout finished. Confirming status with the server…';
+if(billingResult === 'cancelled') foundingPlanStatus.textContent = 'Checkout was cancelled. No changes were assumed.';
+refreshSubscriptionStatus();
 
 
 
