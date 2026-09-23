@@ -306,7 +306,7 @@ export function mountCustomerConnectorPage({ documentImpl = globalThis.document 
       ? `Connected to ${view.email.account.address}`
       : view.email.action;
     emailUnavailable.hidden = view.email.available;
-    emailButton.hidden = !view.email.available;
+    emailButton.hidden = !view.email.available || view.email.state === "Connected";
     emailButton.disabled = view.loading || view.email.connecting || !view.email.mailboxContext;
     emailButton.textContent = view.email.connecting ? "Connecting…"
       : view.email.state === "Not Connected" ? "Connect Microsoft Email" : "Reconnect Microsoft Email";
@@ -314,6 +314,7 @@ export function mountCustomerConnectorPage({ documentImpl = globalThis.document 
     emailDisconnect.disabled = view.loading || view.email.disconnecting;
     emailDisconnect.textContent = view.email.disconnecting ? "Disconnecting…" : "Disconnect";
     for (const choice of emailChoices) {
+      choice.checked = choice.value === view.email.mailboxContext;
       choice.disabled = view.loading || !view.email.allowed || view.email.state === "Connected";
     }
   };
