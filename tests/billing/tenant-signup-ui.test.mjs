@@ -48,3 +48,18 @@ test("checkout redirects only to Stripe-hosted HTTPS", () => {
   assert.match(page, /checkoutUrl\.hostname\s*===\s*['"]checkout\.stripe\.com['"]/);
   assert.match(page, /window\.location\.href\s*=\s*checkoutUrl\.href/);
 });
+
+
+test("founding offer clearly compares founder and planned standard pricing", () => {
+  assert.match(page, /Founding Member Offer/);
+  assert.match(page, /\$49<small>\/month<\/small>/);
+  assert.match(page, /Planned standard price after launch:/);
+  assert.match(page, /\$99\/month/);
+  assert.match(page, /Save \$50\/month · \$600\/year/);
+});
+
+test("founding pricing states the continuous-membership rule", () => {
+  assert.match(page, /rate stays locked in while your subscription remains continuously active/i);
+  assert.match(page, /If your membership ends and you later rejoin, the then-current standard rate will apply/i);
+  assert.match(page, /Temporary payment-recovery periods do not automatically end founder pricing/i);
+});
