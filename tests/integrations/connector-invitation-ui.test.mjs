@@ -137,6 +137,12 @@ test("email connect requires explicit mailbox-context acknowledgement before OAu
           email: { allowed: true, available: true, state: "Not Connected" },
         },
       });
+      if (url.includes("/microsoft-mail-connection?")) return response({
+        business_id: "dexters-hats",
+        state: "Not Connected",
+        checked_at: "2026-09-23T19:00:00.000Z",
+        action: "Connect a Microsoft business mailbox to receive email leads.",
+      });
       return response({ authorization_url: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?state=opaque" });
     },
     navigate: (url) => { navigated = url; },
@@ -158,14 +164,23 @@ test("email connect requires explicit mailbox-context acknowledgement before OAu
 
 test("email mailbox context rejects arbitrary values", async () => {
   const controller = createCustomerConnectorController({
-    fetchImpl: async (url) => url.endsWith("/connector-session") ? response({
-      business_id: "dexters-hats", business_name: "Dexter's Hats",
-      connectors: {
-        facebook: { allowed: false, available: false, state: "Setup unavailable" },
-        instagram: { allowed: false, available: false },
-        email: { allowed: true, available: true, state: "Not Connected" },
-      },
-    }) : response({}),
+    fetchImpl: async (url) => {
+      if (url.endsWith("/connector-session")) return response({
+        business_id: "dexters-hats", business_name: "Dexter's Hats",
+        connectors: {
+          facebook: { allowed: false, available: false, state: "Setup unavailable" },
+          instagram: { allowed: false, available: false },
+          email: { allowed: true, available: true, state: "Not Connected" },
+        },
+      });
+      if (url.includes("/microsoft-mail-connection?")) return response({
+        business_id: "dexters-hats",
+        state: "Not Connected",
+        checked_at: "2026-09-23T19:00:00.000Z",
+        action: "Connect a Microsoft business mailbox to receive email leads.",
+      });
+      return response({});
+    },
   });
   await controller.load();
   controller.setEmailMailboxContext("yes-just-do-it");
