@@ -67,25 +67,33 @@ export function createMicrosoftMailConnectionHandler(options = {}) {
         });
       }
 
-      if (!STORED_STATES.has(row.status)) {
+      const subscription = await store.readSubscriptionByBusiness({ businessId });
+      const subscriptionActive = subscription?.status === "active"
+        && Number.isFinite(new Date(subscription.expires_at).getTime())
+        && new Date(subscription.expires_at).getTime() > checkedAt.getTime();
+
+      if (!STORED_STATES.has(row.status) || row.status !== "active" || !subscriptionActive) {
         return connectorJson(200, {
           business_id: businessId,
           state: "Needs Attention",
           checked_at: checkedAt.toISOString(),
-          action: "Reconnect Microsoft email.",
+          account: {
+            address: row.email_address,
+            display_name: row.display_name || row.email_address,
+          },
+          action: "Reconnect Microsoft email so GrowthWise can restore automatic inbox delivery.",
         });
       }
 
-      const state = row.status === "active" ? "Connected" : "Needs Attention";
       return connectorJson(200, {
         business_id: businessId,
-        state,
+        state: "Connected",
         checked_at: checkedAt.toISOString(),
         account: {
           address: row.email_address,
           display_name: row.display_name || row.email_address,
         },
-        action: state === "Connected" ? "" : "Reconnect Microsoft email.",
+        action: "",
       });
     } catch {
       return connectorJson(503, {
