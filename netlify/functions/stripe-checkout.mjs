@@ -1,6 +1,9 @@
 import { authorized as defaultAuthorized, json } from "./_lead-store.mjs";
 import { DEFAULT_BILLING_TENANTS, billingTenantsFromEnvironment } from "./_billing-tenants.mjs";
 import { createCheckoutSession, createStripeClient } from "./_stripe-client.mjs";
+import { authorizeTenantRequest } from "./_tenant-auth.mjs";
+import { createTenantStore } from "./_tenant-store.mjs";
+import { createBillingStore } from "./_billing-store.mjs";
 
 const MAX_BODY_BYTES = 16_384;
 
@@ -42,10 +45,11 @@ export function createStripeCheckoutHandler({
   priceId,
   origin,
   tenants = DEFAULT_BILLING_TENANTS,
+  tenantStore,
+  billingStore,
 }) {
   return async function stripeCheckoutHandler(request) {
     if (request.method !== "POST") return json(405, { error: "Method not allowed" });
-    if (!authorized(request).ok) return json(401, { error: "Unauthorized" });
     if (!stripe || !priceId || !validOrigin(origin)) {
       return json(503, { error: "Billing is not configured." });
     }
@@ -58,10 +62,31 @@ export function createStripeCheckoutHandler({
     }
 
     const businessId = String(body?.business_id || "").trim();
-    if (!tenants.has(businessId)) return json(404, { error: "Business not found." });
+    const adminAuth = authorized(request);
+    let auth = adminAuth;
+    if (adminAuth.ok) {
+      if (!tenants.has(businessId)) return json(404, { error: "Business not found." });
+    } else {
+      auth = await authorizeTenantRequest(request, { businessId, store: tenantStore });
+      if (!auth.ok) return json(401, { error: "Unauthorized" });
+    }
 
     try {
-      const session = await createCheckoutSession(stripe, { priceId, businessId, origin });
+      const subscription = await billingStore.readSubscription({ businessId });
+      if (subscription?.stripe_subscription_id) {
+        return json(409, { error: "A Stripe subscription is already linked to this business." });
+      }
+    } catch {
+      return json(503, { error: "Subscription status unavailable." });
+    }
+
+    try {
+      const session = await createCheckoutSession(stripe, {
+        priceId,
+        businessId,
+        origin,
+        returnPath: auth.via === "tenant" ? "/signup.html" : "/",
+      });
       if (!approvedCheckoutUrl(session?.url)) {
         return json(502, { error: "Checkout session unavailable." });
       }
@@ -89,5 +114,10 @@ export default async function handler(request) {
   } catch {
     return json(503, { error: "Billing is not configured." });
   }
-  return createStripeCheckoutHandler({ stripe, ...config })(request);
+  return createStripeCheckoutHandler({
+    stripe,
+    tenantStore: createTenantStore(),
+    billingStore: createBillingStore(),
+    ...config,
+  })(request);
 }

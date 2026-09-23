@@ -2,12 +2,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createSubscriptionStatusHandler } from "../../netlify/functions/subscription-status.mjs";
+import { hashTenantAccessKey } from "../../netlify/functions/_tenant-auth.mjs";
 
 const URL = "https://preview.example/.netlify/functions/subscription-status";
+const TENANT_KEY = `gw_tenant_${"A".repeat(43)}`;
 
-function authorizedRequest(businessId, key = "valid-key") {
+function authorizedRequest(businessId, key = "valid-key", tenantKey = "") {
+  const headers = {};
+  if (key) headers["x-growthwise-key"] = key;
+  if (tenantKey) headers["x-growthwise-tenant-key"] = tenantKey;
   return new Request(`${URL}?business_id=${encodeURIComponent(businessId)}`, {
-    headers: { "x-growthwise-key": key },
+    headers,
   });
 }
 
@@ -22,6 +27,11 @@ function fixture(row = null) {
       },
     },
     tenants: new Set(["growthwise-dev", "dexters-hats"]),
+    tenantStore: {
+      readTenantAuth: async ({ businessId }) => businessId === "tenant-self-abcdef123456"
+        ? { business_id: businessId, access_key_hash: hashTenantAccessKey(TENANT_KEY) }
+        : null,
+    },
   });
   return { handler, reads };
 }
@@ -54,6 +64,7 @@ test("Dexter pilot status is returned without Stripe identifiers", async () => {
     plan_key: "founding_monthly",
     status: "pilot",
     current_period_end: null,
+    access_granted: true,
   });
 });
 
@@ -76,6 +87,7 @@ test("subscription status returns a neutral unconfigured state for a known tenan
     plan_key: null,
     status: "not_subscribed",
     current_period_end: null,
+    access_granted: false,
   });
 });
 
@@ -86,4 +98,58 @@ test("subscription status allows only GET", async () => {
     headers: { "x-growthwise-key": "valid-key" },
   }));
   assert.equal(response.status, 405);
+});
+
+test("a registered tenant is locked before signed webhook activation", async () => {
+  const { handler } = fixture(null);
+  const response = await handler(authorizedRequest("tenant-self-abcdef123456", "", TENANT_KEY));
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    business_id: "tenant-self-abcdef123456",
+    access_source: null,
+    plan_key: null,
+    status: "not_subscribed",
+    current_period_end: null,
+    access_granted: false,
+  });
+});
+
+test("active and trialing Stripe tenants receive access from server state", async () => {
+  for (const status of ["active", "trialing"]) {
+    const { handler } = fixture({
+      business_id: "tenant-self-abcdef123456",
+      access_source: "stripe",
+      plan_key: "founding_monthly",
+      status,
+      current_period_end: "2026-10-23T00:00:00.000Z",
+    });
+    const response = await handler(authorizedRequest("tenant-self-abcdef123456", "", TENANT_KEY));
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).access_granted, true);
+  }
+});
+
+test("incomplete Stripe state does not grant paid access", async () => {
+  const { handler } = fixture({
+    business_id: "tenant-self-abcdef123456",
+    access_source: "stripe",
+    plan_key: "founding_monthly",
+    status: "incomplete",
+    current_period_end: null,
+  });
+  const response = await handler(authorizedRequest("tenant-self-abcdef123456", "", TENANT_KEY));
+
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).access_granted, false);
+});
+
+test("one tenant key cannot read another tenant subscription", async () => {
+  const { handler, reads } = fixture({
+    business_id: "tenant-other-abcdef123456", access_source: "stripe", status: "active",
+  });
+  const response = await handler(authorizedRequest("tenant-other-abcdef123456", "", TENANT_KEY));
+
+  assert.equal(response.status, 401);
+  assert.equal(reads.length, 0);
 });

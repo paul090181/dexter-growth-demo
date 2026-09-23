@@ -7,6 +7,16 @@ const READ_SUBSCRIPTION = `
 
 const LOCK_SUBSCRIPTION = `${READ_SUBSCRIPTION} FOR UPDATE`;
 
+const READ_REGISTERED_TENANT = `
+  SELECT business_id AS registered_tenant
+    FROM growthwise_tenants
+   WHERE business_id = $1
+  UNION ALL
+  SELECT business_id AS registered_tenant
+    FROM growthwise_subscriptions
+   WHERE business_id = $1
+   LIMIT 1`;
+
 const INSERT_EVENT = `
   INSERT INTO stripe_webhook_events
     (stripe_event_id, event_type, event_created_at, business_id, result)
@@ -52,7 +62,7 @@ const UPSERT_SUBSCRIPTION = `
     stripe_subscription_id = COALESCE(EXCLUDED.stripe_subscription_id, growthwise_subscriptions.stripe_subscription_id),
     stripe_price_id = COALESCE(EXCLUDED.stripe_price_id, growthwise_subscriptions.stripe_price_id),
     current_period_end = EXCLUDED.current_period_end,
-    last_event_created_at = EXCLUDED.last_event_created_at,
+    last_event_created_at = COALESCE(EXCLUDED.last_event_created_at, growthwise_subscriptions.last_event_created_at),
     updated_at = CURRENT_TIMESTAMP
   RETURNING business_id, access_source, plan_key, status, stripe_customer_id,
             stripe_subscription_id, stripe_price_id, current_period_end,
@@ -103,6 +113,7 @@ function validateEvent(input) {
     stripeSubscriptionId: optionalString(input.stripeSubscriptionId, "INVALID_STRIPE_SUBSCRIPTION_ID"),
     stripePriceId: optionalString(input.stripePriceId, "INVALID_STRIPE_PRICE_ID"),
     currentPeriodEnd: validDate(input.currentPeriodEnd, "INVALID_CURRENT_PERIOD_END", { nullable: true }),
+    advanceLifecycle: input.advanceLifecycle !== false,
     result,
   };
 }
@@ -130,6 +141,10 @@ export function createBillingStore({ getPool = netlifyPool } = {}) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
+      if (event.businessId) {
+        const registered = await client.query(READ_REGISTERED_TENANT, [event.businessId]);
+        if (!registered.rows[0]) throw safeStoreError("TENANT_NOT_REGISTERED");
+      }
       const inserted = await client.query(INSERT_EVENT, [
         event.eventId, event.eventType, event.eventCreatedAt, event.businessId, event.result,
       ]);
@@ -155,7 +170,7 @@ export function createBillingStore({ getPool = netlifyPool } = {}) {
       if (existing && bindingChanged(existing, event)) throw safeStoreError("STRIPE_BINDING_CONFLICT");
 
       const lastEventAt = existing?.last_event_created_at ? new Date(existing.last_event_created_at) : null;
-      if (lastEventAt && event.eventCreatedAt.getTime() < lastEventAt.getTime()) {
+      if (event.advanceLifecycle && lastEventAt && event.eventCreatedAt.getTime() < lastEventAt.getTime()) {
         await client.query(UPDATE_EVENT_RESULT, [event.eventId, "ignored"]);
         await client.query("COMMIT");
         return { duplicate: false, stale: true, subscription: existing };
@@ -171,7 +186,7 @@ export function createBillingStore({ getPool = netlifyPool } = {}) {
           event.stripeSubscriptionId,
           event.stripePriceId,
           event.currentPeriodEnd,
-          event.eventCreatedAt,
+          event.advanceLifecycle ? event.eventCreatedAt : null,
         ]);
         subscription = updated.rows[0] ?? existing;
       } catch (error) {
@@ -183,7 +198,7 @@ export function createBillingStore({ getPool = netlifyPool } = {}) {
       return { duplicate: false, stale: false, subscription };
     } catch (error) {
       try { await client.query("ROLLBACK"); } catch { /* keep the original safe error */ }
-      if (["STRIPE_BINDING_CONFLICT", "INVALID_BILLING_EVENT"].includes(error?.message)) throw error;
+      if (["STRIPE_BINDING_CONFLICT", "INVALID_BILLING_EVENT", "TENANT_NOT_REGISTERED"].includes(error?.message)) throw error;
       throw safeStoreError("BILLING_EVENT_APPLY_FAILED", error);
     } finally {
       client.release();

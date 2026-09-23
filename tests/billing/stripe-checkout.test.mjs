@@ -2,27 +2,31 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createStripeCheckoutHandler } from "../../netlify/functions/stripe-checkout.mjs";
+import { hashTenantAccessKey } from "../../netlify/functions/_tenant-auth.mjs";
 
 const URL = "https://preview.example/.netlify/functions/stripe-checkout";
+const TENANT_KEY = `gw_tenant_${"A".repeat(43)}`;
 
 function request(body = {}, options = {}) {
+  const headers = { "content-type": "application/json" };
+  if (options.key !== "") headers["x-growthwise-key"] = options.key || "valid-key";
+  if (options.tenantKey) headers["x-growthwise-tenant-key"] = options.tenantKey;
   return new Request(URL, {
     method: options.method || "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-growthwise-key": options.key || "valid-key",
-    },
+    headers,
     body: options.method === "GET" ? undefined : JSON.stringify(body),
   });
 }
 
 function fixture(overrides = {}) {
   const createCalls = [];
+  const createOptions = [];
   const stripe = {
     checkout: {
       sessions: {
-        create: async (input) => {
+        create: async (input, options) => {
           createCalls.push(input);
+          createOptions.push(options);
           return { url: "https://checkout.stripe.com/c/pay/cs_test_123" };
         },
       },
@@ -34,9 +38,15 @@ function fixture(overrides = {}) {
     priceId: "price_server",
     origin: "https://deploy-preview-14--euphonious-beijinho-db4b4d.netlify.app",
     tenants: new Set(["growthwise-dev", "dexters-hats"]),
+    tenantStore: {
+      readTenantAuth: async ({ businessId }) => businessId === "tenant-self-abcdef123456"
+        ? { business_id: businessId, access_key_hash: hashTenantAccessKey(TENANT_KEY) }
+        : null,
+    },
+    billingStore: { readSubscription: async () => null },
     ...overrides,
   });
-  return { handler, createCalls, stripe };
+  return { handler, createCalls, createOptions, stripe };
 }
 
 test("Checkout ignores client pricing and uses server configuration", async () => {
@@ -114,4 +124,70 @@ test("Checkout returns the approved URL without leaking the session object", asy
 
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { checkout_url: "https://checkout.stripe.com/c/pay/cs_test_123" });
+});
+
+test("tenant checkout requires its exact business ID and fixes Founding Plan metadata", async () => {
+  const { handler, createCalls } = fixture();
+  const response = await handler(request({
+    business_id: "tenant-self-abcdef123456",
+    plan_key: "attacker-plan",
+    price: "price_attacker",
+  }, { key: "", tenantKey: TENANT_KEY }));
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(createCalls[0].metadata, {
+    business_id: "tenant-self-abcdef123456",
+    plan_key: "founding_monthly",
+  });
+  assert.equal(createCalls[0].line_items[0].price, "price_server");
+  assert.equal(createCalls[0].success_url,
+    "https://deploy-preview-14--euphonious-beijinho-db4b4d.netlify.app/signup.html?billing=success&session_id={CHECKOUT_SESSION_ID}");
+  assert.equal(createCalls[0].cancel_url,
+    "https://deploy-preview-14--euphonious-beijinho-db4b4d.netlify.app/signup.html?billing=cancelled");
+});
+
+test("one tenant key cannot create checkout for another business", async () => {
+  const { handler, createCalls } = fixture();
+  const response = await handler(request({ business_id: "tenant-other-abcdef123456" }, {
+    key: "",
+    tenantKey: TENANT_KEY,
+  }));
+
+  assert.equal(response.status, 401);
+  assert.equal(createCalls.length, 0);
+});
+
+test("checkout is blocked once a Stripe subscription is already bound", async () => {
+  const { handler, createCalls } = fixture({
+    billingStore: {
+      readSubscription: async () => ({
+        business_id: "tenant-self-abcdef123456",
+        access_source: "stripe",
+        status: "active",
+        stripe_subscription_id: "sub_existing",
+      }),
+    },
+  });
+  const response = await handler(request({ business_id: "tenant-self-abcdef123456" }, {
+    key: "",
+    tenantKey: TENANT_KEY,
+  }));
+
+  assert.equal(response.status, 409);
+  assert.equal(createCalls.length, 0);
+});
+
+test("concurrent checkout requests share one Stripe idempotency key", async () => {
+  const { handler, createCalls, createOptions } = fixture();
+  const makeRequest = () => request({ business_id: "tenant-self-abcdef123456" }, {
+    key: "",
+    tenantKey: TENANT_KEY,
+  });
+
+  const responses = await Promise.all([handler(makeRequest()), handler(makeRequest())]);
+
+  assert.deepEqual(responses.map((response) => response.status), [200, 200]);
+  assert.equal(createCalls.length, 2);
+  assert.equal(createOptions[0].idempotencyKey, createOptions[1].idempotencyKey);
+  assert.match(createOptions[0].idempotencyKey, /^growthwise-founding-[a-f0-9]{32}$/);
 });

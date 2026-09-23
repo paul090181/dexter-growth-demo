@@ -7,13 +7,18 @@ function clone(value) {
   return value == null ? value : structuredClone(value);
 }
 
-function fakeDatabase({ subscriptions = [], failUpsert = false } = {}) {
+function fakeDatabase({ subscriptions = [], tenants = ["tenant-a"], failUpsert = false } = {}) {
   const state = {
     subscriptions: new Map(subscriptions.map((row) => [row.business_id, clone(row)])),
+    tenants: new Set(tenants),
     events: new Map(),
   };
 
   const query = async (text, values = [], transactionState = state) => {
+    if (text.includes("FROM growthwise_tenants") && text.includes("registered_tenant")) {
+      const registered = transactionState.tenants.has(values[0]) || transactionState.subscriptions.has(values[0]);
+      return { rows: registered ? [{ business_id: values[0] }] : [] };
+    }
     if (text.includes("FROM growthwise_subscriptions") && text.includes("stripe_customer_id = $1")) {
       const rows = [...transactionState.subscriptions.values()].filter((candidate) => (
         (values[0] && candidate.stripe_customer_id === values[0])
@@ -58,7 +63,7 @@ function fakeDatabase({ subscriptions = [], failUpsert = false } = {}) {
         stripe_subscription_id: values[4] ?? existing?.stripe_subscription_id ?? null,
         stripe_price_id: values[5] ?? existing?.stripe_price_id ?? null,
         current_period_end: values[6],
-        last_event_created_at: values[7],
+        last_event_created_at: values[7] ?? existing?.last_event_created_at ?? null,
         created_at: existing?.created_at ?? new Date("2026-09-21T00:00:00Z"),
         updated_at: new Date("2026-09-21T20:00:00Z"),
       };
@@ -75,11 +80,12 @@ function fakeDatabase({ subscriptions = [], failUpsert = false } = {}) {
       return {
         async query(text, values) {
           if (text === "BEGIN") {
-            tx = { subscriptions: new Map([...state.subscriptions].map(([k, v]) => [k, clone(v)])), events: new Map([...state.events].map(([k, v]) => [k, clone(v)])) };
+            tx = { subscriptions: new Map([...state.subscriptions].map(([k, v]) => [k, clone(v)])), tenants: new Set(state.tenants), events: new Map([...state.events].map(([k, v]) => [k, clone(v)])) };
             return { rows: [] };
           }
           if (text === "COMMIT") {
             state.subscriptions = tx.subscriptions;
+            state.tenants = tx.tenants;
             state.events = tx.events;
             tx = null;
             return { rows: [] };
@@ -107,6 +113,7 @@ function eventAt(eventId, status, at, businessId = "tenant-a", overrides = {}) {
     stripePriceId: "price_test",
     currentPeriodEnd: null,
     result: "processed",
+    advanceLifecycle: true,
     ...overrides,
   };
 }
@@ -133,7 +140,7 @@ test("older events cannot overwrite newer subscription state", async () => {
 });
 
 test("Stripe identifiers cannot be rebound to another business", async () => {
-  const db = fakeDatabase();
+  const db = fakeDatabase({ tenants: ["tenant-a", "tenant-b"] });
   const store = createBillingStore({ getPool: async () => db.pool });
   await store.applyEvent(eventAt("evt_a", "active", "2026-09-21T20:00:00Z", "tenant-a"));
 
@@ -206,4 +213,35 @@ test("invoice processing can resolve one durable Stripe binding", async () => {
 
   assert.equal(found.business_id, "tenant-a");
   assert.equal(found.status, "active");
+});
+
+test("webhook events cannot create subscriptions for unregistered metadata", async () => {
+  const db = fakeDatabase({ tenants: [] });
+  const store = createBillingStore({ getPool: async () => db.pool });
+
+  await assert.rejects(
+    store.applyEvent(eventAt("evt_unregistered", "active", "2026-09-21T20:00:00Z", "made-up-tenant")),
+    /TENANT_NOT_REGISTERED/,
+  );
+  assert.equal(db.state.events.has("evt_unregistered"), false);
+  assert.equal(db.state.subscriptions.has("made-up-tenant"), false);
+});
+
+test("later checkout linkage cannot make an earlier subscription activation stale", async () => {
+  const db = fakeDatabase();
+  const store = createBillingStore({ getPool: async () => db.pool });
+
+  const checkout = await store.applyEvent(eventAt(
+    "evt_checkout_later", "incomplete", "2026-09-21T20:00:01Z", "tenant-a",
+    { eventType: "checkout.session.completed", advanceLifecycle: false },
+  ));
+  const subscription = await store.applyEvent(eventAt(
+    "evt_subscription_earlier", "active", "2026-09-21T20:00:00Z", "tenant-a",
+    { eventType: "customer.subscription.created", advanceLifecycle: true },
+  ));
+
+  assert.equal(checkout.subscription.status, "incomplete");
+  assert.equal(subscription.stale, false);
+  assert.equal(subscription.subscription.status, "active");
+  assert.equal((await store.readSubscription({ businessId: "tenant-a" })).status, "active");
 });

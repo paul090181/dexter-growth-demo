@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0e1b2b" />
+  <title>Start with GrowthWise</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#eef1f4;color:#14202c;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.shell{width:min(680px,100%);min-height:100vh;margin:0 auto;background:#fff;padding:34px 22px 64px}.brand{font-weight:900;font-size:18px}.eyebrow{color:#96702c;font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.hero{margin:28px 0;background:#0e1b2b;color:#fff;border-radius:24px;padding:28px}.hero h1{margin:7px 0 11px;font-size:clamp(30px,7vw,46px);line-height:1.04;letter-spacing:-.04em}.hero p{margin:0;color:#d4dbe2;line-height:1.55}.card{border:1px solid #e1e6ea;border-radius:20px;padding:20px;margin-top:16px;box-shadow:0 10px 30px rgba(14,27,43,.045)}.card h2,.card h3{margin:5px 0 8px}.card p{color:#5d6974;line-height:1.5;margin:0 0 15px}.field{display:block;margin:13px 0;font-size:12px;font-weight:850;color:#53606c}.field input{display:block;width:100%;margin-top:6px;border:1px solid #d5dce2;border-radius:12px;padding:13px;font:inherit;color:#14202c}.button{width:100%;border:0;border-radius:13px;padding:14px 16px;background:#0e1b2b;color:#fff;font-size:15px;font-weight:850;cursor:pointer}.button:disabled{opacity:.52;cursor:not-allowed}.secondary{background:#edf1f4;color:#17222e}.status{margin-top:13px;border-radius:12px;padding:12px;font-size:13px;font-weight:750;line-height:1.45;background:#eef3f6;color:#3e5366}.status.error{background:#fff0ee;color:#87372e}.status.success{background:#e9f5eb;color:#285d34}.hidden{display:none!important}.plan-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.price{font-size:27px;font-weight:950;white-space:nowrap}.price small{font-size:12px;color:#66727c}.key{display:block;overflow-wrap:anywhere;background:#f3f5f6;border-radius:12px;padding:12px;margin:10px 0;font:12px ui-monospace,SFMono-Regular,Menlo,monospace}.notice{background:#fff7e7;border:1px solid #ead7ae}.access{background:#eef8f1;border-color:#cfe3d4}.row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}@media(max-width:520px){.row{grid-template-columns:1fr}.shell{padding:24px 16px 48px}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="brand">GrowthWise</div>
+    <section class="hero">
+      <div class="eyebrow">Founding Plan</div>
+      <h1>Set up your business in a few minutes.</h1>
+      <p>Create your private business workspace, then activate it through secure sandbox checkout.</p>
+    </section>
+
+    <section class="card" id="signupCard">
+      <div class="eyebrow">Create your workspace</div>
+      <h2>Business details</h2>
+      <p>We only need the basics to create your private GrowthWise tenant.</p>
+      <form id="signupForm">
+        <label class="field">Business name<input name="business_name" maxlength="160" autocomplete="organization" required /></label>
+        <label class="field">Contact name<input name="contact_name" maxlength="160" autocomplete="name" required /></label>
+        <label class="field">Email<input name="email" type="email" maxlength="254" autocomplete="email" required /></label>
+        <button class="button" id="signupButton" type="submit">Create workspace</button>
+      </form>
+      <div class="status hidden" id="signupStatus"></div>
+    </section>
+
+    <section class="card notice hidden" id="oneTimeKeyPanel">
+      <div class="eyebrow">Save once</div>
+      <h3>Your tenant access key</h3>
+      <p>This is shown only during this signup session. Store it securely; password recovery is not part of this preview.</p>
+      <code class="key" id="oneTimeKey"></code>
+      <div class="row">
+        <button class="button secondary" id="copyKeyButton" type="button">Copy key</button>
+        <button class="button" id="savedKeyButton" type="button">I saved it</button>
+      </div>
+    </section>
+
+    <section class="card hidden" id="planCard">
+      <div class="plan-head">
+        <div><div class="eyebrow">Server-controlled plan</div><h2>GrowthWise Founding Plan</h2></div>
+        <div class="price">$49<small>/month</small></div>
+      </div>
+      <p>Your workspace remains locked until GrowthWise receives and verifies Stripe’s signed subscription webhook.</p>
+      <button class="button" id="checkoutButton" type="button">Open secure sandbox checkout</button>
+      <div class="status" id="subscriptionStatus">Current status: Not subscribed — access locked.</div>
+    </section>
+
+    <section class="card access hidden" id="accessCard">
+      <div class="eyebrow">Access active</div>
+      <h2>Your GrowthWise tenant is active</h2>
+      <p>Stripe activation was confirmed by the GrowthWise server for this business.</p>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById('signupForm');
+    const signupCard = document.getElementById('signupCard');
+    const signupButton = document.getElementById('signupButton');
+    const signupStatus = document.getElementById('signupStatus');
+    const oneTimeKeyPanel = document.getElementById('oneTimeKeyPanel');
+    const oneTimeKey = document.getElementById('oneTimeKey');
+    const planCard = document.getElementById('planCard');
+    const checkoutButton = document.getElementById('checkoutButton');
+    const subscriptionStatus = document.getElementById('subscriptionStatus');
+    const accessCard = document.getElementById('accessCard');
+
+    function credentials(){
+      return {
+        businessId: sessionStorage.getItem('growthwise_business_id') || '',
+        tenantKey: sessionStorage.getItem('growthwise_tenant_key') || ''
+      };
+    }
+
+    function showWorkspace(){
+      const { businessId, tenantKey } = credentials();
+      if(!businessId || !tenantKey) return false;
+      signupCard.classList.add('hidden');
+      planCard.classList.remove('hidden');
+      return true;
+    }
+
+    async function refreshStatus(){
+      const { businessId, tenantKey } = credentials();
+      if(!businessId || !tenantKey) return;
+      try{
+        const response = await fetch(`/.netlify/functions/subscription-status?business_id=${encodeURIComponent(businessId)}`, {
+          headers: { 'X-GrowthWise-Tenant-Key': tenantKey },
+          cache: 'no-store'
+        });
+        const data = await response.json().catch(()=>({}));
+        if(!response.ok) throw new Error(data.error || 'Status is temporarily unavailable.');
+        const accessGranted = data.access_granted === true && data.access_source === 'stripe';
+        const labels = { active:'Active', trialing:'Trialing', incomplete:'Checkout pending', past_due:'Payment needs attention', canceled:'Canceled', not_subscribed:'Not subscribed' };
+        subscriptionStatus.textContent = `Current status: ${labels[data.status] || data.status || 'Unknown'} — access ${accessGranted ? 'active' : 'locked'}.`;
+        subscriptionStatus.className = `status ${accessGranted ? 'success' : ''}`;
+        accessCard.classList.toggle('hidden', !accessGranted);
+        checkoutButton.disabled = accessGranted;
+        checkoutButton.textContent = accessGranted ? 'Subscription active' : 'Open secure sandbox checkout';
+      }catch(error){
+        subscriptionStatus.textContent = error.message || 'Status is temporarily unavailable.';
+        subscriptionStatus.className = 'status error';
+        accessCard.classList.add('hidden');
+      }
+    }
+
+    form.addEventListener('submit', async (event)=>{
+      event.preventDefault();
+      signupButton.disabled = true;
+      signupStatus.className = 'status';
+      signupStatus.textContent = 'Creating your private workspace…';
+      signupStatus.classList.remove('hidden');
+      try{
+        const response = await fetch('/.netlify/functions/tenant-signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            business_name: form.business_name.value,
+            contact_name: form.contact_name.value,
+            email: form.email.value
+          })
+        });
+        const data = await response.json().catch(()=>({}));
+        if(!response.ok) throw new Error(data.error || 'Signup is temporarily unavailable.');
+        sessionStorage.setItem('growthwise_business_id', data.business_id);
+        sessionStorage.setItem('growthwise_tenant_key', data.tenant_key);
+        oneTimeKey.textContent = data.tenant_key;
+        oneTimeKeyPanel.classList.remove('hidden');
+        showWorkspace();
+        await refreshStatus();
+      }catch(error){
+        signupStatus.className = 'status error';
+        signupStatus.textContent = error.message || 'Signup is temporarily unavailable.';
+      }finally{
+        signupButton.disabled = false;
+      }
+    });
+
+    document.getElementById('copyKeyButton').addEventListener('click', async ()=>{
+      await navigator.clipboard.writeText(oneTimeKey.textContent);
+      document.getElementById('copyKeyButton').textContent = 'Copied';
+    });
+    document.getElementById('savedKeyButton').addEventListener('click', ()=>{
+      oneTimeKey.textContent = '';
+      oneTimeKeyPanel.classList.add('hidden');
+    });
+
+    checkoutButton.addEventListener('click', async ()=>{
+      const { businessId, tenantKey } = credentials();
+      if(!businessId || !tenantKey) return;
+      checkoutButton.disabled = true;
+      subscriptionStatus.textContent = 'Opening secure sandbox checkout…';
+      try{
+        const response = await fetch('/.netlify/functions/stripe-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json', 'X-GrowthWise-Tenant-Key': tenantKey },
+          body: JSON.stringify({ business_id: businessId })
+        });
+        const data = await response.json().catch(()=>({}));
+        if(!response.ok) throw new Error(data.error || 'Checkout is temporarily unavailable.');
+        const checkoutUrl = new URL(data.checkout_url);
+        if(checkoutUrl.protocol === 'https:' && checkoutUrl.hostname === 'checkout.stripe.com'){
+          window.location.href = checkoutUrl.href;
+          return;
+        }
+        throw new Error('Checkout returned an invalid destination.');
+      }catch(error){
+        subscriptionStatus.textContent = error.message || 'Checkout is temporarily unavailable.';
+        subscriptionStatus.className = 'status error';
+        checkoutButton.disabled = false;
+      }
+    });
+
+    const billingResult = new URLSearchParams(window.location.search).get('billing');
+    if(billingResult === 'success'){
+      subscriptionStatus.textContent = 'Checkout finished. Confirming access with the GrowthWise server…';
+      refreshStatus();
+    }else if(billingResult === 'cancelled'){
+      subscriptionStatus.textContent = 'Checkout was cancelled. Access remains locked.';
+    }
+    if(showWorkspace()) refreshStatus();
+  </script>
+</body>
+</html>

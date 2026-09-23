@@ -86,6 +86,7 @@ export function createBillingService({ store } = {}) {
     return record(event, {
       businessId, planKey, status, stripeCustomerId, stripeSubscriptionId, stripePriceId,
       currentPeriodEnd: unixDate(object.current_period_end),
+      advanceLifecycle: true,
     });
   }
 
@@ -105,6 +106,7 @@ export function createBillingService({ store } = {}) {
       stripeSubscriptionId,
       stripePriceId: existing?.stripe_price_id ?? null,
       currentPeriodEnd: existing?.current_period_end ? new Date(existing.current_period_end) : null,
+      advanceLifecycle: false,
     });
   }
 
@@ -123,6 +125,7 @@ export function createBillingService({ store } = {}) {
       stripeSubscriptionId: existing.stripe_subscription_id ?? stripeSubscriptionId,
       stripePriceId: existing.stripe_price_id ?? null,
       currentPeriodEnd: existing.current_period_end ? new Date(existing.current_period_end) : null,
+      advanceLifecycle: event.type === "invoice.payment_failed",
     });
   }
 
@@ -133,6 +136,7 @@ export function createBillingService({ store } = {}) {
         return record(event, {
           businessId: null, planKey: null, status: null, stripeCustomerId: null,
           stripeSubscriptionId: null, stripePriceId: null, currentPeriodEnd: null, result: "ignored",
+          advanceLifecycle: false,
         }, "ignored");
       }
       if (event.type === "checkout.session.completed") return processCheckout(event, event.data.object);

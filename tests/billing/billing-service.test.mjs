@@ -62,6 +62,7 @@ test("subscription events use subscription metadata as the tenant binding", asyn
   assert.equal(store.applied[0].status, "active");
   assert.equal(store.applied[0].stripePriceId, "price_test");
   assert.equal(store.applied[0].currentPeriodEnd.toISOString(), "2026-10-22T21:00:00.000Z");
+  assert.equal(store.applied[0].advanceLifecycle, true);
 });
 
 test("subscription deletion always normalizes to canceled", async () => {
@@ -88,6 +89,7 @@ test("checkout completion records linkage without overriding an existing lifecyc
 
   assert.equal(store.applied[0].status, "trialing");
   assert.equal(store.applied[0].stripeSubscriptionId, "sub_1");
+  assert.equal(store.applied[0].advanceLifecycle, false);
 });
 
 test("new checkout linkage remains incomplete until a subscription event arrives", async () => {
@@ -116,6 +118,7 @@ test("paid invoices preserve the mapped subscription status", async () => {
 
   assert.equal(store.applied[0].businessId, "tenant-a");
   assert.equal(store.applied[0].status, "active");
+  assert.equal(store.applied[0].advanceLifecycle, false);
 });
 
 test("failed invoices set the mapped subscription to past_due", async () => {
