@@ -8,6 +8,8 @@ import {
 } from "./_connector-http.mjs";
 import { createMicrosoftMailCrypto } from "./_microsoft-mail-crypto.mjs";
 import { createMicrosoftMailStore } from "./_microsoft-mail-store.mjs";
+import { getMicrosoftMailAccess } from "./_microsoft-mail-access.mjs";
+import { deleteMicrosoftMailSubscription } from "./_microsoft-mail-graph.mjs";
 
 const PATH = "/.netlify/functions/microsoft-mail-disconnect";
 
@@ -27,6 +29,8 @@ export function createMicrosoftMailDisconnectHandler(options = {}) {
   const connectorAuthorize = options.connectorAuthorize ?? authorizeConnectorRequest;
   const publicOrigin = options.publicOrigin ?? (() => env("GROWTHWISE_PUBLIC_ORIGIN"));
   const now = options.now ?? (() => new Date());
+  const access = options.access ?? getMicrosoftMailAccess;
+  const deleteRemoteSubscription = options.deleteRemoteSubscription ?? deleteMicrosoftMailSubscription;
 
   return async function microsoftMailDisconnect(request) {
     if (request.method !== "POST") {
@@ -74,10 +78,34 @@ export function createMicrosoftMailDisconnectHandler(options = {}) {
       return connectorJson(401, { error: "Session is invalid or expired." });
     }
 
+    const crypto = options.crypto ?? defaultCrypto();
+    const store = options.store ?? createMicrosoftMailStore({ crypto });
+
+    let subscription = null;
     try {
-      const store = options.store ?? createMicrosoftMailStore({
-        crypto: options.crypto ?? defaultCrypto(),
-      });
+      subscription = await store.readSubscriptionByBusiness({ businessId: body.business_id });
+    } catch {}
+
+    if (subscription?.subscription_id) {
+      try {
+        const auth = await access({
+          businessId: body.business_id,
+          now: now(),
+          crypto,
+          store,
+        });
+        await deleteRemoteSubscription({
+          accessToken: auth.accessToken,
+          subscriptionId: subscription.subscription_id,
+        });
+      } catch {
+        // Local disconnect still proceeds. Without the local subscription secret,
+        // any later Graph notification is ignored until the remote subscription expires.
+      }
+    }
+
+    try {
+      await store.deleteSubscriptionByBusiness({ businessId: body.business_id });
       await store.disconnectCredential({ businessId: body.business_id });
       return connectorJson(200, { ok: true });
     } catch {
