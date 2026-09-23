@@ -49,6 +49,7 @@
       </div>
       <p>Your workspace remains locked until GrowthWise receives and verifies Stripe’s signed subscription webhook.</p>
       <button class="button" id="checkoutButton" type="button">Open secure sandbox checkout</button>
+      <button class="button secondary hidden" id="manageBillingButton" type="button" style="margin-top:9px">Manage billing</button>
       <div class="status" id="subscriptionStatus">Current status: Not subscribed — access locked.</div>
     </section>
 
@@ -68,6 +69,7 @@
     const oneTimeKey = document.getElementById('oneTimeKey');
     const planCard = document.getElementById('planCard');
     const checkoutButton = document.getElementById('checkoutButton');
+    const manageBillingButton = document.getElementById('manageBillingButton');
     const subscriptionStatus = document.getElementById('subscriptionStatus');
     const accessCard = document.getElementById('accessCard');
 
@@ -97,12 +99,14 @@
         const data = await response.json().catch(()=>({}));
         if(!response.ok) throw new Error(data.error || 'Status is temporarily unavailable.');
         const accessGranted = data.access_granted === true && data.access_source === 'stripe';
-        const labels = { active:'Active', trialing:'Trialing', incomplete:'Checkout pending', past_due:'Payment needs attention', canceled:'Canceled', not_subscribed:'Not subscribed' };
+        const stripeLinked = data.access_source === 'stripe';
+        const labels = { active:'Active', trialing:'Trialing', incomplete:'Checkout pending', past_due:'Payment needs attention', unpaid:'Payment needs attention', paused:'Paused', canceled:'Canceled', not_subscribed:'Not subscribed' };
         subscriptionStatus.textContent = `Current status: ${labels[data.status] || data.status || 'Unknown'} — access ${accessGranted ? 'active' : 'locked'}.`;
         subscriptionStatus.className = `status ${accessGranted ? 'success' : ''}`;
         accessCard.classList.toggle('hidden', !accessGranted);
-        checkoutButton.disabled = accessGranted;
-        checkoutButton.textContent = accessGranted ? 'Subscription active' : 'Open secure sandbox checkout';
+        manageBillingButton.classList.toggle('hidden', !stripeLinked);
+        checkoutButton.disabled = stripeLinked;
+        checkoutButton.textContent = accessGranted ? 'Subscription active' : stripeLinked ? 'Subscription linked' : 'Open secure sandbox checkout';
       }catch(error){
         subscriptionStatus.textContent = error.message || 'Status is temporarily unavailable.';
         subscriptionStatus.className = 'status error';
@@ -177,12 +181,41 @@
       }
     });
 
+    manageBillingButton.addEventListener('click', async ()=>{
+      const { businessId, tenantKey } = credentials();
+      if(!businessId || !tenantKey) return;
+      manageBillingButton.disabled = true;
+      subscriptionStatus.textContent = 'Opening secure Stripe billing management…';
+      try{
+        const response = await fetch('/.netlify/functions/stripe-customer-portal', {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json', 'X-GrowthWise-Tenant-Key': tenantKey },
+          body: JSON.stringify({ business_id: businessId })
+        });
+        const data = await response.json().catch(()=>({}));
+        if(!response.ok) throw new Error(data.error || 'Billing management is temporarily unavailable.');
+        const portalUrl = new URL(data.portal_url);
+        if(portalUrl.protocol === 'https:' && portalUrl.hostname === 'billing.stripe.com'){
+          window.location.href = portalUrl.href;
+          return;
+        }
+        throw new Error('Billing management returned an invalid destination.');
+      }catch(error){
+        subscriptionStatus.textContent = error.message || 'Billing management is temporarily unavailable.';
+        subscriptionStatus.className = 'status error';
+        manageBillingButton.disabled = false;
+      }
+    });
+
     const billingResult = new URLSearchParams(window.location.search).get('billing');
     if(billingResult === 'success'){
       subscriptionStatus.textContent = 'Checkout finished. Confirming access with the GrowthWise server…';
       refreshStatus();
     }else if(billingResult === 'cancelled'){
       subscriptionStatus.textContent = 'Checkout was cancelled. Access remains locked.';
+    }else if(billingResult === 'manage-return'){
+      subscriptionStatus.textContent = 'Returned from secure billing management. Refreshing status…';
+      refreshStatus();
     }
     if(showWorkspace()) refreshStatus();
   </script>
