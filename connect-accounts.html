@@ -23,6 +23,7 @@
     .detail { color: #526175; margin-top: 8px; }
     button { border: 0; border-radius: 12px; background: #173f8f; color: #fff; font: inherit; font-weight: 800; padding: 12px 16px; cursor: pointer; }
     button:disabled { opacity: .6; cursor: wait; }
+    .secondary { background: #eef2f7; color: #344155; }
     .unavailable { color: #6b7280; background: #eef2f7; border-radius: 999px; padding: 7px 11px; font-weight: 700; white-space: nowrap; }
     .email-warning { margin-top: 14px; padding: 14px; border-radius: 14px; background: #eef5ff; border: 1px solid #cbdaf4; }
     .email-warning strong { display: block; margin-bottom: 5px; }
@@ -59,7 +60,10 @@
           <p id="email-detail" class="detail">Microsoft email connection is not available yet.</p>
         </div>
         <span id="email-unavailable" class="unavailable">Coming later</span>
-        <button id="email-connect" type="button" hidden disabled>Connect Microsoft Email</button>
+        <div>
+          <button id="email-connect" type="button" hidden disabled>Connect Microsoft Email</button>
+          <button id="email-disconnect" class="secondary" type="button" hidden>Disconnect</button>
+        </div>
       </div>
       <div id="email-consent" class="email-warning">
         <strong>Before connecting email</strong>
