@@ -69,6 +69,102 @@ const DELETE_CREDENTIAL = `
   RETURNING business_id
 `;
 
+const UPDATE_CREDENTIAL_TOKEN = `
+  UPDATE microsoft_mail_credentials
+     SET encrypted_credential = $3::jsonb,
+         encryption_key_version = $4,
+         token_expires_at = $5,
+         status = 'active',
+         last_verified_at = $6,
+         updated_at = CURRENT_TIMESTAMP
+   WHERE business_id = $1
+     AND account_binding_key = ANY($2::text[])
+  RETURNING business_id, status, token_expires_at, email_address, display_name,
+    mailbox_context, consent_recorded_at, last_verified_at
+`;
+
+const UPDATE_CREDENTIAL_STATUS = `
+  UPDATE microsoft_mail_credentials
+     SET status = $2,
+         updated_at = CURRENT_TIMESTAMP
+   WHERE business_id = $1
+  RETURNING business_id, status
+`;
+
+const UPSERT_SUBSCRIPTION = `
+  INSERT INTO microsoft_mail_subscriptions
+    (business_id, subscription_id, client_state_hash, resource, status,
+     expires_at, last_renewed_at)
+  VALUES ($1, $2, $3, $4, 'active', $5, $6)
+  ON CONFLICT (business_id) DO UPDATE SET
+    subscription_id = EXCLUDED.subscription_id,
+    client_state_hash = EXCLUDED.client_state_hash,
+    resource = EXCLUDED.resource,
+    status = 'active',
+    expires_at = EXCLUDED.expires_at,
+    last_renewed_at = EXCLUDED.last_renewed_at,
+    updated_at = CURRENT_TIMESTAMP
+  RETURNING business_id, subscription_id, client_state_hash, resource,
+    status, expires_at, last_notification_at, last_renewed_at
+`;
+
+const READ_SUBSCRIPTION_BY_BUSINESS = `
+  SELECT business_id, subscription_id, client_state_hash, resource,
+    status, expires_at, last_notification_at, last_renewed_at
+  FROM microsoft_mail_subscriptions
+  WHERE business_id = $1
+`;
+
+const READ_SUBSCRIPTION_BY_ID = `
+  SELECT business_id, subscription_id, client_state_hash, resource,
+    status, expires_at, last_notification_at, last_renewed_at
+  FROM microsoft_mail_subscriptions
+  WHERE subscription_id = $1
+`;
+
+const DELETE_SUBSCRIPTION = `
+  DELETE FROM microsoft_mail_subscriptions
+   WHERE business_id = $1
+  RETURNING business_id, subscription_id
+`;
+
+const LIST_EXPIRING_SUBSCRIPTIONS = `
+  SELECT business_id, subscription_id, client_state_hash, resource,
+    status, expires_at, last_notification_at, last_renewed_at
+  FROM microsoft_mail_subscriptions
+  WHERE status = 'active'
+    AND expires_at <= $1
+  ORDER BY expires_at ASC
+  LIMIT 250
+`;
+
+const UPDATE_SUBSCRIPTION_EXPIRY = `
+  UPDATE microsoft_mail_subscriptions
+     SET expires_at = $3,
+         status = 'active',
+         last_renewed_at = $4,
+         updated_at = CURRENT_TIMESTAMP
+   WHERE business_id = $1
+     AND subscription_id = $2
+  RETURNING business_id, subscription_id, status, expires_at, last_renewed_at
+`;
+
+const UPDATE_SUBSCRIPTION_STATUS = `
+  UPDATE microsoft_mail_subscriptions
+     SET status = $2,
+         updated_at = CURRENT_TIMESTAMP
+   WHERE business_id = $1
+  RETURNING business_id, subscription_id, status
+`;
+
+const TOUCH_SUBSCRIPTION_NOTIFICATION = `
+  UPDATE microsoft_mail_subscriptions
+     SET last_notification_at = $2,
+         updated_at = CURRENT_TIMESTAMP
+   WHERE subscription_id = $1
+  RETURNING business_id, subscription_id, last_notification_at
+`;
+
 async function netlifyPool() {
   const { getDatabase } = await import("@netlify/database");
   return getDatabase().pool;
@@ -265,6 +361,56 @@ export function createMicrosoftMailStore({ getPool = netlifyPool, crypto } = {})
     };
   }
 
+  async function updateCredentialToken({
+    businessId,
+    accountId,
+    payload,
+    tokenExpiresAt,
+    now = new Date(),
+  } = {}) {
+    if (!validBusinessId(businessId)
+      || typeof accountId !== "string" || !accountId
+      || !payload || typeof payload !== "object" || Array.isArray(payload)
+      || !(tokenExpiresAt instanceof Date) || !Number.isFinite(tokenExpiresAt.getTime())
+      || !(now instanceof Date) || !Number.isFinite(now.getTime())) {
+      throw failure("INVALID_CREDENTIAL");
+    }
+    if (!crypto?.accountBindingKeys || !crypto?.encryptCredential) {
+      throw failure("CREDENTIAL_CONFIGURATION_FAILED");
+    }
+    const permittedBindingKeys = crypto.accountBindingKeys(accountId);
+    const encrypted = crypto.encryptCredential({ businessId, accountId, payload });
+    try {
+      const result = await query(UPDATE_CREDENTIAL_TOKEN, [
+        businessId,
+        permittedBindingKeys,
+        JSON.stringify(encrypted),
+        encrypted.key_version,
+        tokenExpiresAt,
+        now,
+      ]);
+      if (!result.rows[0]) throw failure("CREDENTIAL_UPDATE_FAILED");
+      return result.rows[0];
+    } catch (error) {
+      if (error?.message === "CREDENTIAL_UPDATE_FAILED") throw error;
+      throw failure("CREDENTIAL_UPDATE_FAILED", error);
+    }
+  }
+
+  async function markCredentialStatus({ businessId, status } = {}) {
+    if (!validBusinessId(businessId) || !["active", "needs_attention"].includes(status)) {
+      throw failure("INVALID_CREDENTIAL");
+    }
+    try {
+      const result = await query(UPDATE_CREDENTIAL_STATUS, [businessId, status]);
+      if (!result.rows[0]) throw failure("CREDENTIAL_UPDATE_FAILED");
+      return result.rows[0];
+    } catch (error) {
+      if (error?.message === "CREDENTIAL_UPDATE_FAILED") throw error;
+      throw failure("CREDENTIAL_UPDATE_FAILED", error);
+    }
+  }
+
   async function disconnectCredential({ businessId } = {}) {
     if (!validBusinessId(businessId)) throw failure("INVALID_CREDENTIAL");
     try {
@@ -275,6 +421,134 @@ export function createMicrosoftMailStore({ getPool = netlifyPool, crypto } = {})
     }
   }
 
+  async function upsertSubscription({
+    businessId,
+    subscriptionId,
+    clientStateHash,
+    resource,
+    expiresAt,
+    lastRenewedAt = new Date(),
+  } = {}) {
+    if (!validBusinessId(businessId)
+      || typeof subscriptionId !== "string" || !subscriptionId
+      || !/^[a-f0-9]{64}$/.test(String(clientStateHash))
+      || resource !== "me/mailFolders('Inbox')/messages"
+      || !(expiresAt instanceof Date) || !Number.isFinite(expiresAt.getTime())
+      || !(lastRenewedAt instanceof Date) || !Number.isFinite(lastRenewedAt.getTime())) {
+      throw failure("INVALID_SUBSCRIPTION");
+    }
+    try {
+      const result = await query(UPSERT_SUBSCRIPTION, [
+        businessId,
+        subscriptionId,
+        clientStateHash,
+        resource,
+        expiresAt,
+        lastRenewedAt,
+      ]);
+      return result.rows[0];
+    } catch (error) {
+      if (error?.code === "23505") throw failure("SUBSCRIPTION_BINDING_CONFLICT", error);
+      throw failure("SUBSCRIPTION_WRITE_FAILED", error);
+    }
+  }
+
+  async function readSubscriptionByBusiness({ businessId } = {}) {
+    if (!validBusinessId(businessId)) throw failure("INVALID_SUBSCRIPTION");
+    try {
+      const result = await query(READ_SUBSCRIPTION_BY_BUSINESS, [businessId]);
+      return result.rows[0] ?? null;
+    } catch (error) {
+      throw failure("SUBSCRIPTION_READ_FAILED", error);
+    }
+  }
+
+  async function readSubscriptionById({ subscriptionId } = {}) {
+    if (typeof subscriptionId !== "string" || !subscriptionId || subscriptionId.length > 300) {
+      throw failure("INVALID_SUBSCRIPTION");
+    }
+    try {
+      const result = await query(READ_SUBSCRIPTION_BY_ID, [subscriptionId]);
+      return result.rows[0] ?? null;
+    } catch (error) {
+      throw failure("SUBSCRIPTION_READ_FAILED", error);
+    }
+  }
+
+  async function deleteSubscriptionByBusiness({ businessId } = {}) {
+    if (!validBusinessId(businessId)) throw failure("INVALID_SUBSCRIPTION");
+    try {
+      const result = await query(DELETE_SUBSCRIPTION, [businessId]);
+      return result.rows[0] ?? null;
+    } catch (error) {
+      throw failure("SUBSCRIPTION_DELETE_FAILED", error);
+    }
+  }
+
+  async function listSubscriptionsExpiringBefore({ before } = {}) {
+    if (!(before instanceof Date) || !Number.isFinite(before.getTime())) {
+      throw failure("INVALID_SUBSCRIPTION");
+    }
+    try {
+      const result = await query(LIST_EXPIRING_SUBSCRIPTIONS, [before]);
+      return result.rows;
+    } catch (error) {
+      throw failure("SUBSCRIPTION_READ_FAILED", error);
+    }
+  }
+
+  async function updateSubscriptionExpiry({
+    businessId,
+    subscriptionId,
+    expiresAt,
+    now = new Date(),
+  } = {}) {
+    if (!validBusinessId(businessId)
+      || typeof subscriptionId !== "string" || !subscriptionId
+      || !(expiresAt instanceof Date) || !Number.isFinite(expiresAt.getTime())
+      || !(now instanceof Date) || !Number.isFinite(now.getTime())) {
+      throw failure("INVALID_SUBSCRIPTION");
+    }
+    try {
+      const result = await query(UPDATE_SUBSCRIPTION_EXPIRY, [
+        businessId,
+        subscriptionId,
+        expiresAt,
+        now,
+      ]);
+      if (!result.rows[0]) throw failure("SUBSCRIPTION_UPDATE_FAILED");
+      return result.rows[0];
+    } catch (error) {
+      if (error?.message === "SUBSCRIPTION_UPDATE_FAILED") throw error;
+      throw failure("SUBSCRIPTION_UPDATE_FAILED", error);
+    }
+  }
+
+  async function markSubscriptionStatus({ businessId, status } = {}) {
+    if (!validBusinessId(businessId) || !["active", "needs_attention", "deleted"].includes(status)) {
+      throw failure("INVALID_SUBSCRIPTION");
+    }
+    try {
+      const result = await query(UPDATE_SUBSCRIPTION_STATUS, [businessId, status]);
+      return result.rows[0] ?? null;
+    } catch (error) {
+      throw failure("SUBSCRIPTION_UPDATE_FAILED", error);
+    }
+  }
+
+  async function touchSubscriptionNotification({ subscriptionId, now = new Date() } = {}) {
+    if (typeof subscriptionId !== "string" || !subscriptionId
+      || !(now instanceof Date) || !Number.isFinite(now.getTime())) {
+      throw failure("INVALID_SUBSCRIPTION");
+    }
+    try {
+      const result = await query(TOUCH_SUBSCRIPTION_NOTIFICATION, [subscriptionId, now]);
+      return result.rows[0] ?? null;
+    } catch (error) {
+      throw failure("SUBSCRIPTION_UPDATE_FAILED", error);
+    }
+  }
+
   return {
     createTransactionWithFreshState,
     claimTransaction,
@@ -282,7 +556,17 @@ export function createMicrosoftMailStore({ getPool = netlifyPool, crypto } = {})
     connectCredential,
     readCredential,
     readDecryptedCredential,
+    updateCredentialToken,
+    markCredentialStatus,
     disconnectCredential,
+    upsertSubscription,
+    readSubscriptionByBusiness,
+    readSubscriptionById,
+    deleteSubscriptionByBusiness,
+    listSubscriptionsExpiringBefore,
+    updateSubscriptionExpiry,
+    markSubscriptionStatus,
+    touchSubscriptionNotification,
   };
 }
 
