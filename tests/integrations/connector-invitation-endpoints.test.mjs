@@ -157,7 +157,7 @@ test("exchange rejects malformed invalid and replayed invitations without a cook
 
 test("session metadata comes only from the cookie-bound tenant and keeps Facebook unavailable", async () => {
   const fixture = createFixture();
-  const created = await (await fixture.create(createRequest({ business_id: "dexters-hats", connectors: ["instagram", "facebook"] }))).json();
+  const created = await (await fixture.create(createRequest({ business_id: "dexters-hats", connectors: ["instagram", "facebook", "email"] }))).json();
   const token = new URL(created.invitation_url).hash.slice("#invite=".length);
   const exchange = await fixture.exchange(createRequest({ invitation_token: token }, { key: "", path: "connector-invitation-exchange" }));
   const cookie = exchange.headers.get("set-cookie").split(";", 1)[0];
