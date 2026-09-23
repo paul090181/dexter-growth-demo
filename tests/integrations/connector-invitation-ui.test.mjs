@@ -179,3 +179,76 @@ test("secure account page includes business-mailbox guidance and no external ema
   assert.match(html, /business-email-help\.html/);
   assert.doesNotMatch(html, /outlook\.com|microsoft\.com\/en-us\/microsoft-365/);
 });
+
+
+test("email return hint is removed locally before the connector page continues", async () => {
+  const module = await import("../../assets/connector-invitation.mjs");
+  const changes = [];
+  const hint = module.consumeEmailReturnHint({
+    href: `${ORIGIN}/connect-accounts.html?email=connected&keep=1`,
+    historyImpl: { replaceState(_a, _b, value) { changes.push(value); } },
+  });
+  assert.equal(hint, "connected");
+  assert.deepEqual(changes, ["/connect-accounts.html?keep=1"]);
+});
+
+test("available email connector reads tenant-bound health before showing connected state", async () => {
+  const controller = createCustomerConnectorController({
+    fetchImpl: async (url) => {
+      if (url.endsWith("/connector-session")) return response({
+        business_id: "dexters-hats",
+        business_name: "Dexter's Hats",
+        connectors: {
+          facebook: { allowed: false, available: false, state: "Setup unavailable" },
+          instagram: { allowed: false, available: false },
+          email: { allowed: true, available: true, state: "Not Connected" },
+        },
+      });
+      if (url.includes("/microsoft-mail-connection?")) return response({
+        business_id: "dexters-hats",
+        state: "Connected",
+        checked_at: "2026-09-23T19:00:00.000Z",
+        account: { address: "dexter@hotmail.com", display_name: "Dexter" },
+        action: "",
+      });
+      return response({});
+    },
+  });
+
+  const state = await controller.load();
+  assert.equal(state.email.state, "Connected");
+  assert.equal(state.email.account.address, "dexter@hotmail.com");
+});
+
+test("email disconnect posts only the session tenant and clears local connected state", async () => {
+  const calls = [];
+  const controller = createCustomerConnectorController({
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      if (url.endsWith("/connector-session")) return response({
+        business_id: "dexters-hats",
+        business_name: "Dexter's Hats",
+        connectors: {
+          facebook: { allowed: false, available: false, state: "Setup unavailable" },
+          instagram: { allowed: false, available: false },
+          email: { allowed: true, available: true, state: "Not Connected" },
+        },
+      });
+      if (url.includes("/microsoft-mail-connection?")) return response({
+        business_id: "dexters-hats",
+        state: "Connected",
+        checked_at: "2026-09-23T19:00:00.000Z",
+        account: { address: "dexter@hotmail.com", display_name: "Dexter" },
+        action: "",
+      });
+      if (url.endsWith("/microsoft-mail-disconnect")) return response({ ok: true });
+      return response({});
+    },
+  });
+
+  await controller.load();
+  assert.equal(await controller.disconnectEmail(), true);
+  const call = calls.find((entry) => entry.url.endsWith("/microsoft-mail-disconnect"));
+  assert.deepEqual(JSON.parse(call.init.body), { business_id: "dexters-hats" });
+  assert.equal(controller.getState().email.state, "Not Connected");
+});
