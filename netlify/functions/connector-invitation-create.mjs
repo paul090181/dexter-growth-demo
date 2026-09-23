@@ -6,7 +6,7 @@ import { authorized as defaultAuthorized } from "./_lead-store.mjs";
 import { createTenantStore } from "./_tenant-store.mjs";
 
 const INVITATION_TTL_MS = 24 * 60 * 60 * 1000;
-const ALLOWED = new Set(["facebook", "instagram"]);
+const ALLOWED = new Set(["email", "facebook", "instagram"]);
 
 function configuredOrigin() { return globalThis.Netlify?.env?.get("GROWTHWISE_PUBLIC_ORIGIN"); }
 

@@ -24,6 +24,11 @@
     button { border: 0; border-radius: 12px; background: #173f8f; color: #fff; font: inherit; font-weight: 800; padding: 12px 16px; cursor: pointer; }
     button:disabled { opacity: .6; cursor: wait; }
     .unavailable { color: #6b7280; background: #eef2f7; border-radius: 999px; padding: 7px 11px; font-weight: 700; white-space: nowrap; }
+    .email-warning { margin-top: 14px; padding: 14px; border-radius: 14px; background: #eef5ff; border: 1px solid #cbdaf4; }
+    .email-warning strong { display: block; margin-bottom: 5px; }
+    .choice { display: flex; gap: 9px; align-items: flex-start; margin-top: 10px; color: #364357; }
+    .choice input { margin-top: 4px; }
+    .helper-link { display: inline-block; margin-top: 10px; color: #173f8f; font-weight: 800; }
     #connection-error { color: #a12121; min-height: 1.5em; margin: 10px 0; }
     @media (max-width: 520px) { .row { align-items: flex-start; flex-direction: column; } button { width: 100%; } }
   </style>
@@ -43,6 +48,25 @@
           <p id="instagram-detail" class="detail">Checking your secure connection.</p>
         </div>
         <button id="instagram-connect" type="button" hidden>Connect Instagram</button>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="email-title">
+      <div class="row">
+        <div>
+          <h2 id="email-title">Email</h2>
+          <p id="email-status" class="status">Setup unavailable</p>
+          <p id="email-detail" class="detail">Microsoft email connection is not available yet.</p>
+        </div>
+        <span id="email-unavailable" class="unavailable">Coming later</span>
+        <button id="email-connect" type="button" hidden disabled>Connect Microsoft Email</button>
+      </div>
+      <div id="email-consent" class="email-warning">
+        <strong>Before connecting email</strong>
+        <p>GrowthWise strongly recommends a mailbox used only for your business. If you connect a personal mailbox, GrowthWise may be able to access personal messages under the permissions you approve.</p>
+        <label class="choice"><input type="radio" name="email-mailbox-context" value="business"> <span>This is a business mailbox.</span></label>
+        <label class="choice"><input type="radio" name="email-mailbox-context" value="personal_acknowledged"> <span>I understand this mailbox also contains personal email and I still want to continue.</span></label>
+        <a class="helper-link" href="./business-email-help.html">Need a separate business email? See setup options.</a>
       </div>
     </section>
 

@@ -1,5 +1,6 @@
 const ENDPOINT = "/.netlify/functions";
 const INSTAGRAM_ORIGIN = "https://www.instagram.com";
+const MICROSOFT_LOGIN_ORIGIN = "https://login.microsoftonline.com";
 const INVITATION_PATTERN = /^gw_inv_[A-Za-z0-9_-]{43}$/;
 const INSTAGRAM_STATES = new Set(["Not Connected", "Connected", "Needs Attention"]);
 
@@ -54,6 +55,7 @@ export function createCustomerConnectorController({
     loading: true,
     error: "",
     instagram: { state: "Not Connected", action: "", account: null, allowed: false, connecting: false },
+    email: { state: "Setup unavailable", action: "Microsoft email connection is not available yet.", available: false, allowed: false, connecting: false, mailboxContext: "" },
     facebook: { state: "Setup unavailable", available: false },
   };
   let connectPromise = null;
@@ -93,16 +95,63 @@ export function createCustomerConnectorController({
           connecting: false,
         };
       }
+      const emailAllowed = session.connectors?.email?.allowed === true;
+      const emailAvailable = emailAllowed && session.connectors?.email?.available === true;
       return publish({
         businessId: session.business_id,
         businessName: session.business_name,
         loading: false,
         instagram,
+        email: {
+          state: emailAvailable ? "Not Connected" : "Setup unavailable",
+          action: emailAvailable ? "Choose how this mailbox is used before connecting." : "Microsoft email connection is not available yet.",
+          available: emailAvailable,
+          allowed: emailAllowed,
+          connecting: false,
+          mailboxContext: "",
+        },
         facebook: { state: "Setup unavailable", available: false },
       });
     } catch {
       return publish({ loading: false, error: "This connection session is invalid or expired." });
     }
+  }
+
+  function setEmailMailboxContext(value) {
+    const allowed = new Set(["business", "personal_acknowledged"]);
+    const mailboxContext = allowed.has(value) ? value : "";
+    return publish({ email: { ...state.email, mailboxContext } });
+  }
+
+  function connectEmail() {
+    if (!state.businessId || !state.email.allowed || !state.email.available) return Promise.resolve(false);
+    if (!["business", "personal_acknowledged"].includes(state.email.mailboxContext)) {
+      publish({ email: { ...state.email, action: "Choose a mailbox option before connecting." } });
+      return Promise.resolve(false);
+    }
+    publish({ email: { ...state.email, connecting: true } });
+    return (async () => {
+      try {
+        const response = await fetchImpl(`${ENDPOINT}/microsoft-mail-oauth-start`, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ business_id: state.businessId, mailbox_context: state.email.mailboxContext }),
+        });
+        const body = await response.json();
+        if (!response.ok || !body || Object.keys(body).length !== 1 || typeof body.authorization_url !== "string") {
+          throw new Error("start_failed");
+        }
+        const target = new URL(body.authorization_url);
+        if (target.protocol !== "https:" || target.origin !== MICROSOFT_LOGIN_ORIGIN
+          || target.username || target.password || target.hash) throw new Error("unsafe_authorization_url");
+        navigate(target.toString());
+        return true;
+      } catch {
+        publish({ email: { ...state.email, state: "Needs Attention", connecting: false, action: "Microsoft email connection could not be started." } });
+        return false;
+      }
+    })();
   }
 
   function connectInstagram() {
@@ -135,7 +184,7 @@ export function createCustomerConnectorController({
     return connectPromise;
   }
 
-  return { load, connectInstagram, getState: () => structuredClone(state) };
+  return { load, connectInstagram, connectEmail, setEmailMailboxContext, getState: () => structuredClone(state) };
 }
 
 export function mountCustomerConnectorPage({ documentImpl = globalThis.document } = {}) {
@@ -144,6 +193,11 @@ export function mountCustomerConnectorPage({ documentImpl = globalThis.document 
   const instagramStatus = documentImpl.getElementById("instagram-status");
   const instagramDetail = documentImpl.getElementById("instagram-detail");
   const instagramButton = documentImpl.getElementById("instagram-connect");
+  const emailStatus = documentImpl.getElementById("email-status");
+  const emailDetail = documentImpl.getElementById("email-detail");
+  const emailButton = documentImpl.getElementById("email-connect");
+  const emailUnavailable = documentImpl.getElementById("email-unavailable");
+  const emailChoices = [...documentImpl.querySelectorAll('input[name="email-mailbox-context"]')];
   const render = (view) => {
     businessName.textContent = view.businessName;
     error.textContent = view.error;
@@ -154,9 +208,20 @@ export function mountCustomerConnectorPage({ documentImpl = globalThis.document 
     instagramButton.disabled = view.loading || view.instagram.connecting;
     instagramButton.textContent = view.instagram.connecting ? "Connecting…"
       : view.instagram.state === "Not Connected" ? "Connect Instagram" : "Reconnect Instagram";
+    emailStatus.textContent = view.loading ? "Checking…" : view.email.state;
+    emailDetail.textContent = view.email.action;
+    emailUnavailable.hidden = view.email.available;
+    emailButton.hidden = !view.email.available;
+    emailButton.disabled = view.loading || view.email.connecting || !view.email.mailboxContext;
+    emailButton.textContent = view.email.connecting ? "Connecting…" : "Connect Microsoft Email";
+    for (const choice of emailChoices) choice.disabled = view.loading || !view.email.allowed;
   };
   const controller = createCustomerConnectorController({ onChange: render });
   instagramButton.addEventListener("click", () => controller.connectInstagram());
+  emailButton.addEventListener("click", () => controller.connectEmail());
+  for (const choice of emailChoices) {
+    choice.addEventListener("change", () => controller.setEmailMailboxContext(choice.value));
+  }
   render(controller.getState());
   controller.load();
   return controller;

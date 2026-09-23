@@ -22,6 +22,9 @@ export function createConnectorSessionHandler({ store, now = () => new Date(), r
           ? { allowed: true, available: false, state: "Setup unavailable" }
           : { allowed: false, available: false, state: "Setup unavailable" },
         instagram: { allowed: auth.connectors.includes("instagram"), available: auth.connectors.includes("instagram") },
+        email: auth.connectors.includes("email")
+          ? { allowed: true, available: false, state: "Setup unavailable" }
+          : { allowed: false, available: false, state: "Setup unavailable" },
       },
     });
   };

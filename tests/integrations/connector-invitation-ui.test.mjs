@@ -54,7 +54,7 @@ test("controller loads cookie-bound session and authoritative Instagram health",
       calls.push({ url, init });
       if (url.endsWith("/connector-session")) return response({
         business_id: "dexters-hats", business_name: "Dexter's Hats",
-        connectors: { facebook: { allowed: true, available: false, state: "Setup unavailable" }, instagram: { allowed: true, available: true } },
+        connectors: { facebook: { allowed: true, available: false, state: "Setup unavailable" }, instagram: { allowed: true, available: true }, email: { allowed: false, available: false, state: "Setup unavailable" } },
       });
       return response({ business_id: "dexters-hats", state: "Connected", checked_at: "2026-09-23T12:00:00.000Z", account: { username: "dexters.hats" } });
     },
@@ -78,7 +78,7 @@ test("Instagram connect posts only the session tenant and navigates only to Inst
       calls.push({ url, init });
       if (url.endsWith("/connector-session")) return response({
         business_id: "dexters-hats", business_name: "Dexter's Hats",
-        connectors: { facebook: { allowed: true, available: false, state: "Setup unavailable" }, instagram: { allowed: true, available: true } },
+        connectors: { facebook: { allowed: true, available: false, state: "Setup unavailable" }, instagram: { allowed: true, available: true }, email: { allowed: false, available: false, state: "Setup unavailable" } },
       });
       if (url.includes("instagram-connection")) return response({ business_id: "dexters-hats", state: "Not Connected", checked_at: "now", action: "Connect" });
       return response({ authorization_url: "https://www.instagram.com/oauth/authorize?state=opaque" });
@@ -96,7 +96,7 @@ test("Facebook remains unavailable and no connection action is exposed", async (
   const controller = createCustomerConnectorController({
     fetchImpl: async (url) => url.endsWith("/connector-session") ? response({
       business_id: "dexters-hats", business_name: "Dexter's Hats",
-      connectors: { facebook: { allowed: true, available: false, state: "Setup unavailable" }, instagram: { allowed: false, available: false } },
+      connectors: { facebook: { allowed: true, available: false, state: "Setup unavailable" }, instagram: { allowed: false, available: false }, email: { allowed: false, available: false, state: "Setup unavailable" } },
     }) : response({}),
   });
   const state = await controller.load();
@@ -120,4 +120,62 @@ test("the static page is no-store, self-contained, credential-free, and contains
   assert.doesNotMatch(html, /analytics|pixel|tagmanager|admin.?key|tenant.?key|localStorage|sessionStorage|console\./i);
   assert.match(headers, /\/connect-accounts\.html\n\s+Cache-Control: no-store/);
   assert.match(headers, /Referrer-Policy: no-referrer/);
+});
+
+
+test("email connect requires explicit mailbox-context acknowledgement before OAuth start", async () => {
+  const calls = [];
+  let navigated = null;
+  const controller = createCustomerConnectorController({
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      if (url.endsWith("/connector-session")) return response({
+        business_id: "dexters-hats", business_name: "Dexter's Hats",
+        connectors: {
+          facebook: { allowed: false, available: false, state: "Setup unavailable" },
+          instagram: { allowed: false, available: false },
+          email: { allowed: true, available: true, state: "Not Connected" },
+        },
+      });
+      return response({ authorization_url: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?state=opaque" });
+    },
+    navigate: (url) => { navigated = url; },
+  });
+
+  await controller.load();
+  assert.equal(await controller.connectEmail(), false);
+  assert.equal(calls.filter((call) => call.url.endsWith("/microsoft-mail-oauth-start")).length, 0);
+
+  controller.setEmailMailboxContext("personal_acknowledged");
+  assert.equal(await controller.connectEmail(), true);
+  const start = calls.find((call) => call.url.endsWith("/microsoft-mail-oauth-start"));
+  assert.deepEqual(JSON.parse(start.init.body), {
+    business_id: "dexters-hats",
+    mailbox_context: "personal_acknowledged",
+  });
+  assert.equal(navigated.startsWith("https://login.microsoftonline.com/"), true);
+});
+
+test("email mailbox context rejects arbitrary values", async () => {
+  const controller = createCustomerConnectorController({
+    fetchImpl: async (url) => url.endsWith("/connector-session") ? response({
+      business_id: "dexters-hats", business_name: "Dexter's Hats",
+      connectors: {
+        facebook: { allowed: false, available: false, state: "Setup unavailable" },
+        instagram: { allowed: false, available: false },
+        email: { allowed: true, available: true, state: "Not Connected" },
+      },
+    }) : response({}),
+  });
+  await controller.load();
+  controller.setEmailMailboxContext("yes-just-do-it");
+  assert.equal(controller.getState().email.mailboxContext, "");
+});
+
+test("secure account page includes business-mailbox guidance and no external email provider links", async () => {
+  const html = await readFile(new URL("../../connect-accounts.html", import.meta.url), "utf8");
+  assert.match(html, /This is a business mailbox\./);
+  assert.match(html, /I understand this mailbox also contains personal email/i);
+  assert.match(html, /business-email-help\.html/);
+  assert.doesNotMatch(html, /outlook\.com|microsoft\.com\/en-us\/microsoft-365/);
 });

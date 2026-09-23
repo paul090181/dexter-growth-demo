@@ -79,12 +79,12 @@ test("invitation creation is admin-only and accepts pilot tenants without billin
   assert.equal(unauthorized.status, 401);
   assert.equal(fixture.store.invitations.size, 0);
 
-  const response = await fixture.create(createRequest({ business_id: "dexters-hats", connectors: ["instagram", "facebook"] }));
+  const response = await fixture.create(createRequest({ business_id: "dexters-hats", connectors: ["instagram", "facebook", "email"] }));
   assert.equal(response.status, 201);
   const body = await response.json();
   assert.equal(body.expires_at, "2026-09-24T12:00:00.000Z");
   assert.equal(body.business_id, "dexters-hats");
-  assert.equal(body.connectors.join(","), "facebook,instagram");
+  assert.equal(body.connectors.join(","), "email,facebook,instagram");
 });
 
 test("database-backed tenants use the same invitation path without Stripe status", async () => {
@@ -124,7 +124,7 @@ test("returned invitation is fragment-only and contains no admin or tenant crede
 
 test("exchange sets only a secure fixed-lifetime HttpOnly session cookie", async () => {
   const fixture = createFixture();
-  const created = await (await fixture.create(createRequest({ business_id: "dexters-hats", connectors: ["instagram", "facebook"] }))).json();
+  const created = await (await fixture.create(createRequest({ business_id: "dexters-hats", connectors: ["instagram", "facebook", "email"] }))).json();
   const token = new URL(created.invitation_url).hash.slice("#invite=".length);
   const response = await fixture.exchange(createRequest({ invitation_token: token }, { key: "", path: "connector-invitation-exchange" }));
   assert.equal(response.status, 200);
@@ -175,6 +175,7 @@ test("session metadata comes only from the cookie-bound tenant and keeps Faceboo
     connectors: {
       facebook: { allowed: true, available: false, state: "Setup unavailable" },
       instagram: { allowed: true, available: true },
+      email: { allowed: true, available: false, state: "Setup unavailable" },
     },
   });
 });

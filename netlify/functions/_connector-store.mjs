@@ -1,4 +1,4 @@
-const ALLOWED_CONNECTORS = new Set(["facebook", "instagram"]);
+const ALLOWED_CONNECTORS = new Set(["email", "facebook", "instagram"]);
 const SESSION_TTL_MS = 30 * 60 * 1000;
 
 const INSERT_INVITATION = `
