@@ -3,6 +3,9 @@ import dextersHats from "../../clients/dexters-hats.json" with { type: "json" };
 import { createInstagramCrypto } from "./_instagram-crypto.mjs";
 import { instagramDatabase } from "./_instagram-store.mjs";
 import { INSTAGRAM_CONTENT_PUBLISH_SCOPE, INSTAGRAM_MANAGE_MESSAGES_SCOPE, verifyProfessionalIdentity } from "./_instagram-oauth.mjs";
+import { authorizeConnectorRequest } from "./_connector-auth.mjs";
+import { createConnectorStore } from "./_connector-store.mjs";
+import { getInstagramConnectorClient } from "./_instagram-clients.mjs";
 
 const DEFAULT_CLIENTS = Object.freeze({
   [growthwiseDev.business_id]: growthwiseDev,
@@ -51,6 +54,9 @@ export function createInstagramConnectionHandler(options = {}) {
     ?? ((input) => verifyProfessionalIdentity({ ...input, fetchImpl: options.fetchImpl ?? fetch }));
   const legacyFallbackEnabled = options.legacyFallbackEnabled ?? defaultLegacyFallback;
   const logger = options.logger ?? console;
+  const connectorStore = options.connectorStore ?? createConnectorStore();
+  const connectorAuthorize = options.connectorAuthorize ?? authorizeConnectorRequest;
+  const getConnectorClient = options.getConnectorClient ?? getInstagramConnectorClient;
   const safeWarn = (stage) => {
     try { logger.warn("instagram_connection_health", { stage }); }
     catch { /* logging cannot alter health control flow */ }
@@ -58,16 +64,31 @@ export function createInstagramConnectionHandler(options = {}) {
 
   return async function instagramConnectionHandler(request) {
     if (request.method !== "GET") return json(405, { error: "Method not allowed" });
-    if (!adminKey() || request.headers.get("x-growthwise-key") !== adminKey()) {
-      return json(401, { error: "Invalid GrowthWise access code." });
-    }
     const businessId = new URL(request.url).searchParams.get("business_id")?.trim();
-    const client = clients[businessId];
-    if (!businessId || !client || client.business_id !== businessId) {
+    if (!businessId || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(businessId) || businessId.length > 80) {
       return json(404, { error: "Instagram connection was not found." });
     }
 
     const checked = now();
+    const configuredKey = adminKey();
+    const adminAuthorized = Boolean(configuredKey) && request.headers.get("x-growthwise-key") === configuredKey;
+    let connectorAuthorized = false;
+    if (!adminAuthorized) {
+      const session = await connectorAuthorize(request, {
+        store: connectorStore, businessId, connector: "instagram", now: checked,
+      });
+      if (!session?.ok || session.businessId !== businessId) {
+        return json(401, { error: "Invalid GrowthWise access code." });
+      }
+      connectorAuthorized = true;
+    }
+    let client = clients[businessId];
+    if (!client && connectorAuthorized) {
+      try { client = getConnectorClient(businessId); } catch { /* fail below */ }
+    }
+    if (!client || client.business_id !== businessId) {
+      return json(404, { error: "Instagram connection was not found." });
+    }
     const checkedAt = checked.toISOString();
     let store = options.store;
     try {

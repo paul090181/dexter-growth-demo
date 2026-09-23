@@ -10,6 +10,11 @@ const READ_TENANT_AUTH = `
     FROM growthwise_tenants
    WHERE business_id = $1`;
 
+const READ_TENANT_PROFILE = `
+  SELECT business_id, business_name
+    FROM growthwise_tenants
+   WHERE business_id = $1`;
+
 async function netlifyPool() {
   const { getDatabase } = await import("@netlify/database");
   return getDatabase().pool;
@@ -58,5 +63,16 @@ export function createTenantStore({ getPool = netlifyPool } = {}) {
     }
   }
 
-  return { createTenant, readTenantAuth };
+  async function readTenantProfile({ businessId } = {}) {
+    const id = requiredString(businessId, "INVALID_BUSINESS_ID", 80);
+    try {
+      const result = await (await getPool()).query(READ_TENANT_PROFILE, [id]);
+      return result.rows[0] ?? null;
+    } catch (error) {
+      if (error?.message === "INVALID_BUSINESS_ID") throw error;
+      throw safeError("TENANT_READ_FAILED", error);
+    }
+  }
+
+  return { createTenant, readTenantAuth, readTenantProfile };
 }

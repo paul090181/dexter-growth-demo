@@ -1,8 +1,10 @@
 import { timingSafeEqual } from "node:crypto";
 import { createInstagramCrypto } from "./_instagram-crypto.mjs";
-import { getInstagramClient } from "./_instagram-clients.mjs";
+import { getInstagramClient, getInstagramConnectorClient } from "./_instagram-clients.mjs";
 import { buildAuthorizationUrl, callbackUri, INSTAGRAM_AUTHORIZATION_SCOPE } from "./_instagram-oauth.mjs";
 import { instagramDatabase } from "./_instagram-store.mjs";
+import { authorizeConnectorRequest } from "./_connector-auth.mjs";
+import { createConnectorStore } from "./_connector-store.mjs";
 
 const ENDPOINT_PATH = "/.netlify/functions/instagram-oauth-start";
 const MAX_BODY_BYTES = 1024;
@@ -103,13 +105,14 @@ export function createInstagramOAuthStartHandler(options = {}) {
   const publicOrigin = options.publicOrigin ?? (() => env("GROWTHWISE_PUBLIC_ORIGIN"));
   const appId = options.appId ?? (() => env("GROWTHWISE_INSTAGRAM_APP_ID"));
   const getClient = options.getClient ?? getInstagramClient;
+  const getConnectorClient = options.getConnectorClient ?? getInstagramConnectorClient;
   const buildUrl = options.buildUrl ?? buildAuthorizationUrl;
   const now = options.now ?? (() => new Date());
   const rateLimiter = options.rateLimiter ?? defaultRateLimiter;
+  const connectorStore = options.connectorStore ?? createConnectorStore();
+  const connectorAuthorize = options.connectorAuthorize ?? authorizeConnectorRequest;
   return async function instagramOAuthStart(request) {
     const configuredKey = adminKey();
-    if (typeof configuredKey !== "string" || configuredKey.length === 0) return response(503, { error: "Instagram connection is not configured." });
-    if (!safeEqual(request.headers.get("x-growthwise-key"), configuredKey)) return response(401, { error: "Invalid GrowthWise access code." });
     if (request.method !== "POST") return response(405, { error: "Method not allowed." }, { allow: "POST" });
 
     let origin;
@@ -126,14 +129,28 @@ export function createInstagramOAuthStartHandler(options = {}) {
 
     let body;
     try { body = await readBody(request); } catch { return response(400, { error: "Invalid request." }); }
+    const startedAt = now();
+    const adminAuthorized = typeof configuredKey === "string" && configuredKey.length > 0
+      && safeEqual(request.headers.get("x-growthwise-key"), configuredKey);
+    let connectorAuthorized = false;
+    if (!adminAuthorized) {
+      const result = await connectorAuthorize(request, {
+        store: connectorStore, businessId: body.business_id, connector: "instagram", now: startedAt,
+      });
+      connectorAuthorized = result?.ok === true && result.businessId === body.business_id;
+      if (!connectorAuthorized) {
+        return typeof configuredKey !== "string" || configuredKey.length === 0
+          ? response(503, { error: "Instagram connection is not configured." })
+          : response(401, { error: "Invalid GrowthWise access code." });
+      }
+    }
     let client;
-    try { client = getClient(body.business_id); } catch { return response(400, { error: "Invalid request." }); }
+    try { client = connectorAuthorized ? getConnectorClient(body.business_id) : getClient(body.business_id); }
+    catch { return response(400, { error: "Invalid request." }); }
     if (!client || client.business_id !== body.business_id || typeof client.returnDestinationId !== "string"
       || ![INSTAGRAM_AUTHORIZATION_SCOPE, "instagram_business_basic"].includes(client.authorizationScope)) {
       return response(400, { error: "Invalid request." });
     }
-
-    const startedAt = now();
     let allowed;
     try { allowed = await rateLimiter.consume({ businessId: body.business_id, now: startedAt }); } catch { allowed = false; }
     if (allowed !== true) return response(429, { error: "Try connecting Instagram again later." });
@@ -143,7 +160,8 @@ export function createInstagramOAuthStartHandler(options = {}) {
       const store = options.store ?? instagramDatabase({ crypto });
       const { state } = await store.createTransactionWithFreshState({
         createState: () => crypto.createState(), businessId: body.business_id,
-        returnDestinationId: client.returnDestinationId, expiresAt: new Date(startedAt.getTime() + TRANSACTION_TTL_MS),
+        returnDestinationId: connectorAuthorized ? "connector-customer-integration" : client.returnDestinationId,
+        expiresAt: new Date(startedAt.getTime() + TRANSACTION_TTL_MS),
       });
       const expectedAppId = appId();
       const expectedCallbackUri = callbackUri(origin);

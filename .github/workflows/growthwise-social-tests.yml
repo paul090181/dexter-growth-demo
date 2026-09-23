@@ -34,3 +34,5 @@ jobs:
         run: npm run test:retail
       - name: Run billing regression tests
         run: npm run test:billing
+      - name: Run connector invitation security tests
+        run: npm run test:connectors

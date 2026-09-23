@@ -72,6 +72,7 @@ test("client registry assigns fixed allowlisted return destinations to GrowthWis
   assert.equal(getInstagramClient("dexters-hats").returnDestinationId, "dexter-integration");
   assert.equal(resolveInstagramReturnDestination({ destinationId: "growthwise-dev-integration", hint: "connected", publicOrigin: ORIGIN }), `${ORIGIN}/instagram-dev.html?instagram=connected`);
   assert.equal(resolveInstagramReturnDestination({ destinationId: "dexter-integration", hint: "cancelled", publicOrigin: ORIGIN }), `${ORIGIN}/?instagram=cancelled`);
+  assert.equal(resolveInstagramReturnDestination({ destinationId: "connector-customer-integration", hint: "attention", publicOrigin: ORIGIN }), `${ORIGIN}/connect-accounts.html?instagram=attention`);
 });
 
 test("unknown return destination and unsafe hint fail closed", () => {
