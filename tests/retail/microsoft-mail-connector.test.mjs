@@ -143,6 +143,14 @@ test("callback binds provider identity to the transaction tenant and preserves m
       address: "dexter@hotmail.com",
       displayName: "Dexter",
     }),
+    createSubscription: async ({ businessId, accessToken, publicOrigin, store, now }) => {
+      assert.equal(businessId, "dexters-hats");
+      assert.equal(accessToken, "ACCESS_SENTINEL");
+      assert.equal(publicOrigin, ORIGIN);
+      assert.ok(store);
+      assert.equal(now.toISOString(), NOW.toISOString());
+      return { business_id: businessId, subscription_id: "sub-123" };
+    },
     now: () => NOW,
     logger: { warn() {} },
   });
@@ -233,6 +241,13 @@ test("connection status exposes mailbox identity but never credentials", async (
           encrypted_credential: { ciphertext: "SECRET" },
         };
       },
+      async readSubscriptionByBusiness() {
+        return {
+          status: "active",
+          subscription_id: "sub-123",
+          expires_at: new Date(NOW.getTime() + 60 * 60 * 1000),
+        };
+      },
     },
     crypto: {},
   });
@@ -258,7 +273,11 @@ test("disconnect is tenant-bound and removes the stored credential", async () =>
     publicOrigin: () => ORIGIN,
     now: () => NOW,
     store: {
-      async disconnectCredential(value) { deleted.push(value); },
+      async readSubscriptionByBusiness() { return null; },
+      async deleteSubscriptionByBusiness(value) {
+        deleted.push({ subscription: value });
+      },
+      async disconnectCredential(value) { deleted.push({ credential: value }); },
     },
     crypto: {},
   });
@@ -280,7 +299,10 @@ test("disconnect is tenant-bound and removes the stored credential", async () =>
   const response = await handler(request);
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { ok: true });
-  assert.deepEqual(deleted, [{ businessId: "dexters-hats" }]);
+  assert.deepEqual(deleted, [
+    { subscription: { businessId: "dexters-hats" } },
+    { credential: { businessId: "dexters-hats" } },
+  ]);
 });
 
 test("Microsoft mail crypto binds encrypted credentials to tenant and mailbox", () => {
