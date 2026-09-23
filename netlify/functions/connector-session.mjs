@@ -4,7 +4,26 @@ import { createConnectorStore } from "./_connector-store.mjs";
 import { createConnectorTenantResolver } from "./_connector-tenants.mjs";
 import { createTenantStore } from "./_tenant-store.mjs";
 
-export function createConnectorSessionHandler({ store, now = () => new Date(), resolveTenant } = {}) {
+function configuredMicrosoftMailAvailable() {
+  const required = [
+    "GROWTHWISE_MICROSOFT_CLIENT_ID",
+    "GROWTHWISE_MICROSOFT_CLIENT_SECRET",
+    "GROWTHWISE_MICROSOFT_MAIL_OAUTH_STATE_SECRET",
+    "GROWTHWISE_MICROSOFT_MAIL_ACCOUNT_BINDING_SECRET",
+    "GROWTHWISE_MICROSOFT_MAIL_CREDENTIAL_ENCRYPTION_KEY",
+  ];
+  return required.every((name) => {
+    const value = globalThis.Netlify?.env?.get(name);
+    return typeof value === "string" && value.trim().length > 0;
+  });
+}
+
+export function createConnectorSessionHandler({
+  store,
+  now = () => new Date(),
+  resolveTenant,
+  microsoftMailAvailable = configuredMicrosoftMailAvailable,
+} = {}) {
   return async function connectorSession(request) {
     if (request.method !== "GET") return connectorJson(405, { error: "Method not allowed." }, { allow: "GET" });
     const url = new URL(request.url);
@@ -23,7 +42,14 @@ export function createConnectorSessionHandler({ store, now = () => new Date(), r
           : { allowed: false, available: false, state: "Setup unavailable" },
         instagram: { allowed: auth.connectors.includes("instagram"), available: auth.connectors.includes("instagram") },
         email: auth.connectors.includes("email")
-          ? { allowed: true, available: false, state: "Setup unavailable" }
+          ? (() => {
+              const available = microsoftMailAvailable() === true;
+              return {
+                allowed: true,
+                available,
+                state: available ? "Not Connected" : "Setup unavailable",
+              };
+            })()
           : { allowed: false, available: false, state: "Setup unavailable" },
       },
     });
