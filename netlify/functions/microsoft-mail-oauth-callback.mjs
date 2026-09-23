@@ -5,6 +5,7 @@ import {
   exchangeMicrosoftMailAuthorizationCode,
   verifyMicrosoftMailboxIdentity,
 } from "./_microsoft-mail-oauth.mjs";
+import { createAndStoreMicrosoftMailSubscription } from "./_microsoft-mail-subscriptions.mjs";
 
 const PATH = "/.netlify/functions/microsoft-mail-oauth-callback";
 const MAX_QUERY_BYTES = 8192;
@@ -83,6 +84,7 @@ export function createMicrosoftMailOAuthCallbackHandler(options = {}) {
   const config = options.config ?? (() => configuredMicrosoftMailOAuth());
   const exchangeCode = options.exchangeCode ?? exchangeMicrosoftMailAuthorizationCode;
   const verifyIdentity = options.verifyIdentity ?? verifyMicrosoftMailboxIdentity;
+  const createSubscription = options.createSubscription ?? createAndStoreMicrosoftMailSubscription;
   const logger = options.logger ?? console;
 
   const safeWarn = (stage, providerStatus = null) => {
@@ -154,6 +156,7 @@ export function createMicrosoftMailOAuthCallbackHandler(options = {}) {
     }
 
     let stage = "provider_code_exchange";
+    let credentialStored = false;
     try {
       const token = await exchangeCode({
         clientId: settings.clientId,
@@ -194,10 +197,29 @@ export function createMicrosoftMailOAuthCallbackHandler(options = {}) {
         transactionKey,
         consumedAt: verifiedAt,
       });
+      credentialStored = true;
+
+      stage = "subscription_create";
+      await createSubscription({
+        businessId: transaction.business_id,
+        accessToken: token.accessToken,
+        publicOrigin: settings.publicOrigin,
+        store,
+        now: verifiedAt,
+      });
 
       return redirect(settings.publicOrigin, "connected");
     } catch (error) {
       safeWarn(stage, error?.httpStatus);
+      if (credentialStored) {
+        try {
+          await store.markCredentialStatus({
+            businessId: transaction.business_id,
+            status: "needs_attention",
+          });
+        } catch {}
+        return redirect(settings.publicOrigin, "attention");
+      }
       try {
         await store.finishTransaction({
           transactionKey,
