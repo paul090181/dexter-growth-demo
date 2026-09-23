@@ -32,3 +32,5 @@ jobs:
         run: npm run test:publishing
       - name: Run retail AI regression tests
         run: npm run test:retail
+      - name: Run billing regression tests
+        run: npm run test:billing
