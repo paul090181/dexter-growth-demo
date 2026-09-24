@@ -279,6 +279,114 @@ export function createCustomerConnectorController({
   };
 }
 
+export function createConnectorInboxController({
+  fetchImpl = globalThis.fetch,
+  onChange = () => {},
+} = {}) {
+  let state = { loading: true, error: "", businessId: null, sources: [], leads: [] };
+  const publish = (next) => {
+    state = { ...state, ...next };
+    onChange(structuredClone(state));
+    return structuredClone(state);
+  };
+
+  async function load() {
+    publish({ loading: true, error: "" });
+    try {
+      const response = await fetchImpl(`${ENDPOINT}/connector-inbox`, {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      const body = await response.json();
+      if (!response.ok
+        || typeof body?.business_id !== "string"
+        || !Array.isArray(body?.sources)
+        || !Array.isArray(body?.leads)) {
+        throw new Error("inbox_unavailable");
+      }
+      return publish({
+        loading: false,
+        error: "",
+        businessId: body.business_id,
+        sources: body.sources,
+        leads: body.leads,
+      });
+    } catch {
+      return publish({
+        loading: false,
+        error: "Recent messages are unavailable because this secure session is invalid, expired, or cannot access an inbox channel.",
+        businessId: null,
+        sources: [],
+        leads: [],
+      });
+    }
+  }
+
+  return { load, getState: () => structuredClone(state) };
+}
+
+function formatConnectorInboxTime(value) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  return date.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+}
+
+export function mountConnectorInbox({ documentImpl = globalThis.document, fetchImpl = globalThis.fetch } = {}) {
+  const status = documentImpl.getElementById("connector-inbox-status");
+  const list = documentImpl.getElementById("connector-inbox-list");
+  if (!status || !list) return null;
+
+  const render = (view) => {
+    list.replaceChildren();
+
+    if (view.loading) {
+      status.textContent = "Checking secure inbox…";
+      return;
+    }
+    if (view.error) {
+      status.textContent = view.error;
+      return;
+    }
+
+    status.textContent = view.leads.length
+      ? `${view.leads.length} recent message${view.leads.length === 1 ? "" : "s"} from the channel${view.sources.length === 1 ? "" : "s"} allowed by this secure session.`
+      : "No recent messages were found for the channels allowed by this secure session.";
+
+    for (const lead of view.leads) {
+      const article = documentImpl.createElement("article");
+      article.className = "inbox-message";
+
+      const top = documentImpl.createElement("div");
+      top.className = "inbox-message-top";
+
+      const sender = documentImpl.createElement("strong");
+      sender.textContent = lead.customer_name || lead.customer_contact || "Customer";
+
+      const badge = documentImpl.createElement("span");
+      badge.className = "inbox-source";
+      badge.textContent = lead.source || lead.source_type || "Message";
+
+      top.append(sender, badge);
+
+      const message = documentImpl.createElement("p");
+      message.textContent = String(lead.message || "").slice(0, 600);
+
+      const meta = documentImpl.createElement("small");
+      const received = formatConnectorInboxTime(lead.received_at || lead.created_at);
+      meta.textContent = [lead.customer_contact, received].filter(Boolean).join(" · ");
+
+      article.append(top, message, meta);
+      list.append(article);
+    }
+  };
+
+  const controller = createConnectorInboxController({ fetchImpl, onChange: render });
+  render(controller.getState());
+  controller.load();
+  return controller;
+}
+
 export function mountCustomerConnectorPage({ documentImpl = globalThis.document } = {}) {
   const businessName = documentImpl.getElementById("business-name");
   const error = documentImpl.getElementById("connection-error");
@@ -335,6 +443,7 @@ async function startBrowserPage() {
   consumeInstagramReturnHint();
   consumeEmailReturnHint();
   mountCustomerConnectorPage();
+  mountConnectorInbox();
 }
 
 if (typeof document !== "undefined") startBrowserPage();
