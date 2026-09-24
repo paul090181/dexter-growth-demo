@@ -31,6 +31,12 @@
     .choice input { margin-top: 4px; }
     .helper-link { display: inline-block; margin-top: 10px; color: #173f8f; font-weight: 800; }
     #connection-error { color: #a12121; min-height: 1.5em; margin: 10px 0; }
+    .inbox-message { border-top: 1px solid #e4eaf2; padding: 14px 0; }
+    .inbox-message:first-child { border-top: 0; padding-top: 4px; }
+    .inbox-message-top { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+    .inbox-message p { margin-top: 8px; white-space: pre-wrap; color: #2f3c50; }
+    .inbox-message small { display: block; margin-top: 8px; color: #6b7280; }
+    .inbox-source { background: #eef5ff; color: #3456a4; border-radius: 999px; padding: 5px 9px; font-size: .78rem; font-weight: 800; }
     @media (max-width: 520px) { .row { align-items: flex-start; flex-direction: column; } button { width: 100%; } }
   </style>
 </head>
@@ -83,6 +89,15 @@
         </div>
         <span class="unavailable">Coming later</span>
       </div>
+    </section>
+
+    <section class="card" aria-labelledby="connector-inbox-title">
+      <div>
+        <h2 id="connector-inbox-title">Recent inbound messages</h2>
+        <p id="connector-inbox-status" class="detail">Checking secure inbox…</p>
+        <p class="detail">This read-only view is bound to the current secure business session. The browser cannot choose or override the tenant.</p>
+      </div>
+      <div id="connector-inbox-list" aria-live="polite"></div>
     </section>
   </main>
   <script type="module" src="./assets/connector-invitation.mjs"></script>
