@@ -30,6 +30,11 @@
 .live-unlock input{width:100%;border:1px solid #d8dde2;border-radius:12px;padding:11px 12px;font-size:14px}
 .live-unlock button{border:0;border-radius:12px;background:#0e1b2b;color:#fff;font-weight:800;padding:0 14px}
 .live-unlock small{display:block;color:#65717d;line-height:1.4;margin-top:8px}
+.operator-card{margin:0 0 16px;border:1px solid #cad8e5;background:#f5f9fc;border-radius:16px;padding:14px}
+.operator-card.hidden{display:none}
+.operator-card h3{margin:5px 0 5px;font-size:16px}
+.operator-card p{margin:0 0 10px;color:#5f6d79;font-size:12px;line-height:1.45}
+.operator-card .operator-target{display:inline-block;background:#e9f0f6;color:#36536d;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:900;margin-bottom:10px}
 .founding-plan-card{margin:0 0 16px;border:1px solid #e5d8bb;background:linear-gradient(145deg,#fffaf0,#fff);border-radius:18px;padding:17px}
 .founding-plan-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.founding-plan-card h3{margin:5px 0 4px}.founding-plan-price{font-size:23px;font-weight:900;color:#0e1b2b;white-space:nowrap}.founding-plan-price small{font-size:12px;color:#68737e}.founding-plan-card p{margin:0 0 12px;color:#63707b;font-size:13px;line-height:1.45}.founding-plan-status{margin:10px 0 0;font-size:12px;font-weight:800;color:#596673}.founding-plan-card button:disabled{opacity:.5;cursor:not-allowed}
 
@@ -437,6 +442,15 @@
           <small>Enter once per browser session to connect your live business data and publishing tools.</small>
         </div>
 
+        <div class="operator-card hidden" id="emailAcceptanceOperator">
+          <div class="tag">ADMIN · CONNECTOR ACCEPTANCE</div>
+          <h3>Microsoft Email Test</h3>
+          <p>Create one secure, 24-hour invitation for the built-in GrowthWise development tenant. This control is intentionally fixed to Email only and cannot target Dexter’s Hats.</p>
+          <span class="operator-target">growthwise-dev · email only</span>
+          <button type="button" class="primary" id="createEmailAcceptanceInvitationBtn">Create &amp; open secure invitation</button>
+          <div class="create-status hidden" id="emailAcceptanceOperatorStatus"></div>
+        </div>
+
         <div class="founding-plan-card" id="foundingPlanCard">
           <div class="founding-plan-head">
             <div>
@@ -519,6 +533,7 @@
           }
         };
         </script>
+        <script type="module" src="./assets/admin-connector-invitation.mjs"></script>
 
         <div class="ai-opportunity-panel" id="aiOpportunityPanel">
           <div class="ai-opportunity-head">
