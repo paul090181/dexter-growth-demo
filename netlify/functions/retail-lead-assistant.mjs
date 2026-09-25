@@ -255,11 +255,11 @@ export default async (request) => {
   } else if (returns) {
     intent="return_refund"; risk="high"; decision="review_required"; reply="Thanks for reaching out. Our team will review the purchase details and get back to you about the available options."; reason="Returns, exchanges and refunds require a human review."; followUp="The business owner reviews the purchase details and store policy before replying.";
   } else if (custom) {
-    intent="custom_order"; risk="medium"; decision="auto_reply_then_review"; reply="Thanks for asking. I can have our team check whether that item or style can be special ordered and get back to you."; reason="Custom-order availability should be verified with the store or wholesaler."; followUp="Dexter checks supplier availability before promising the order.";
+    intent="custom_order"; risk="medium"; decision="auto_reply_then_review"; reply="Thanks for asking. I can have our team check whether that item or style can be special ordered and get back to you."; reason="Custom-order availability should be verified with the store or wholesaler."; followUp="The business owner checks supplier availability before promising the order.";
   } else if (complaint) {
     intent="complaint"; risk="high"; decision="auto_reply_then_review"; reply=`Hi${customerName ? ` ${customerName}` : ""}, thanks for letting us know. Our team will review what happened and follow up with you directly.`; reason="GrowthWise can acknowledge the concern but should not admit fault or promise a remedy."; followUp="Priority human follow-up from the business owner.";
   } else if (shipping && !business.shipping_policy) {
-    intent="shipping"; risk="medium"; decision="auto_reply_then_review"; reply="Thanks for asking. I can have our team confirm whether shipping is available for this item and what the options would be."; reason="No verified shipping policy was supplied."; followUp="Dexter confirms shipping availability and cost before promising anything.";
+    intent="shipping"; risk="medium"; decision="auto_reply_then_review"; reply="Thanks for asking. I can have our team confirm whether shipping is available for this item and what the options would be."; reason="No verified shipping policy was supplied."; followUp="The business owner confirms shipping availability and cost before promising anything.";
   }
 
   const automationClass =
