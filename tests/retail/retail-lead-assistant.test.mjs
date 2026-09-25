@@ -36,7 +36,7 @@ test("retail lead assistant preserves verified facts while escalating risky requ
   assert.match(backend, /productFactLead/);
   assert.match(backend, /currently showing in stock/);
   assert.match(backend, /current listed price/);
-  assert.match(backend, /Dexter still needs to confirm whether it can be held/);
+  assert.match(backend, /Our team still needs to confirm whether it can be held/);
   assert.match(backend, /answer verified product facts immediately/);
 });
 
