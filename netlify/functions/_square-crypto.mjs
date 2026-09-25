@@ -1,10 +1,14 @@
 import {
   createCipheriv,
   createDecipheriv,
+  createHash,
   createHmac,
   randomBytes,
+  timingSafeEqual,
 } from "node:crypto";
 
+const STATE_VERSION = "v1";
+const STATE_NONCE_BYTES = 32;
 const GCM_IV_BYTES = 12;
 const GCM_TAG_BYTES = 16;
 const SAFE_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
@@ -47,6 +51,21 @@ function normalizeVersions(configuration, { encryption = false, code }) {
   });
 }
 
+function parseState(state) {
+  if (typeof state !== "string") fail("INVALID_STATE");
+  const parts = state.split(".");
+  if (parts.length !== 3 || parts[0] !== STATE_VERSION) fail("INVALID_STATE");
+  return {
+    nonce: decodeBase64url(parts[1], STATE_NONCE_BYTES, "INVALID_STATE"),
+    nonceText: parts[1],
+    tag: decodeBase64url(parts[2], 32, "INVALID_STATE"),
+  };
+}
+
+function nonceHash(nonce) {
+  return createHash("sha256").update(nonce).digest("hex");
+}
+
 function bindingValue(version, accountId) {
   const id = requireOpaque(accountId, "INVALID_ACCOUNT_CONTEXT");
   return `${version.id}.${createHmac("sha256", version.key).update(id, "utf8").digest("base64url")}`;
@@ -62,10 +81,14 @@ function aad(businessId, accountBindingKey) {
 }
 
 export function createSquareCrypto({
+  stateSecrets = null,
   bindingSecrets,
   credentialKeys,
   randomBytesImpl = randomBytes,
 }) {
+  const states = stateSecrets
+    ? normalizeVersions(stateSecrets, { code: "INVALID_STATE_CONFIGURATION" })
+    : null;
   const bindings = normalizeVersions(bindingSecrets, {
     code: "INVALID_BINDING_CONFIGURATION",
   });
@@ -79,7 +102,42 @@ export function createSquareCrypto({
     return bindings.map((version) => bindingValue(version, accountId));
   }
 
+  function verifyState(state) {
+    if (!states) fail("INVALID_STATE_CONFIGURATION");
+    const parsed = parseState(state);
+    const signed = Buffer.from(`${STATE_VERSION}.${parsed.nonceText}`, "utf8");
+    for (const version of states) {
+      const expected = createHmac("sha256", version.key).update(signed).digest();
+      if (timingSafeEqual(parsed.tag, expected)) {
+        return { transactionKey: nonceHash(parsed.nonce), keyVersion: version.id };
+      }
+    }
+    fail("INVALID_STATE");
+  }
+
   return {
+    createState() {
+      if (!states) fail("INVALID_STATE_CONFIGURATION");
+      const nonce = Buffer.from(randomBytesImpl(STATE_NONCE_BYTES));
+      if (nonce.length !== STATE_NONCE_BYTES) fail("INVALID_RANDOM_SOURCE");
+      const nonceText = nonce.toString("base64url");
+      const unsigned = `${STATE_VERSION}.${nonceText}`;
+      const tag = createHmac("sha256", states[0].key)
+        .update(unsigned, "utf8")
+        .digest("base64url");
+      return {
+        state: `${unsigned}.${tag}`,
+        transactionKey: nonceHash(nonce),
+        keyVersion: states[0].id,
+      };
+    },
+
+    verifyState,
+
+    transactionKey(state) {
+      return verifyState(state).transactionKey;
+    },
+
     accountBindingKey(accountId) {
       return accountBindingKeys(accountId)[0];
     },
