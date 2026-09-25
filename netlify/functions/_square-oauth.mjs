@@ -169,12 +169,13 @@ export function buildSquareAuthorizationUrl({
     throw new TypeError("Invalid Square OAuth scopes.");
   }
   const url = new URL(`${oauthBase}/authorize`);
-  url.search = new URLSearchParams({
+  const params = new URLSearchParams({
     client_id: requireText(applicationId, "application ID", 300),
     scope: scopes.join(" "),
-    session: "false",
     state: requireText(state, "state", 4096),
-  }).toString();
+  });
+  if (environment === "production") params.set("session", "false");
+  url.search = params.toString();
   return url.toString();
 }
 
