@@ -4,15 +4,9 @@ function defaultEnv(name) {
   return globalThis.Netlify?.env?.get(name) || "";
 }
 
-function isDeployPreview(env) {
-  const context = env("CONTEXT");
-  if (context === "deploy-preview") return true;
-  const prime = env("DEPLOY_PRIME_URL");
-  try {
-    return /^deploy-preview-\d+--/.test(new URL(prime).hostname);
-  } catch {
-    return false;
-  }
+function previewRoot(env) {
+  if (env("GROWTHWISE_SQUARE_OAUTH_ENVIRONMENT") !== "sandbox") return "";
+  return env("GROWTHWISE_SQUARE_OAUTH_APPLICATION_SECRET") || "";
 }
 
 function derive(root, label) {
@@ -32,11 +26,7 @@ export function squareCryptoVersion(name, {
     return { current: { id: "v1", key: explicit } };
   }
 
-  if (!isDeployPreview(env)) {
-    return { current: { id: "v1", key: "" } };
-  }
-
-  const root = env("GROWTHWISE_SQUARE_OAUTH_APPLICATION_SECRET");
+  const root = previewRoot(env);
   if (!root) {
     return { current: { id: "v1", key: "" } };
   }
@@ -54,9 +44,8 @@ export function previewAcceptanceKey({
 } = {}) {
   const explicit = env("GROWTHWISE_PREVIEW16_ACCEPTANCE_KEY");
   if (explicit) return explicit;
-  if (!isDeployPreview(env)) return "";
 
-  const root = env("GROWTHWISE_SQUARE_OAUTH_APPLICATION_SECRET");
+  const root = previewRoot(env);
   if (!root) return "";
   return derive(root, "preview16-acceptance-key");
 }
