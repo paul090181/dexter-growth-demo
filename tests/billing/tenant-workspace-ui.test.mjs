@@ -498,6 +498,8 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /id="workspace-square-connect"/);
   assert.match(html, /id="workspace-onboarding-card"/);
   assert.match(html, /id="workspace-onboarding-list"/);
+  assert.match(html, /id="workspace-journey-banner"/);
+  assert.match(html, /id="workspace-next-step"/);
   assert.match(html, /id="workspace-pulse-card"/);
   assert.match(html, /id="workspace-pulse-sales"/);
   assert.match(html, /id="workspace-pulse-inventory-value"/);
@@ -510,9 +512,13 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /tenant-square-inventory/);
   assert.match(js, /tenant-square-sales/);
   assert.match(js, /buildSquareBusinessPulse/);
+  assert.match(js, /openActivation/);
+  assert.match(js, /nextAction/);
+  assert.match(js, /connect-square/);
+  assert.match(js, /refresh-insights/);
   assert.match(js, /feature_access/);
   assert.match(js, /Pro Experience active/);
-  assert.doesNotMatch(html + js, /dexters-hats|Dexter's Hats|growthwise_admin_key|X-GrowthWise-Key/);
+  assert.doesNotMatch(html + js, /dexters-hats|Dexter's Hats|Dexter|growthwise_admin_key|X-GrowthWise-Key/);
   assert.doesNotMatch(html + js, /localStorage/);
   assert.match(headers, /\/app\.html\n\s+Cache-Control: no-store/);
   assert.match(headers, /Referrer-Policy: no-referrer/);
