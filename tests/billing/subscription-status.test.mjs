@@ -58,14 +58,18 @@ test("Dexter pilot status is returned without Stripe identifiers", async () => {
   const response = await handler(authorizedRequest("dexters-hats"));
 
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), {
-    business_id: "dexters-hats",
-    access_source: "pilot",
-    plan_key: "founding_monthly",
-    status: "pilot",
-    current_period_end: null,
-    access_granted: true,
-  });
+  const body = await response.json();
+  assert.equal(body.business_id, "dexters-hats");
+  assert.equal(body.access_source, "pilot");
+  assert.equal(body.plan_key, "founding_monthly");
+  assert.equal(body.status, "pilot");
+  assert.equal(body.access_granted, true);
+  assert.equal(body.plan_name, "Founding Member");
+  assert.equal(body.monthly_price_usd, 49);
+  assert.equal(body.feature_access.advanced_ai_automation, true);
+  assert.equal(JSON.stringify(body).includes("cus_secret"), false);
+  assert.equal(JSON.stringify(body).includes("sub_secret"), false);
+  assert.equal(JSON.stringify(body).includes("price_secret"), false);
 });
 
 test("subscription status rejects unknown tenants before reading storage", async () => {
@@ -81,14 +85,14 @@ test("subscription status returns a neutral unconfigured state for a known tenan
   const response = await handler(authorizedRequest("growthwise-dev"));
 
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), {
-    business_id: "growthwise-dev",
-    access_source: null,
-    plan_key: null,
-    status: "not_subscribed",
-    current_period_end: null,
-    access_granted: false,
-  });
+  const body = await response.json();
+  assert.equal(body.business_id, "growthwise-dev");
+  assert.equal(body.access_source, null);
+  assert.equal(body.plan_key, null);
+  assert.equal(body.status, "not_subscribed");
+  assert.equal(body.access_granted, false);
+  assert.deepEqual(body.entitlements, []);
+  assert.equal(body.feature_access.lead_reply_drafting, false);
 });
 
 test("subscription status allows only GET", async () => {
@@ -105,14 +109,13 @@ test("a registered tenant is locked before signed webhook activation", async () 
   const response = await handler(authorizedRequest("tenant-self-abcdef123456", "", TENANT_KEY));
 
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), {
-    business_id: "tenant-self-abcdef123456",
-    access_source: null,
-    plan_key: null,
-    status: "not_subscribed",
-    current_period_end: null,
-    access_granted: false,
-  });
+  const body = await response.json();
+  assert.equal(body.business_id, "tenant-self-abcdef123456");
+  assert.equal(body.access_source, null);
+  assert.equal(body.plan_key, null);
+  assert.equal(body.status, "not_subscribed");
+  assert.equal(body.access_granted, false);
+  assert.deepEqual(body.entitlements, []);
 });
 
 test("active and trialing Stripe tenants receive access from server state", async () => {
