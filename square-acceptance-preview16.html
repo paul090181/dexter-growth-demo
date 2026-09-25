@@ -24,9 +24,9 @@
 
   <section class="card">
     <strong>What you need to do</strong>
-    <p>Tap the button below. A Square Sandbox authorization page will open. Approve the requested read-only permissions, then return to this tab. The test will continue automatically.</p>
+    <p>Tap the button below. This page will take you directly to Square Sandbox. Approve the requested read-only permissions and Square will send you back here automatically so the test can finish.</p>
     <button id="start" type="button">Start Square sandbox test</button>
-    <a id="manual" class="action" href="#" target="_blank" rel="noopener noreferrer" hidden>Open Square authorization</a>
+    <a id="manual" class="action" href="#" hidden>Open Square authorization</a>
     <div id="status" class="status">Ready.</div>
     <p class="muted">No Production configuration or customer data is used. The test does not display or store raw Square credentials in this page.</p>
   </section>
@@ -110,29 +110,50 @@ startButton.addEventListener("click",async function(){
   startButton.disabled=true;
   manual.hidden=true;
   show("Creating disposable Growth tenants and authorization transaction…");
-  const popup=window.open("about:blank","_blank");
   try{
     const result=await action("start");
     if(!result.ok||!result.authorization_url)throw new Error("Square authorization could not be started.");
     manual.href=result.authorization_url;
     manual.hidden=false;
-    show("Square authorization is ready. Approve it in the opened tab, then return here.");
-    if(popup){
-      popup.opener=null;
-      popup.location=result.authorization_url;
-    }
-    pollTimer=setInterval(poll,3000);
-    await poll();
+    sessionStorage.setItem("growthwise-square-acceptance-running","1");
+    show("Opening Square Sandbox…");
+    window.location.assign(result.authorization_url);
   }catch(error){
-    if(popup)popup.close();
     show(error.message,"bad");
     startButton.disabled=false;
   }
 });
 
+async function resumeAfterSquare(){
+  const params=new URLSearchParams(window.location.search);
+  const square=params.get("square");
+  const running=sessionStorage.getItem("growthwise-square-acceptance-running")==="1";
+  if(!running&&!square)return;
+
+  startButton.disabled=true;
+  manual.hidden=true;
+
+  if(square==="cancelled"){
+    sessionStorage.removeItem("growthwise-square-acceptance-running");
+    show("Square authorization was cancelled.","bad");
+    return;
+  }
+  if(square==="attention"){
+    sessionStorage.removeItem("growthwise-square-acceptance-running");
+    show("Square authorization needs attention. Send this screen to ChatGPT.","bad");
+    return;
+  }
+
+  show("Square authorization returned. Running tenant-isolation checks…");
+  pollTimer=setInterval(poll,2500);
+  await poll();
+}
+
 document.addEventListener("visibilitychange",function(){
   if(!document.hidden&&!finished)poll();
 });
+
+resumeAfterSquare();
 </script>
 </body>
 </html>
