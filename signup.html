@@ -108,6 +108,31 @@
       };
     }
 
+    async function trackMilestone(eventName){
+      const { businessId, tenantKey } = credentials();
+      if(!businessId || !tenantKey || !eventName) return false;
+      const dedupeKey = `growthwise_onboarding_event:${businessId}:${eventName}`;
+      if(sessionStorage.getItem(dedupeKey) === '1') return true;
+      try{
+        const response = await fetch('/.netlify/functions/onboarding-event', {
+          method: 'POST',
+          headers: {
+            'Content-Type':'application/json',
+            'X-GrowthWise-Tenant-Key': tenantKey
+          },
+          body: JSON.stringify({ business_id: businessId, event_name: eventName }),
+          cache: 'no-store',
+          keepalive: true
+        });
+        const data = await response.json().catch(()=>({}));
+        if(!response.ok || data.ok !== true || data.event_name !== eventName) return false;
+        sessionStorage.setItem(dedupeKey, '1');
+        return true;
+      }catch{
+        return false;
+      }
+    }
+
     function showWorkspace(){
       const { businessId, tenantKey } = credentials();
       if(!businessId || !tenantKey) return false;
@@ -128,6 +153,7 @@
         if(!response.ok) throw new Error(data.error || 'Status is temporarily unavailable.');
         const accessGranted = data.access_granted === true && data.access_source === 'stripe';
         const stripeLinked = data.access_source === 'stripe';
+        if(accessGranted && stripeLinked) await trackMilestone('checkout_completed');
         const labels = { active:'Active', trialing:'Trialing', incomplete:'Checkout pending', past_due:'Payment needs attention', unpaid:'Payment needs attention', paused:'Paused', canceled:'Canceled', not_subscribed:'Not subscribed' };
         subscriptionStatus.textContent = `Current status: ${labels[data.status] || data.status || 'Unknown'} — access ${accessGranted ? 'active' : 'locked'}.`;
         subscriptionStatus.className = `status ${accessGranted ? 'success' : ''}`;
@@ -165,6 +191,7 @@
         if(!response.ok) throw new Error(data.error || 'Signup is temporarily unavailable.');
         sessionStorage.setItem('growthwise_business_id', data.business_id);
         sessionStorage.setItem('growthwise_tenant_key', data.tenant_key);
+        await trackMilestone('workspace_created');
         oneTimeBusinessId.textContent = data.business_id;
         oneTimeKey.textContent = data.tenant_key;
         oneTimeKeyPanel.classList.remove('hidden');
@@ -204,6 +231,7 @@
         if(!response.ok) throw new Error(data.error || 'Checkout is temporarily unavailable.');
         const checkoutUrl = new URL(data.checkout_url);
         if(checkoutUrl.protocol === 'https:' && checkoutUrl.hostname === 'checkout.stripe.com'){
+          await trackMilestone('checkout_started');
           window.location.href = checkoutUrl.href;
           return;
         }
