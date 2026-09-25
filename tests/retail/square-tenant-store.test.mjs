@@ -59,9 +59,12 @@ function memoryPool() {
         return { rows: [{ ...row }] };
       }
 
-      if (/FROM square_credentials/.test(text)) {
+      if (/DELETE FROM square_credentials/.test(text)) {
         const row = rows.get(values[0]);
-        return { rows: row ? [{ ...row }] : [] };
+        if (!row) return { rows: [] };
+        rows.delete(values[0]);
+        bindings.delete(row.account_binding_key);
+        return { rows: [{ business_id: values[0] }] };
       }
 
       if (/UPDATE square_credentials/.test(text)) {
@@ -72,12 +75,9 @@ function memoryPool() {
         return { rows: [{ ...row }] };
       }
 
-      if (/DELETE FROM square_credentials/.test(text)) {
+      if (/FROM square_credentials/.test(text)) {
         const row = rows.get(values[0]);
-        if (!row) return { rows: [] };
-        rows.delete(values[0]);
-        bindings.delete(row.account_binding_key);
-        return { rows: [{ business_id: values[0] }] };
+        return { rows: row ? [{ ...row }] : [] };
       }
 
       throw new Error("unexpected query");
