@@ -1,5 +1,5 @@
 const ALLOWED_CONNECTORS = new Set(["email", "facebook", "instagram"]);
-const SESSION_TTL_MS = 30 * 60 * 1000;
+export const CONNECTOR_SESSION_TTL_MS = 30 * 60 * 1000;
 
 const INSERT_INVITATION = `
   INSERT INTO growthwise_connector_invitations
@@ -112,7 +112,7 @@ export function createConnectorStore({ getPool = netlifyPool } = {}) {
         throw failure("INVITATION_INVALID");
       }
       const connectors = connectorList(invitation.connectors);
-      const sessionExpiresAt = new Date(redeemedAt.getTime() + SESSION_TTL_MS);
+      const sessionExpiresAt = new Date(redeemedAt.getTime() + CONNECTOR_SESSION_TTL_MS);
       await client.query(INSERT_SESSION, [sessionHash, businessId(invitation.business_id), connectors, sessionExpiresAt]);
       const marked = await client.query(MARK_USED, [invitationHash, redeemedAt]);
       if (!marked.rows[0]) throw failure("INVITATION_INVALID");
