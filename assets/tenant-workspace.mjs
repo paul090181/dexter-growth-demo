@@ -1,6 +1,7 @@
 const PROFILE_ENDPOINT = "/.netlify/functions/tenant-profile";
 const STATUS_ENDPOINT = "/.netlify/functions/subscription-status";
 const PORTAL_ENDPOINT = "/.netlify/functions/stripe-customer-portal";
+const LEAD_ENDPOINT = "/.netlify/functions/retail-lead-assistant";
 
 export function readWorkspaceCredentials(storage = globalThis.sessionStorage) {
   return {
@@ -48,6 +49,7 @@ export function createTenantWorkspaceController({
     error: "",
     profile: null,
     subscription: null,
+    lead: { loading: false, error: "", result: null },
   };
 
   const publish = (next) => {
@@ -123,15 +125,65 @@ export function createTenantWorkspaceController({
     }
   }
 
+  async function draftLead({ source, customerName, message }) {
+    const { businessId, tenantKey } = readWorkspaceCredentials(storage);
+    const text = String(message || "").trim();
+    if (!state.signedIn || state.subscription?.access_granted !== true || !businessId || !tenantKey) {
+      publish({ lead: { loading: false, error: "An active workspace is required.", result: null } });
+      return false;
+    }
+    if (!text) {
+      publish({ lead: { loading: false, error: "Enter the customer's message first.", result: null } });
+      return false;
+    }
+
+    publish({ lead: { loading: true, error: "", result: null } });
+    try {
+      const response = await fetchImpl(`${LEAD_ENDPOINT}?business_id=${encodeURIComponent(businessId)}`, {
+        method: "POST",
+        headers: { ...authHeaders(tenantKey), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source: String(source || "Customer message").slice(0, 120),
+          customer_name: String(customerName || "").trim().slice(0, 120),
+          message: text.slice(0, 4000),
+          automation_mode: "shadow",
+        }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || body?.ok !== true || typeof body?.reply !== "string") {
+        throw new Error(body?.error || "GrowthWise could not draft the reply.");
+      }
+      publish({ lead: { loading: false, error: "", result: body } });
+      return true;
+    } catch (error) {
+      publish({
+        lead: {
+          loading: false,
+          error: error?.message || "GrowthWise could not draft the reply.",
+          result: null,
+        },
+      });
+      return false;
+    }
+  }
+
   function signOut() {
     clearWorkspaceCredentials(storage);
-    return publish({ loading: false, signedIn: false, error: "", profile: null, subscription: null });
+    return publish({
+      loading: false,
+      signedIn: false,
+      error: "",
+      profile: null,
+      subscription: null,
+      lead: { loading: false, error: "", result: null },
+    });
   }
 
   return {
     authenticate,
     restore,
     openBilling,
+    draftLead,
     signOut,
     getState: () => structuredClone(state),
     statusLabel,
@@ -150,6 +202,14 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const access = documentImpl.getElementById("workspace-access");
   const manage = documentImpl.getElementById("workspace-manage-billing");
   const signOut = documentImpl.getElementById("workspace-signout");
+  const leadCard = documentImpl.getElementById("workspace-lead-card");
+  const leadForm = documentImpl.getElementById("workspace-lead-form");
+  const leadButton = documentImpl.getElementById("workspace-lead-submit");
+  const leadStatus = documentImpl.getElementById("workspace-lead-status");
+  const leadResult = documentImpl.getElementById("workspace-lead-result");
+  const leadReply = documentImpl.getElementById("workspace-lead-reply");
+  const leadMeta = documentImpl.getElementById("workspace-lead-meta");
+  const leadFollowUp = documentImpl.getElementById("workspace-lead-followup");
 
   const render = (view) => {
     signedOut.hidden = view.signedIn;
@@ -165,6 +225,22 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     access.textContent = view.subscription?.access_granted ? "Active" : "Locked";
     manage.hidden = view.subscription?.access_source !== "stripe";
     manage.disabled = view.loading;
+    const accessGranted = view.subscription?.access_granted === true;
+    leadCard.hidden = !accessGranted;
+    leadButton.disabled = view.lead?.loading === true;
+    leadButton.textContent = view.lead?.loading ? "Drafting…" : "Draft safe reply";
+    leadStatus.hidden = !view.lead?.error;
+    leadStatus.textContent = view.lead?.error || "";
+    leadResult.hidden = !view.lead?.result;
+    if (view.lead?.result) {
+      leadReply.textContent = view.lead.result.reply || "";
+      leadMeta.textContent = [
+        view.lead.result.intent ? `Intent: ${view.lead.result.intent}` : "",
+        view.lead.result.risk_level ? `Risk: ${view.lead.result.risk_level}` : "",
+        view.lead.result.decision ? `Decision: ${view.lead.result.decision}` : "",
+      ].filter(Boolean).join(" · ");
+      leadFollowUp.textContent = view.lead.result.follow_up_action || "";
+    }
   };
 
   const controller = createTenantWorkspaceController({ onChange: render });
@@ -179,6 +255,15 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     });
   });
   manage?.addEventListener("click", () => controller.openBilling());
+  leadForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const data = new FormData(leadForm);
+    await controller.draftLead({
+      source: data.get("source"),
+      customerName: data.get("customer_name"),
+      message: data.get("message"),
+    });
+  });
   signOut?.addEventListener("click", () => controller.signOut());
   controller.restore();
   return controller;
