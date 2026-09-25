@@ -16,7 +16,7 @@ export async function createCheckoutSession(stripe, {
   returnPath = "/",
 }) {
   const metadata = { business_id: businessId, plan_key: planKey };
-  const idempotencyKey = `growthwise-founding-${createHash("sha256").update(businessId).digest("hex").slice(0, 32)}`;
+  const idempotencyKey = `growthwise-checkout-${createHash("sha256").update(`${businessId}|${planKey}`).digest("hex").slice(0, 32)}`;
   return stripe.checkout.sessions.create({
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
