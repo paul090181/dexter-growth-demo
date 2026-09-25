@@ -141,18 +141,21 @@ test("exchange sets only a secure fixed-lifetime HttpOnly session cookie", async
   assert.equal(response.headers.get("referrer-policy"), "no-referrer");
 });
 
-test("exchange rejects malformed invalid and replayed invitations without a cookie", async () => {
+test("exchange rejects malformed invalid and replayed invitations and clears stale session cookie", async () => {
   const fixture = createFixture();
   const invalid = await fixture.exchange(createRequest({ invitation_token: "bad" }, { key: "", path: "connector-invitation-exchange" }));
   assert.equal(invalid.status, 401);
-  assert.equal(invalid.headers.has("set-cookie"), false);
+  assert.match(invalid.headers.get("set-cookie") || "", /^__Host-gw_connector_session=; Max-Age=0;/);
+  assert.match(invalid.headers.get("set-cookie") || "", /HttpOnly/);
+  assert.match(invalid.headers.get("set-cookie") || "", /Secure/);
+  assert.match(invalid.headers.get("set-cookie") || "", /SameSite=Lax/);
 
   const created = await (await fixture.create(createRequest({ business_id: "dexters-hats", connectors: ["instagram"] }))).json();
   const token = new URL(created.invitation_url).hash.slice("#invite=".length);
   assert.equal((await fixture.exchange(createRequest({ invitation_token: token }, { key: "", path: "connector-invitation-exchange" }))).status, 200);
   const replay = await fixture.exchange(createRequest({ invitation_token: token }, { key: "", path: "connector-invitation-exchange" }));
   assert.equal(replay.status, 401);
-  assert.equal(replay.headers.has("set-cookie"), false);
+  assert.match(replay.headers.get("set-cookie") || "", /^__Host-gw_connector_session=; Max-Age=0;/);
 });
 
 test("session metadata comes only from the cookie-bound tenant and keeps Facebook unavailable", async () => {
