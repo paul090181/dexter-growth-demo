@@ -35,7 +35,12 @@ function fixture(overrides = {}) {
   const handler = createStripeCheckoutHandler({
     authorized: (req) => ({ ok: req.headers.get("x-growthwise-key") === "valid-key" }),
     stripe,
-    priceId: "price_server",
+    priceIds: {
+      founding_monthly: "price_founding",
+      starter_monthly: "price_starter",
+      growth_monthly: "price_growth",
+      pro_monthly: "price_pro",
+    },
     origin: "https://deploy-preview-14--euphonious-beijinho-db4b4d.netlify.app",
     tenants: new Set(["growthwise-dev", "dexters-hats"]),
     tenantStore: {
@@ -54,7 +59,7 @@ test("Checkout ignores client pricing and uses server configuration", async () =
   const response = await handler(request({ business_id: "growthwise-dev", price: "price_attacker", amount: 1 }));
 
   assert.equal(response.status, 200);
-  assert.equal(createCalls[0].line_items[0].price, "price_server");
+  assert.equal(createCalls[0].line_items[0].price, "price_growth");
   assert.equal(createCalls[0].mode, "subscription");
   assert.deepEqual(createCalls[0].metadata, { business_id: "growthwise-dev", plan_key: "founding_monthly" });
   assert.deepEqual(createCalls[0].subscription_data.metadata, { business_id: "growthwise-dev", plan_key: "founding_monthly" });
@@ -102,7 +107,7 @@ test("Checkout rejects oversized request bodies", async () => {
 });
 
 test("Checkout fails closed when required configuration is invalid", async () => {
-  const missingPrice = fixture({ priceId: "" });
+  const missingPrice = fixture({ priceIds: { founding_monthly: "" } });
   assert.equal((await missingPrice.handler(request({ business_id: "growthwise-dev" }))).status, 503);
 
   const insecureOrigin = fixture({ origin: "http://preview.example" });
@@ -126,20 +131,20 @@ test("Checkout returns the approved URL without leaking the session object", asy
   assert.deepEqual(await response.json(), { checkout_url: "https://checkout.stripe.com/c/pay/cs_test_123" });
 });
 
-test("tenant checkout requires its exact business ID and fixes Founding Plan metadata", async () => {
+test("tenant checkout requires its exact business ID and uses only server-mapped plan pricing", async () => {
   const { handler, createCalls } = fixture();
   const response = await handler(request({
     business_id: "tenant-self-abcdef123456",
-    plan_key: "attacker-plan",
+    plan_key: "growth_monthly",
     price: "price_attacker",
   }, { key: "", tenantKey: TENANT_KEY }));
 
   assert.equal(response.status, 200);
   assert.deepEqual(createCalls[0].metadata, {
     business_id: "tenant-self-abcdef123456",
-    plan_key: "founding_monthly",
+    plan_key: "growth_monthly",
   });
-  assert.equal(createCalls[0].line_items[0].price, "price_server");
+  assert.equal(createCalls[0].line_items[0].price, "price_founding");
   assert.equal(createCalls[0].success_url,
     "https://deploy-preview-14--euphonious-beijinho-db4b4d.netlify.app/signup.html?billing=success&session_id={CHECKOUT_SESSION_ID}");
   assert.equal(createCalls[0].cancel_url,
@@ -189,5 +194,35 @@ test("concurrent checkout requests share one Stripe idempotency key", async () =
   assert.deepEqual(responses.map((response) => response.status), [200, 200]);
   assert.equal(createCalls.length, 2);
   assert.equal(createOptions[0].idempotencyKey, createOptions[1].idempotencyKey);
-  assert.match(createOptions[0].idempotencyKey, /^growthwise-founding-[a-f0-9]{32}$/);
+  assert.match(createOptions[0].idempotencyKey, /^growthwise-checkout-[a-f0-9]{32}$/);
+});
+
+
+test("checkout rejects unknown plan keys instead of trusting client pricing", async () => {
+  const { handler, createCalls } = fixture();
+  const response = await handler(request({
+    business_id: "growthwise-dev",
+    plan_key: "enterprise_1_dollar",
+    price: "price_attacker",
+    amount: 1,
+  }));
+  assert.equal(response.status, 400);
+  assert.equal(createCalls.length, 0);
+});
+
+test("checkout rejects a known plan when its server Stripe price is not configured", async () => {
+  const { handler, createCalls } = fixture({
+    priceIds: {
+      founding_monthly: "price_founding",
+      starter_monthly: "price_starter",
+      growth_monthly: "",
+      pro_monthly: "price_pro",
+    },
+  });
+  const response = await handler(request({
+    business_id: "growthwise-dev",
+    plan_key: "growth_monthly",
+  }));
+  assert.equal(response.status, 503);
+  assert.equal(createCalls.length, 0);
 });
