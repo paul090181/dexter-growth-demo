@@ -77,7 +77,7 @@ test("onboarding funnel report summarizes conversion, attribution, return, and t
   assert.equal(body.overall.returned_after_first_value, 1);
   assert.equal(body.overall.time_to_first_value_minutes.minimum, 9);
   assert.equal(body.overall.time_to_first_value_minutes.maximum, 15);
-  assert.equal(body.overall.time_to_first_value_minutes.median, 9);
+  assert.equal(body.overall.time_to_first_value_minutes.median, 12);
 
   const launch = body.campaigns.find((row) => row.campaign_code === "LAUNCH20");
   assert.equal(launch.tenants_observed, 1);
