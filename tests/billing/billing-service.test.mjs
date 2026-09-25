@@ -163,3 +163,79 @@ test("malformed events fail before reaching the store", async () => {
   await assert.rejects(service.processEvent({ id: "evt_bad", type: "invoice.paid", created: 0, data: {} }), /INVALID_STRIPE_EVENT/);
   assert.equal(store.applied.length, 0);
 });
+
+
+test("checkout completion records signed Stripe promotion attribution without changing billing semantics", async () => {
+  const store = fakeStore();
+  const acquisitions = [];
+  const service = createBillingService({
+    store,
+    attributionStore: {
+      recordAcquisition: async (input) => {
+        acquisitions.push(structuredClone(input));
+        return input;
+      },
+    },
+    resolveCheckoutAttribution: async ({ checkoutSessionId, businessId, planKey }) => {
+      assert.equal(checkoutSessionId, "cs_attr");
+      assert.equal(businessId, "tenant-a");
+      assert.equal(planKey, "growth_monthly");
+      return {
+        campaignCode: "STEVE20",
+        stripePromotionCodeId: "promo_1",
+        stripeCouponId: "coupon_1",
+        sourceChannel: "podcast",
+        campaignName: "TESD",
+      };
+    },
+  });
+
+  const result = await service.processEvent({
+    id: "evt_checkout_attr",
+    type: "checkout.session.completed",
+    created: 1790334000,
+    data: {
+      object: {
+        id: "cs_attr",
+        customer: "cus_1",
+        subscription: "sub_1",
+        metadata: { business_id: "tenant-a", plan_key: "growth_monthly" },
+      },
+    },
+  });
+
+  assert.equal(result.outcome, "processed");
+  assert.equal(acquisitions.length, 1);
+  assert.equal(acquisitions[0].businessId, "tenant-a");
+  assert.equal(acquisitions[0].campaignCode, "STEVE20");
+  assert.equal(acquisitions[0].acquisitionPlanKey, "growth_monthly");
+  assert.equal(acquisitions[0].stripeCheckoutSessionId, "cs_attr");
+});
+
+test("checkout completion without a redeemed promotion code records no attribution", async () => {
+  const store = fakeStore();
+  let writes = 0;
+  const service = createBillingService({
+    store,
+    attributionStore: {
+      recordAcquisition: async () => { writes += 1; },
+    },
+    resolveCheckoutAttribution: async () => null,
+  });
+
+  await service.processEvent({
+    id: "evt_checkout_no_attr",
+    type: "checkout.session.completed",
+    created: 1790334000,
+    data: {
+      object: {
+        id: "cs_no_attr",
+        customer: "cus_1",
+        subscription: "sub_1",
+        metadata: { business_id: "tenant-a", plan_key: "growth_monthly" },
+      },
+    },
+  });
+
+  assert.equal(writes, 0);
+});
