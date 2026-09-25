@@ -54,7 +54,8 @@ export function createOnboardingTracker({
     const key = String(tenantKey || "").trim();
     if (!name || !id || !key) return false;
 
-    const dedupeKey = `growthwise_onboarding_event:${id}:${name}`;
+    const eventDay = new Date().toISOString().slice(0, 10);
+    const dedupeKey = `growthwise_onboarding_event:${id}:${name}:${eventDay}`;
     if (storage?.getItem(dedupeKey) === "1") return true;
 
     try {
