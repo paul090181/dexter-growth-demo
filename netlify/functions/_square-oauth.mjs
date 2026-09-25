@@ -219,6 +219,47 @@ export async function exchangeSquareAuthorizationCode({
   };
 }
 
+export async function refreshSquareAccessToken({
+  applicationId,
+  applicationSecret,
+  environment,
+  refreshToken,
+  fetchImpl = fetch,
+  maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES,
+} = {}) {
+  const { oauthBase } = environmentSettings(environment);
+  const json = await providerJson(`${oauthBase}/token`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "Square-Version": SQUARE_API_VERSION,
+    },
+    body: JSON.stringify({
+      client_id: requireText(applicationId, "application ID", 300),
+      client_secret: requireText(applicationSecret, "application secret", 500),
+      refresh_token: requireText(refreshToken, "refresh token", 2048),
+      grant_type: "refresh_token",
+    }),
+  }, { fetchImpl, maxResponseBytes, failureCode: "exchange_failed" });
+
+  if (typeof json?.access_token !== "string" || !json.access_token
+    || typeof json?.refresh_token !== "string" || !json.refresh_token
+    || typeof json?.merchant_id !== "string" || !json.merchant_id
+    || typeof json?.token_type !== "string" || json.token_type.toLowerCase() !== "bearer"
+    || typeof json?.expires_at !== "string"
+    || !Number.isFinite(new Date(json.expires_at).getTime())) {
+    throw new SquareOAuthProviderError("exchange_failed");
+  }
+
+  return {
+    accessToken: json.access_token,
+    refreshToken: json.refresh_token,
+    merchantId: json.merchant_id,
+    tokenType: "bearer",
+    expiresAt: new Date(json.expires_at),
+  };
+}
+
 export async function retrieveSquareTokenStatus({
   accessToken,
   environment,
