@@ -1,5 +1,6 @@
 import { authorizeTenantRequest } from "./_tenant-auth.mjs";
 import { createTenantStore } from "./_tenant-store.mjs";
+import { createBillingStore } from "./_billing-store.mjs";
 import { getDatabase } from "@netlify/database";
 
 const OPENAI_URL = "https://api.openai.com/v1/responses";
@@ -42,6 +43,7 @@ export async function authorizeRetailLeadRequest(request, {
   businessId,
   adminKey = "",
   tenantStore = createTenantStore(),
+  billingStore = createBillingStore(),
 } = {}) {
   const suppliedAdmin = request?.headers?.get("x-growthwise-key") || "";
   if (adminKey && suppliedAdmin === adminKey) {
@@ -55,6 +57,16 @@ export async function authorizeRetailLeadRequest(request, {
   if (!profile || profile.business_id !== businessId) {
     return { ok: false, via: "none", businessId: null, profile: null };
   }
+
+  let subscription;
+  try { subscription = await billingStore.readSubscription({ businessId }); }
+  catch { return { ok: false, via: "unavailable", businessId: null, profile: null }; }
+  const paidAccess = subscription?.access_source === "stripe"
+    && new Set(["active", "trialing"]).has(subscription?.status);
+  if (!paidAccess) {
+    return { ok: false, via: "locked", businessId: null, profile: null };
+  }
+
   return { ok: true, via: "tenant", businessId, profile };
 }
 
@@ -103,11 +115,13 @@ export default async (request) => {
     tenantStore: createTenantStore(),
   });
   if (!auth.ok) {
-    return json(auth.via === "unavailable" ? 503 : 401, {
-      error: auth.via === "unavailable"
-        ? "Business profile is temporarily unavailable."
-        : "Invalid GrowthWise workspace credentials.",
-    });
+    const status = auth.via === "unavailable" ? 503 : auth.via === "locked" ? 403 : 401;
+    const error = auth.via === "unavailable"
+      ? "Business account is temporarily unavailable."
+      : auth.via === "locked"
+        ? "An active GrowthWise subscription is required."
+        : "Invalid GrowthWise workspace credentials.";
+    return json(status, { error });
   }
   const tenantProfile = auth.profile;
 
