@@ -69,3 +69,12 @@ test("signup tells customers promotion codes are entered and validated in Stripe
   assert.match(page, /Have a promo code\?/);
   assert.match(page, /Stripe validates the code/);
 });
+
+test("signup keeps the current browser signed in and hands active customers into guided setup", () => {
+  assert.match(page, /This setup will continue automatically in the current browser session/i);
+  assert.match(page, /Continue to activation/);
+  assert.match(page, /href="\.\/app\.html\?onboarding=1"/);
+  assert.match(page, /Continue setup/);
+  assert.match(page, /planCard\.scrollIntoView/);
+  assert.match(page, /accessCard\.scrollIntoView/);
+});
