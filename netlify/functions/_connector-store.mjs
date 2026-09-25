@@ -127,6 +127,27 @@ export function createConnectorStore({ getPool = netlifyPool } = {}) {
     }
   }
 
+  async function createSession(input = {}) {
+    const values = [
+      hash(input.sessionHash, "INVALID_SESSION_HASH"),
+      businessId(input.businessId),
+      connectorList(input.connectors),
+      date(input.expiresAt, "INVALID_SESSION_EXPIRY"),
+    ];
+    try {
+      const result = await (await getPool()).query(INSERT_SESSION, values);
+      return {
+        business_id: values[1],
+        connectors: values[2],
+        expires_at: values[3],
+        ...(result.rows[0] || {}),
+      };
+    } catch (error) {
+      if (String(error?.message || "").startsWith("INVALID_")) throw error;
+      throw failure("SESSION_CREATE_FAILED", error);
+    }
+  }
+
   async function authorizeSession(input = {}) {
     const sessionHash = hash(input.sessionHash, "INVALID_SESSION_HASH");
     const id = input.businessId == null ? null : businessId(input.businessId);
@@ -158,5 +179,5 @@ export function createConnectorStore({ getPool = netlifyPool } = {}) {
     }
   }
 
-  return { createInvitation, redeemInvitation, authorizeSession, revokeInvitation };
+  return { createInvitation, redeemInvitation, createSession, authorizeSession, revokeInvitation };
 }
