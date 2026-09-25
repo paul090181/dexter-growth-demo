@@ -21,8 +21,9 @@ export function createTenantProfileHandler({ store = createTenantStore() } = {})
     try { url = new URL(request.url); }
     catch { return json(400, { error: "Invalid request." }); }
 
-    const businessId = url.searchParams.get("business_id")?.trim() || "";
-    if (!businessId || [...url.searchParams.keys()].some((key) => key !== "business_id")) {
+    const businessValues = url.searchParams.getAll("business_id");
+    const businessId = businessValues.length === 1 ? businessValues[0].trim() : "";
+    if (!businessId || url.searchParams.size !== 1) {
       return json(400, { error: "Business is required." });
     }
 
