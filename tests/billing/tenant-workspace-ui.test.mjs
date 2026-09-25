@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   buildSquareBusinessPulse,
   clearWorkspaceCredentials,
+  createOnboardingTracker,
   createTenantWorkspaceController,
   readWorkspaceCredentials,
   saveWorkspaceCredentials,
@@ -157,6 +158,47 @@ test("unconnected tenant never calls inventory or sales endpoints", async () => 
   assert.equal(state.insights.pulse, null);
   assert.equal(calls.some((call) => call.url.includes("tenant-square-inventory")), false);
   assert.equal(calls.some((call) => call.url.includes("tenant-square-sales")), false);
+});
+
+test("workspace milestone tracker keeps tenant keys out of URLs and dedupes within the session", async () => {
+  const s = storage();
+  const calls = [];
+  const tracker = createOnboardingTracker({
+    storage: s,
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      assert.equal(url, "/.netlify/functions/onboarding-event");
+      assert.equal(url.includes(TENANT_KEY), false);
+      assert.equal(init.headers["X-GrowthWise-Tenant-Key"], TENANT_KEY);
+      assert.deepEqual(JSON.parse(init.body), {
+        business_id: BUSINESS_ID,
+        event_name: "workspace_opened",
+      });
+      return response({ ok: true, event_name: "workspace_opened", recorded: true });
+    },
+  });
+
+  assert.equal(await tracker("workspace_opened", {
+    businessId: BUSINESS_ID,
+    tenantKey: TENANT_KEY,
+  }), true);
+  assert.equal(await tracker("workspace_opened", {
+    businessId: BUSINESS_ID,
+    tenantKey: TENANT_KEY,
+  }), true);
+  assert.equal(calls.length, 1);
+});
+
+test("analytics failures do not block the tenant workspace", async () => {
+  const s = storage();
+  const tracker = createOnboardingTracker({
+    storage: s,
+    fetchImpl: async () => response({ error: "analytics unavailable" }, 503),
+  });
+  assert.equal(await tracker("workspace_opened", {
+    businessId: BUSINESS_ID,
+    tenantKey: TENANT_KEY,
+  }), false);
 });
 
 test("workspace sign-in validates tenant profile and subscription before persisting", async () => {
