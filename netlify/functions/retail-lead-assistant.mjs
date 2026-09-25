@@ -1,6 +1,7 @@
 import { authorizeTenantRequest } from "./_tenant-auth.mjs";
 import { createTenantStore } from "./_tenant-store.mjs";
 import { createBillingStore } from "./_billing-store.mjs";
+import { hasEntitlement, resolveSubscriptionEntitlements } from "./_entitlements.mjs";
 import { getDatabase } from "@netlify/database";
 
 const OPENAI_URL = "https://api.openai.com/v1/responses";
@@ -61,9 +62,8 @@ export async function authorizeRetailLeadRequest(request, {
   let subscription;
   try { subscription = await billingStore.readSubscription({ businessId }); }
   catch { return { ok: false, via: "unavailable", businessId: null, profile: null }; }
-  const paidAccess = subscription?.access_source === "stripe"
-    && new Set(["active", "trialing"]).has(subscription?.status);
-  if (!paidAccess) {
+  const entitlementState = resolveSubscriptionEntitlements(subscription);
+  if (!hasEntitlement(entitlementState, "lead_reply_drafting")) {
     return { ok: false, via: "locked", businessId: null, profile: null };
   }
 
