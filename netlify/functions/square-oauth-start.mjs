@@ -1,7 +1,7 @@
 import { authorizeTenantSquareRequest } from "./_tenant-square-auth.mjs";
-import { resolveGrowthWisePublicOrigin } from "./_public-origin.mjs";
 import { createSquareCrypto } from "./_square-crypto.mjs";
 import { squareCryptoVersion } from "./_square-preview-secrets.mjs";
+import { squareOAuthConfigForRequest } from "./_square-oauth-config.mjs";
 import {
   SQUARE_OAUTH_SCOPES,
   buildSquareAuthorizationUrl,
@@ -23,10 +23,8 @@ function defaultCrypto() {
   });
 }
 
-function config() {
-  const publicOrigin = resolveGrowthWisePublicOrigin((name) => env(name) || "");
-  if (!publicOrigin) throw new Error("INVALID_ORIGIN");
-  return configuredSquareOAuth({ env, publicOrigin });
+function config(requestUrl) {
+  return squareOAuthConfigForRequest(requestUrl, { env });
 }
 
 const recentStarts = new Map();
@@ -116,8 +114,8 @@ export function createSquareOAuthStartHandler(options = {}) {
     let settings;
     let requestUrl;
     try {
-      settings = getConfig();
       requestUrl = new URL(request.url);
+      settings = getConfig(requestUrl);
     } catch {
       return json(503, { error: "Square connection is not configured." });
     }
