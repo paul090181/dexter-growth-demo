@@ -184,7 +184,7 @@ test("Square OAuth callback stores only the transaction-bound tenant after merch
   });
 
   const response = await handler(
-    callbackRequest("state=v1.synthetic.synthetic&code=synthetic-code"),
+    callbackRequest("state=v1.synthetic.synthetic&code=synthetic-code&response_type=code"),
   );
 
   assert.equal(response.status, 303);
@@ -202,6 +202,20 @@ test("Square OAuth callback stores only the transaction-bound tenant after merch
   assert.equal(connect.payload.refresh_token, "synthetic-refresh");
   assert.deepEqual(connect.payload.scopes, SQUARE_OAUTH_SCOPES);
   assert.equal(calls.some((call) => call.kind === "finish"), false);
+});
+
+test("Square OAuth callback rejects incomplete success parameters", async () => {
+  const handler = createSquareOAuthCallbackHandler({
+    config: () => settings(),
+    crypto: { transactionKey: () => transactionKey },
+    store: { claimTransaction: async () => { throw new Error("must not claim"); } },
+    logger: { warn() {} },
+  });
+
+  const response = await handler(
+    callbackRequest("state=v1.synthetic.synthetic&code=synthetic-code"),
+  );
+  assert.equal(response.status, 400);
 });
 
 test("Square OAuth callback fails closed when required scopes are missing", async () => {
@@ -240,7 +254,7 @@ test("Square OAuth callback fails closed when required scopes are missing", asyn
   });
 
   const response = await handler(
-    callbackRequest("state=v1.synthetic.synthetic&code=synthetic-code"),
+    callbackRequest("state=v1.synthetic.synthetic&code=synthetic-code&response_type=code"),
   );
   assert.equal(response.status, 303);
   assert.equal(response.headers.get("location"), `${origin}/app.html?square=attention`);
@@ -285,7 +299,7 @@ test("Square OAuth callback rejects replayed or environment-mismatched transacti
       logger: { warn() {} },
     });
     const response = await handler(
-      callbackRequest("state=v1.synthetic.synthetic&code=synthetic-code"),
+      callbackRequest("state=v1.synthetic.synthetic&code=synthetic-code&response_type=code"),
     );
     assert.equal(response.status, 400);
   }
