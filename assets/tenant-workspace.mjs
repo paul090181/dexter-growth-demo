@@ -5,6 +5,8 @@ const PLAN_CHANGE_ENDPOINT = "/.netlify/functions/stripe-plan-change";
 const LEAD_ENDPOINT = "/.netlify/functions/retail-lead-assistant";
 const SQUARE_CONNECTION_ENDPOINT = "/.netlify/functions/square-connection";
 const SQUARE_OAUTH_START_ENDPOINT = "/.netlify/functions/square-oauth-start";
+const SQUARE_INVENTORY_ENDPOINT = "/.netlify/functions/tenant-square-inventory";
+const SQUARE_SALES_ENDPOINT = "/.netlify/functions/tenant-square-sales";
 
 const FEATURE_LABELS = Object.freeze([
   ["ai_business_assistant", "AI business assistant"],
@@ -41,6 +43,74 @@ function authHeaders(tenantKey) {
   return { "X-GrowthWise-Tenant-Key": tenantKey };
 }
 
+function money(value) {
+  const amount = Number(value);
+  return Number.isFinite(amount)
+    ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount)
+    : "$0.00";
+}
+
+export function buildSquareBusinessPulse(inventory = {}, sales = {}) {
+  const inventorySummary = inventory?.summary || {};
+  const salesSummary = sales?.summary || {};
+  const products = Array.isArray(inventory?.products) ? inventory.products : [];
+  const topProducts = Array.isArray(sales?.top_products) ? sales.top_products : [];
+
+  const itemCount = Number(inventorySummary.item_count || 0);
+  const units = Number(inventorySummary.total_units_in_stock || 0);
+  const orders = Number(salesSummary.completed_order_count || 0);
+  const inventoryValue = Number(inventorySummary.inventory_value || 0);
+  const totalSales = Number(salesSummary.total_collected || 0);
+  const averageOrder = Number(salesSummary.average_order || 0);
+  const top = topProducts[0] || null;
+  const lowStock = products.filter((product) =>
+    product?.track_inventory === true
+    && Number(product?.quantity || 0) <= 2
+  );
+
+  const recommendations = [];
+  let headline = "Your next opportunity";
+  let primary = "Square is connected. GrowthWise will keep this snapshot focused on what deserves attention.";
+
+  if (itemCount === 0) {
+    headline = "Give GrowthWise products to work with";
+    primary = "Square is connected, but no active catalog items were found yet.";
+    recommendations.push("Add or import products in Square so GrowthWise can analyze inventory and merchandising.");
+  } else if (orders === 0) {
+    headline = "Turn connected inventory into your first measured campaign";
+    primary = `GrowthWise found ${itemCount} catalog item${itemCount === 1 ? "" : "s"}, but no completed orders in the last 30 days.`;
+    recommendations.push("Use one strong in-stock product in a promotion, then compare sales here after the campaign.");
+  } else if (top?.item_name) {
+    headline = `${top.item_name} is leading recent sales`;
+    primary = `${top.item_name} is currently your top product by collected sales in the last 30 days.`;
+    recommendations.push("Feature the current top seller in your next promotion while demand is visible.");
+  }
+
+  if (lowStock.length > 0) {
+    recommendations.push(
+      `${lowStock.length} tracked variation${lowStock.length === 1 ? " is" : "s are"} at 2 units or fewer; review restock before promoting them.`,
+    );
+  } else if (itemCount > 0) {
+    recommendations.push("No tracked low-stock variation is currently flagged at 2 units or fewer.");
+  }
+
+  if (orders > 0 && averageOrder > 0) {
+    recommendations.push(`Average completed order is ${money(averageOrder)}; use that as a baseline when evaluating promotions.`);
+  }
+
+  return {
+    metrics: {
+      sales: money(totalSales),
+      orders,
+      inventoryValue: money(inventoryValue),
+      units,
+    },
+    headline,
+    primary,
+    recommendations: recommendations.slice(0, 3),
+  };
+}
+
 function statusLabel(status) {
   return ({
     active: "Active",
@@ -67,6 +137,7 @@ export function createTenantWorkspaceController({
     profile: null,
     subscription: null,
     square: { enabled: false, loading: false, error: "", status: null },
+    insights: { enabled: false, loading: false, error: "", inventory: null, sales: null, pulse: null },
     lead: { loading: false, error: "", result: null },
   };
 
@@ -100,6 +171,60 @@ export function createTenantWorkspaceController({
     }
   }
 
+  async function readSquareInsights({ businessId, tenantKey, subscription, square }) {
+    if (subscription?.feature_access?.inventory_connection !== true
+      || square?.status?.state !== "Connected") {
+      return {
+        enabled: subscription?.feature_access?.inventory_connection === true,
+        loading: false,
+        error: "",
+        inventory: null,
+        sales: null,
+        pulse: null,
+      };
+    }
+
+    try {
+      const [inventoryResponse, salesResponse] = await Promise.all([
+        fetchImpl(
+          `${SQUARE_INVENTORY_ENDPOINT}?business_id=${encodeURIComponent(businessId)}`,
+          { method: "GET", headers: authHeaders(tenantKey), cache: "no-store" },
+        ),
+        fetchImpl(
+          `${SQUARE_SALES_ENDPOINT}?business_id=${encodeURIComponent(businessId)}&days=30`,
+          { method: "GET", headers: authHeaders(tenantKey), cache: "no-store" },
+        ),
+      ]);
+      const [inventory, sales] = await Promise.all([
+        inventoryResponse.json().catch(() => ({})),
+        salesResponse.json().catch(() => ({})),
+      ]);
+      if (!inventoryResponse.ok || inventory?.ok !== true || inventory.business_id !== businessId) {
+        throw new Error(inventory?.error || "Inventory insight is temporarily unavailable.");
+      }
+      if (!salesResponse.ok || sales?.ok !== true || sales.business_id !== businessId) {
+        throw new Error(sales?.error || "Sales insight is temporarily unavailable.");
+      }
+      return {
+        enabled: true,
+        loading: false,
+        error: "",
+        inventory,
+        sales,
+        pulse: buildSquareBusinessPulse(inventory, sales),
+      };
+    } catch (error) {
+      return {
+        enabled: true,
+        loading: false,
+        error: error?.message || "Business pulse is temporarily unavailable.",
+        inventory: null,
+        sales: null,
+        pulse: null,
+      };
+    }
+  }
+
   async function authenticate({ businessId, tenantKey, persist = true }) {
     const id = String(businessId || "").trim();
     const key = String(tenantKey || "").trim();
@@ -129,6 +254,13 @@ export function createTenantWorkspaceController({
         subscription,
       });
 
+      const insights = await readSquareInsights({
+        businessId: id,
+        tenantKey: key,
+        subscription,
+        square,
+      });
+
       if (persist) saveWorkspaceCredentials({ businessId: id, tenantKey: key }, storage);
       return publish({
         loading: false,
@@ -137,6 +269,7 @@ export function createTenantWorkspaceController({
         profile,
         subscription,
         square,
+        insights,
       });
     } catch (error) {
       clearWorkspaceCredentials(storage);
@@ -147,6 +280,7 @@ export function createTenantWorkspaceController({
         profile: null,
         subscription: null,
         square: { enabled: false, loading: false, error: "", status: null },
+        insights: { enabled: false, loading: false, error: "", inventory: null, sales: null, pulse: null },
       });
     }
   }
@@ -265,6 +399,30 @@ export function createTenantWorkspaceController({
     }
   }
 
+  async function refreshSquareInsights() {
+    const { businessId, tenantKey } = readWorkspaceCredentials(storage);
+    if (!state.signedIn || !businessId || !tenantKey || state.square?.status?.state !== "Connected") {
+      return false;
+    }
+
+    publish({
+      insights: {
+        ...state.insights,
+        enabled: true,
+        loading: true,
+        error: "",
+      },
+    });
+    const insights = await readSquareInsights({
+      businessId,
+      tenantKey,
+      subscription: state.subscription,
+      square: state.square,
+    });
+    publish({ insights });
+    return Boolean(insights.pulse);
+  }
+
   async function draftLead({ source, customerName, message }) {
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
     const text = String(message || "").trim();
@@ -316,6 +474,7 @@ export function createTenantWorkspaceController({
       profile: null,
       subscription: null,
       square: { enabled: false, loading: false, error: "", status: null },
+      insights: { enabled: false, loading: false, error: "", inventory: null, sales: null, pulse: null },
       lead: { loading: false, error: "", result: null },
     });
   }
@@ -326,6 +485,7 @@ export function createTenantWorkspaceController({
     openBilling,
     changePlan,
     connectSquare,
+    refreshSquareInsights,
     draftLead,
     signOut,
     getState: () => structuredClone(state),
@@ -355,6 +515,19 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const squareDetail = documentImpl.getElementById("workspace-square-detail");
   const squareError = documentImpl.getElementById("workspace-square-error");
   const squareConnect = documentImpl.getElementById("workspace-square-connect");
+  const onboardingSummary = documentImpl.getElementById("workspace-onboarding-summary");
+  const onboardingList = documentImpl.getElementById("workspace-onboarding-list");
+  const pulseCard = documentImpl.getElementById("workspace-pulse-card");
+  const pulseError = documentImpl.getElementById("workspace-pulse-error");
+  const pulseLoading = documentImpl.getElementById("workspace-pulse-loading");
+  const pulseContent = documentImpl.getElementById("workspace-pulse-content");
+  const pulseSales = documentImpl.getElementById("workspace-pulse-sales");
+  const pulseOrders = documentImpl.getElementById("workspace-pulse-orders");
+  const pulseInventoryValue = documentImpl.getElementById("workspace-pulse-inventory-value");
+  const pulseUnits = documentImpl.getElementById("workspace-pulse-units");
+  const pulseHeadline = documentImpl.getElementById("workspace-pulse-headline");
+  const pulsePrimary = documentImpl.getElementById("workspace-pulse-primary");
+  const pulseRecommendations = documentImpl.getElementById("workspace-pulse-recommendations");
   const leadCard = documentImpl.getElementById("workspace-lead-card");
   const leadForm = documentImpl.getElementById("workspace-lead-form");
   const leadButton = documentImpl.getElementById("workspace-lead-submit");
@@ -434,6 +607,57 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
         : connectionState === "Needs Attention"
           ? "Reconnect Square"
           : "Connect Square";
+    }
+
+    const squareEligible = featureAccess.inventory_connection === true;
+    const squareConnected = view.square?.status?.state === "Connected";
+    const pulseReady = Boolean(view.insights?.pulse);
+    const setupSteps = [
+      ["Workspace ready", true, "Done"],
+      ["Plan active", accessGranted, accessGranted ? "Done" : "Next"],
+      ...(squareEligible
+        ? [
+            ["Square connected", squareConnected, squareConnected ? "Done" : "Next"],
+            ["Business pulse ready", pulseReady, pulseReady ? "Done" : "Next"],
+          ]
+        : [["Square connection", false, "Growth+"]]),
+    ];
+    const completedSteps = setupSteps.filter(([, done]) => done).length;
+    onboardingSummary.textContent = `${completedSteps} of ${setupSteps.length} setup steps complete. ${pulseReady ? "Your workspace is already turning connected data into decisions." : "Finish the next step to unlock more value."}`;
+    onboardingList.replaceChildren();
+    setupSteps.forEach(([label, done, tag], index) => {
+      const item = documentImpl.createElement("div");
+      const isNext = !done && setupSteps.slice(0, index).every(([, previousDone]) => previousDone);
+      item.className = `progress-item ${done ? "done" : isNext ? "next" : ""}`;
+      const name = documentImpl.createElement("strong");
+      name.textContent = label;
+      const stateLabel = documentImpl.createElement("span");
+      stateLabel.textContent = tag;
+      item.append(name, stateLabel);
+      onboardingList.append(item);
+    });
+
+    pulseCard.hidden = !squareConnected;
+    if (squareConnected) {
+      pulseLoading.hidden = view.insights?.loading !== true;
+      pulseError.hidden = !view.insights?.error;
+      pulseError.textContent = view.insights?.error || "";
+      pulseContent.hidden = !view.insights?.pulse || view.insights?.loading === true;
+      const pulse = view.insights?.pulse;
+      if (pulse) {
+        pulseSales.textContent = pulse.metrics.sales;
+        pulseOrders.textContent = String(pulse.metrics.orders);
+        pulseInventoryValue.textContent = pulse.metrics.inventoryValue;
+        pulseUnits.textContent = String(pulse.metrics.units);
+        pulseHeadline.textContent = pulse.headline;
+        pulsePrimary.textContent = pulse.primary;
+        pulseRecommendations.replaceChildren();
+        for (const recommendation of pulse.recommendations) {
+          const item = documentImpl.createElement("li");
+          item.textContent = recommendation;
+          pulseRecommendations.append(item);
+        }
+      }
     }
 
     leadCard.hidden = !accessGranted;
