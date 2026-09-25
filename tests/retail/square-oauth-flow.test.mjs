@@ -48,7 +48,6 @@ test("Square OAuth start is tenant-authenticated and persists a server-bound tra
       calls.push({ kind: "auth", input });
       return { ok: true, businessId: input.businessId };
     },
-    tenantStore: {},
     crypto: {
       createState: () => ({
         state: "v1.synthetic-state.synthetic-tag",
@@ -88,7 +87,6 @@ test("Square OAuth start fails closed for wrong tenant or cross-origin request",
   const denied = createSquareOAuthStartHandler({
     config: () => settings(),
     authorize: async () => ({ ok: false, businessId: null }),
-    tenantStore: {},
     rateLimiter: { consume: () => true },
   });
   assert.equal((await denied(startRequest())).status, 401);
@@ -96,7 +94,6 @@ test("Square OAuth start fails closed for wrong tenant or cross-origin request",
   const crossOrigin = createSquareOAuthStartHandler({
     config: () => settings(),
     authorize: async () => ({ ok: true, businessId: "tenant-a" }),
-    tenantStore: {},
     rateLimiter: { consume: () => true },
   });
   assert.equal(
@@ -105,11 +102,30 @@ test("Square OAuth start fails closed for wrong tenant or cross-origin request",
   );
 });
 
+test("Square OAuth start enforces the inventory connection entitlement", async () => {
+  const locked = createSquareOAuthStartHandler({
+    config: () => settings(),
+    authorize: async () => ({ ok: false, via: "locked", businessId: null }),
+    rateLimiter: { consume: () => true },
+  });
+  const lockedResponse = await locked(startRequest());
+  assert.equal(lockedResponse.status, 403);
+  assert.deepEqual(await lockedResponse.json(), {
+    error: "Inventory connection is not included in this plan.",
+  });
+
+  const unavailable = createSquareOAuthStartHandler({
+    config: () => settings(),
+    authorize: async () => ({ ok: false, via: "unavailable", businessId: null }),
+    rateLimiter: { consume: () => true },
+  });
+  assert.equal((await unavailable(startRequest())).status, 503);
+});
+
 test("Square OAuth start forbids production authorization on a deploy preview", async () => {
   const handler = createSquareOAuthStartHandler({
     config: () => settings("production"),
     authorize: async () => ({ ok: true, businessId: "tenant-a" }),
-    tenantStore: {},
     rateLimiter: { consume: () => true },
   });
   const response = await handler(startRequest());
