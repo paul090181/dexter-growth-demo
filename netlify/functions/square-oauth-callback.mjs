@@ -67,7 +67,12 @@ function parseCallback(request) {
     throw new Error("INVALID_CALLBACK");
   }
   const keys = new Set(entries.map(([key]) => key));
-  const success = keys.size === 2 && keys.has("state") && keys.has("code");
+  const successAllowed = new Set(["state", "code", "response_type"]);
+  const success = keys.has("state")
+    && keys.has("code")
+    && url.searchParams.get("response_type") === "code"
+    && [...keys].every((key) => successAllowed.has(key))
+    && keys.size === successAllowed.size;
   const denialAllowed = new Set(["state", "error", "error_description"]);
   const denial = keys.has("state")
     && url.searchParams.get("error") === "access_denied"
