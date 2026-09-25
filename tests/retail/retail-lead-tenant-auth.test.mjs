@@ -26,10 +26,21 @@ function tenantStore() {
   };
 }
 
+
+function billingStore(status = "active") {
+  return {
+    async readSubscription({ businessId }) {
+      return businessId === BUSINESS_ID
+        ? { business_id: businessId, access_source: "stripe", status }
+        : null;
+    },
+  };
+}
+
 test("retail lead assistant accepts the exact tenant key for the exact business", async () => {
   const result = await authorizeRetailLeadRequest(
     request({ "x-growthwise-tenant-key": TENANT_KEY }),
-    { businessId: BUSINESS_ID, tenantStore: tenantStore() },
+    { businessId: BUSINESS_ID, tenantStore: tenantStore(), billingStore: billingStore() },
   );
 
   assert.equal(result.ok, true);
@@ -41,10 +52,26 @@ test("retail lead assistant accepts the exact tenant key for the exact business"
 test("retail lead assistant rejects a tenant key for another business", async () => {
   const result = await authorizeRetailLeadRequest(
     request({ "x-growthwise-tenant-key": TENANT_KEY }),
-    { businessId: "another-business-abcdef123456", tenantStore: tenantStore() },
+    { businessId: "another-business-abcdef123456", tenantStore: tenantStore(), billingStore: billingStore() },
   );
 
   assert.deepEqual(result, { ok: false, via: "none", businessId: null, profile: null });
+});
+
+
+
+test("retail lead assistant rejects valid tenant credentials when paid access is inactive", async () => {
+  for (const status of ["past_due", "unpaid", "canceled", "incomplete"]) {
+    const result = await authorizeRetailLeadRequest(
+      request({ "x-growthwise-tenant-key": TENANT_KEY }),
+      {
+        businessId: BUSINESS_ID,
+        tenantStore: tenantStore(),
+        billingStore: billingStore(status),
+      },
+    );
+    assert.deepEqual(result, { ok: false, via: "locked", businessId: null, profile: null });
+  }
 });
 
 test("retail lead assistant preserves operator/admin access for the Dexter pilot", async () => {
@@ -59,7 +86,7 @@ test("retail lead assistant preserves operator/admin access for the Dexter pilot
 test("retail lead assistant does not accept arbitrary headers as tenant auth", async () => {
   const result = await authorizeRetailLeadRequest(
     request({ "x-growthwise-key": "wrong", "x-growthwise-tenant-key": "wrong" }),
-    { businessId: BUSINESS_ID, adminKey: "admin-test", tenantStore: tenantStore() },
+    { businessId: BUSINESS_ID, adminKey: "admin-test", tenantStore: tenantStore(), billingStore: billingStore("canceled") },
   );
 
   assert.equal(result.ok, false);
