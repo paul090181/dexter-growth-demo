@@ -57,13 +57,17 @@ test("tenant profile returns only safe authenticated profile fields", async () =
   assert.equal(JSON.stringify(body).includes(TENANT_KEY), false);
 });
 
-test("tenant profile rejects extra query selectors", async () => {
+test("tenant profile rejects extra or duplicate tenant selectors", async () => {
   const handler = createTenantProfileHandler({ store: store() });
-  const response = await handler(new Request(
+  for (const url of [
     `${URL}?business_id=${BUSINESS_ID}&other=dexters-hats`,
-    { headers: { "x-growthwise-tenant-key": TENANT_KEY } },
-  ));
-  assert.equal(response.status, 400);
+    `${URL}?business_id=${BUSINESS_ID}&business_id=dexters-hats`,
+  ]) {
+    const response = await handler(new Request(url, {
+      headers: { "x-growthwise-tenant-key": TENANT_KEY },
+    }));
+    assert.equal(response.status, 400);
+  }
 });
 
 test("tenant profile allows only GET", async () => {
