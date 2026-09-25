@@ -149,6 +149,145 @@ test("workspace opens a Stripe-hosted plan change confirmation without exposing 
   assert.equal(calls.every((call) => !call.url.includes(TENANT_KEY)), true);
 });
 
+test("inventory-enabled tenant reads only its own Square connection and starts OAuth with tenant auth", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  const calls = [];
+  let navigated = "";
+
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    navigate: (url) => { navigated = url; },
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          business_name: "North Star Books",
+        });
+      }
+
+      if (url.startsWith("/.netlify/functions/subscription-status?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          access_source: "stripe",
+          plan_key: "growth_monthly",
+          status: "active",
+          access_granted: true,
+          feature_access: { inventory_connection: true },
+        });
+      }
+
+      if (url.startsWith("/.netlify/functions/square-connection?")) {
+        assert.equal(init.headers["X-GrowthWise-Tenant-Key"], TENANT_KEY);
+        assert.equal(url.includes(TENANT_KEY), false);
+        return response({
+          business_id: BUSINESS_ID,
+          state: "Not Connected",
+          account: null,
+          action: "Connect Square.",
+        });
+      }
+
+      assert.equal(url, "/.netlify/functions/square-oauth-start");
+      assert.equal(init.headers["X-GrowthWise-Tenant-Key"], TENANT_KEY);
+      assert.equal(Object.hasOwn(init.headers, "X-GrowthWise-Key"), false);
+      assert.deepEqual(JSON.parse(init.body), { business_id: BUSINESS_ID });
+      return response({
+        authorization_url: "https://connect.squareupsandbox.com/oauth2/authorize?client_id=test&state=safe",
+      });
+    },
+  });
+
+  const restored = await controller.restore();
+  assert.equal(restored.square.enabled, true);
+  assert.equal(restored.square.status.state, "Not Connected");
+
+  assert.equal(await controller.connectSquare(), true);
+  assert.equal(
+    navigated,
+    "https://connect.squareupsandbox.com/oauth2/authorize?client_id=test&state=safe",
+  );
+  assert.equal(calls.every((call) => !call.url.includes(TENANT_KEY)), true);
+});
+
+test("workspace does not call Square when inventory connection is not entitled", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  let squareCalls = 0;
+
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    fetchImpl: async (url) => {
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          business_name: "North Star Books",
+        });
+      }
+      if (url.startsWith("/.netlify/functions/subscription-status?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          plan_key: "starter_monthly",
+          status: "active",
+          access_granted: true,
+          feature_access: { inventory_connection: false },
+        });
+      }
+      squareCalls += 1;
+      return response({});
+    },
+  });
+
+  const restored = await controller.restore();
+  assert.equal(restored.square.enabled, false);
+  assert.equal(await controller.connectSquare(), false);
+  assert.equal(squareCalls, 0);
+});
+
+test("workspace rejects a non-Square OAuth destination", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  let navigated = "";
+
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    navigate: (url) => { navigated = url; },
+    fetchImpl: async (url) => {
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          business_name: "North Star Books",
+        });
+      }
+      if (url.startsWith("/.netlify/functions/subscription-status?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          plan_key: "growth_monthly",
+          status: "active",
+          access_granted: true,
+          feature_access: { inventory_connection: true },
+        });
+      }
+      if (url.startsWith("/.netlify/functions/square-connection?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          state: "Not Connected",
+        });
+      }
+      return response({
+        authorization_url: "https://evil.example/oauth2/authorize",
+      });
+    },
+  });
+
+  await controller.restore();
+  assert.equal(await controller.connectSquare(), false);
+  assert.equal(navigated, "");
+  assert.match(controller.getState().square.error, /invalid destination/i);
+});
+
 test("active tenant can draft a lead reply with tenant auth and no admin key", async () => {
   const s = storage();
   saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
@@ -229,10 +368,14 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /Workspace ID/);
   assert.match(html, /id="workspace-feature-grid"/);
   assert.match(html, /id="workspace-pro-trial"/);
+  assert.match(html, /id="workspace-square-card"/);
+  assert.match(html, /id="workspace-square-connect"/);
   assert.match(html, /data-plan-change="starter_monthly"/);
   assert.match(html, /data-plan-change="growth_monthly"/);
   assert.match(html, /data-plan-change="pro_monthly"/);
   assert.match(js, /stripe-plan-change/);
+  assert.match(js, /square-connection/);
+  assert.match(js, /square-oauth-start/);
   assert.match(js, /feature_access/);
   assert.match(js, /Pro Experience active/);
   assert.doesNotMatch(html + js, /dexters-hats|Dexter's Hats|growthwise_admin_key|X-GrowthWise-Key/);
