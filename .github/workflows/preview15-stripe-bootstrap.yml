@@ -1,0 +1,48 @@
+name: Preview 15 Stripe bootstrap
+
+on:
+  pull_request:
+    branches:
+      - platform-v1
+
+permissions:
+  contents: read
+
+jobs:
+  preview15-stripe-bootstrap:
+    if: github.event.pull_request.number == 15
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Align Preview 15 Stripe test sandbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://deploy-preview-15--euphonious-beijinho-db4b4d.netlify.app/.netlify/functions/preview15-stripe-bootstrap"
+          for attempt in $(seq 1 30); do
+            body_file="$(mktemp)"
+            http_code="$(curl --silent --show-error --max-time 20 --output "$body_file" --write-out "%{http_code}" "$url" 2>/dev/null || printf "000")"
+            body="$(cat "$body_file")"
+            rm -f "$body_file"
+            if [ "$http_code" = "200" ] && [ -n "$body" ]; then
+              echo "BOOTSTRAP_JSON=$body"
+              node -e '
+                const value = JSON.parse(process.argv[1]);
+                if (
+                  value.ok === true &&
+                  value.livemode === false &&
+                  typeof value.starter_price_id === "string" &&
+                  typeof value.growth_price_id === "string" &&
+                  typeof value.pro_price_id === "string" &&
+                  typeof value.portal_configuration_id === "string" &&
+                  value.webhook?.url?.includes("deploy-preview-15--")
+                ) process.exit(0);
+                process.exit(1);
+              ' "$body"
+              exit 0
+            fi
+            echo "Bootstrap not ready yet (attempt $attempt/30, HTTP $http_code)."
+            sleep 5
+          done
+          echo "Preview 15 Stripe bootstrap failed or timed out."
+          exit 1
