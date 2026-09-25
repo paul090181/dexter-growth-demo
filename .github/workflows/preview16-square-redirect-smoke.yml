@@ -1,0 +1,60 @@
+name: Preview 16 Square redirect smoke
+
+on:
+  pull_request:
+    branches:
+      - platform-v1
+
+permissions:
+  contents: read
+
+jobs:
+  square-redirect-smoke:
+    if: github.event.pull_request.number == 16
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Verify live Preview redirects to Square sandbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://deploy-preview-16--euphonious-beijinho-db4b4d.netlify.app/.netlify/functions/preview16-square-acceptance?browser=start"
+          for attempt in $(seq 1 40); do
+            headers="$(mktemp)"
+            body="$(mktemp)"
+            code="$(curl --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out "%{http_code}" --max-redirs 0 "$url" || true)"
+            if [ "$code" = "303" ] || [ "$code" = "302" ]; then
+              location="$(awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/^[^:]*:[[:space:]]*/,""); sub(/\r$/,""); print; exit}' "$headers")"
+              node - "$location" <<'NODE'
+const value = process.argv[2] || "";
+const url = new URL(value);
+const required = ["client_id","scope","session","state"];
+if (url.origin !== "https://connect.squareupsandbox.com") process.exit(10);
+if (url.pathname !== "/oauth2/authorize") process.exit(11);
+if (url.hash || url.username || url.password) process.exit(12);
+for (const key of required) {
+  if (url.searchParams.getAll(key).length !== 1) process.exit(13);
+}
+if (url.searchParams.get("session") !== "false") process.exit(14);
+console.log(JSON.stringify({
+  ok: true,
+  status: "redirect",
+  origin: url.origin,
+  path: url.pathname,
+  required_parameters_present: true,
+  oauth_state_logged: false
+}));
+NODE
+              rm -f "$headers" "$body"
+              exit 0
+            fi
+            if [ "$code" = "500" ] || [ "$code" = "403" ] || [ "$code" = "404" ]; then
+              echo "Preview responded HTTP $code on attempt $attempt; retrying while deploy/config settles."
+            else
+              echo "Preview not ready on attempt $attempt (HTTP $code)."
+            fi
+            rm -f "$headers" "$body"
+            sleep 5
+          done
+          echo "Preview 16 never produced a valid Square sandbox redirect."
+          exit 1
