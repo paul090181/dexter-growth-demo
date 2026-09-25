@@ -23,7 +23,7 @@ test("Square authorization URL uses the sandbox host and least-privilege read sc
   assert.equal(url.pathname, "/oauth2/authorize");
   assert.equal(url.searchParams.get("client_id"), "sandbox-app-id");
   assert.equal(url.searchParams.get("scope"), SQUARE_OAUTH_SCOPES.join(" "));
-  assert.equal(url.searchParams.get("session"), "false");
+  assert.equal(url.searchParams.has("session"), false);
   assert.equal(url.searchParams.get("state"), state);
   assert.deepEqual(SQUARE_OAUTH_SCOPES, [
     "MERCHANT_PROFILE_READ",
@@ -31,6 +31,15 @@ test("Square authorization URL uses the sandbox host and least-privilege read sc
     "INVENTORY_READ",
     "ORDERS_READ",
   ]);
+});
+
+test("Square production authorization forces a fresh seller sign-in", () => {
+  const url = new URL(buildSquareAuthorizationUrl({
+    applicationId: "production-app-id",
+    environment: "production",
+    state: "v1.synthetic-state.synthetic-tag",
+  }));
+  assert.equal(url.searchParams.get("session"), "false");
 });
 
 test("Square authorization URL uses the production host only when explicitly configured", () => {
