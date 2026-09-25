@@ -77,5 +77,23 @@ export function createMarketingAttributionStore({ getPool = netlifyPool } = {}) 
     }
   }
 
-  return { recordAcquisition, readAcquisition };
+  async function listCampaignAcquisitions() {
+    const sql = `
+      SELECT a.business_id, a.campaign_code, a.acquisition_plan_key,
+             a.source_channel, a.campaign_name, a.attributed_at,
+             s.plan_key AS current_plan_key, s.status AS subscription_status,
+             s.access_source
+        FROM growthwise_acquisition_attribution a
+        LEFT JOIN growthwise_subscriptions s ON s.business_id = a.business_id
+       ORDER BY a.attributed_at ASC, a.business_id ASC
+    `;
+    try {
+      const result = await (await getPool()).query(sql);
+      return result.rows;
+    } catch (error) {
+      throw new Error("ACQUISITION_ATTRIBUTION_LIST_FAILED", { cause: error });
+    }
+  }
+
+  return { recordAcquisition, readAcquisition, listCampaignAcquisitions };
 }
