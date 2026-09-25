@@ -1,6 +1,7 @@
 const PROFILE_ENDPOINT = "/.netlify/functions/tenant-profile";
 const STATUS_ENDPOINT = "/.netlify/functions/subscription-status";
 const PORTAL_ENDPOINT = "/.netlify/functions/stripe-customer-portal";
+const PLAN_CHANGE_ENDPOINT = "/.netlify/functions/stripe-plan-change";
 const LEAD_ENDPOINT = "/.netlify/functions/retail-lead-assistant";
 
 const FEATURE_LABELS = Object.freeze([
@@ -139,6 +140,33 @@ export function createTenantWorkspaceController({
     }
   }
 
+  async function changePlan(targetPlanKey) {
+    const { businessId, tenantKey } = readWorkspaceCredentials(storage);
+    const target = String(targetPlanKey || "").trim();
+    if (!businessId || !tenantKey || !["starter_monthly","growth_monthly","pro_monthly"].includes(target)) return false;
+    publish({ loading: true, error: "" });
+    try {
+      const response = await fetchImpl(PLAN_CHANGE_ENDPOINT, {
+        method: "POST",
+        headers: { ...authHeaders(tenantKey), "Content-Type": "application/json" },
+        body: JSON.stringify({ business_id: businessId, plan_key: target }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || typeof body.portal_url !== "string") {
+        throw new Error(body.error || "Plan change is temporarily unavailable.");
+      }
+      const url = new URL(body.portal_url);
+      if (url.protocol !== "https:" || url.hostname !== "billing.stripe.com" || url.username || url.password || url.hash) {
+        throw new Error("Plan change returned an invalid destination.");
+      }
+      navigate(url.toString());
+      return true;
+    } catch (error) {
+      publish({ loading: false, error: error?.message || "Plan change is temporarily unavailable." });
+      return false;
+    }
+  }
+
   async function draftLead({ source, customerName, message }) {
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
     const text = String(message || "").trim();
@@ -197,6 +225,7 @@ export function createTenantWorkspaceController({
     authenticate,
     restore,
     openBilling,
+    changePlan,
     draftLead,
     signOut,
     getState: () => structuredClone(state),
@@ -217,6 +246,8 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const plan = documentImpl.getElementById("workspace-plan");
   const proTrial = documentImpl.getElementById("workspace-pro-trial");
   const featureGrid = documentImpl.getElementById("workspace-feature-grid");
+  const planControls = documentImpl.getElementById("workspace-plan-controls");
+  const planButtons = [...documentImpl.querySelectorAll("[data-plan-change]")];
   const manage = documentImpl.getElementById("workspace-manage-billing");
   const signOut = documentImpl.getElementById("workspace-signout");
   const leadCard = documentImpl.getElementById("workspace-lead-card");
@@ -266,6 +297,17 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
       featureGrid.append(item);
     }
 
+    const currentPlan = view.subscription?.plan_key || "";
+    const canChangePlan = view.subscription?.access_source === "stripe"
+      && ["starter_monthly","growth_monthly","pro_monthly"].includes(currentPlan)
+      && view.subscription?.access_granted === true;
+    planControls.hidden = !canChangePlan;
+    for (const button of planButtons) {
+      const target = button.dataset.planChange || "";
+      button.hidden = target === currentPlan;
+      button.disabled = view.loading;
+    }
+
     manage.hidden = view.subscription?.access_source !== "stripe";
     manage.disabled = view.loading;
     const accessGranted = view.subscription?.access_granted === true;
@@ -298,6 +340,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     });
   });
   manage?.addEventListener("click", () => controller.openBilling());
+  planButtons.forEach((button) => button.addEventListener("click", () => controller.changePlan(button.dataset.planChange)));
   leadForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = new FormData(leadForm);
