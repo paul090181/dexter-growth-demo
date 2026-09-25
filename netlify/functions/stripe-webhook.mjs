@@ -4,6 +4,7 @@ import { createBillingStore } from "./_billing-store.mjs";
 import { createStripeClient } from "./_stripe-client.mjs";
 import { createMarketingAttributionStore } from "./_marketing-attribution-store.mjs";
 import { createStripeCheckoutAttributionResolver } from "./_stripe-attribution.mjs";
+import { stripePlanPricesFromEnvironment } from "./_stripe-plans.mjs";
 
 const MAX_WEBHOOK_BYTES = 256_000;
 
@@ -73,6 +74,7 @@ export default async function handler(request) {
     store: createBillingStore(),
     attributionStore: createMarketingAttributionStore(),
     resolveCheckoutAttribution: createStripeCheckoutAttributionResolver({ stripe }),
+    priceIds: stripePlanPricesFromEnvironment(),
   });
   return createStripeWebhookHandler({
     constructEvent: stripe.webhooks.constructEvent.bind(stripe.webhooks),
