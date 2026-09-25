@@ -135,12 +135,11 @@ export function createConnectorStore({ getPool = netlifyPool } = {}) {
       date(input.expiresAt, "INVALID_SESSION_EXPIRY"),
     ];
     try {
-      const result = await (await getPool()).query(INSERT_SESSION, values);
+      await (await getPool()).query(INSERT_SESSION, values);
       return {
         business_id: values[1],
         connectors: values[2],
         expires_at: values[3],
-        ...(result.rows[0] || {}),
       };
     } catch (error) {
       if (String(error?.message || "").startsWith("INVALID_")) throw error;
