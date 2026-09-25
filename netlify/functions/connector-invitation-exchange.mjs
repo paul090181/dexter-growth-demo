@@ -6,6 +6,15 @@ import { createConnectorStore } from "./_connector-store.mjs";
 
 function configuredOrigin() { return globalThis.Netlify?.env?.get("GROWTHWISE_PUBLIC_ORIGIN"); }
 
+const CLEAR_CONNECTOR_SESSION_COOKIE =
+  `${CONNECTOR_SESSION_COOKIE}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax`;
+
+function invalidInvitation() {
+  return connectorJson(401, { error: "Invitation is invalid or expired." }, {
+    "set-cookie": CLEAR_CONNECTOR_SESSION_COOKIE,
+  });
+}
+
 export function createConnectorInvitationExchangeHandler(options = {}) {
   const store = options.store;
   const publicOrigin = options.publicOrigin ?? configuredOrigin;
@@ -20,9 +29,9 @@ export function createConnectorInvitationExchangeHandler(options = {}) {
       return connectorJson(403, { error: "Request rejected." });
     }
     let body;
-    try { body = await readConnectorJson(request); } catch { return connectorJson(401, { error: "Invitation is invalid or expired." }); }
+    try { body = await readConnectorJson(request); } catch { return invalidInvitation(); }
     if (!exactKeys(body, ["invitation_token"]) || !validOpaqueToken(body.invitation_token, "invitation")) {
-      return connectorJson(401, { error: "Invitation is invalid or expired." });
+      return invalidInvitation();
     }
     const sessionToken = generateOpaqueToken("session");
     let session;
@@ -30,7 +39,7 @@ export function createConnectorInvitationExchangeHandler(options = {}) {
       session = await store.redeemInvitation({
         invitationHash: hashOpaqueToken(body.invitation_token), sessionHash: hashOpaqueToken(sessionToken), now: now(),
       });
-    } catch { return connectorJson(401, { error: "Invitation is invalid or expired." }); }
+    } catch { return invalidInvitation(); }
     return connectorJson(200, {
       business_id: session.business_id, expires_at: new Date(session.expires_at).toISOString(),
     }, {
