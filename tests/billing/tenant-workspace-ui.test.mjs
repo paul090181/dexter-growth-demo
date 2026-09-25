@@ -107,6 +107,48 @@ test("billing management uses server-linked Stripe portal only", async () => {
 
 
 
+
+
+test("workspace opens a Stripe-hosted plan change confirmation without exposing price IDs", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  let navigated = "";
+  const calls = [];
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    navigate: (url) => { navigated = url; },
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) return response({
+        business_id: BUSINESS_ID, business_name: "North Star Books",
+      });
+      if (url.startsWith("/.netlify/functions/subscription-status?")) return response({
+        business_id: BUSINESS_ID,
+        access_source: "stripe",
+        plan_key: "growth_monthly",
+        status: "active",
+        access_granted: true,
+      });
+      assert.equal(url, "/.netlify/functions/stripe-plan-change");
+      assert.equal(init.headers["X-GrowthWise-Tenant-Key"], TENANT_KEY);
+      assert.deepEqual(JSON.parse(init.body), {
+        business_id: BUSINESS_ID,
+        plan_key: "pro_monthly",
+      });
+      assert.doesNotMatch(init.body, /price_/);
+      return response({
+        portal_url: "https://billing.stripe.com/p/session/test_upgrade",
+        target_plan_key: "pro_monthly",
+      });
+    },
+  });
+
+  await controller.restore();
+  assert.equal(await controller.changePlan("pro_monthly"), true);
+  assert.equal(navigated, "https://billing.stripe.com/p/session/test_upgrade");
+  assert.equal(calls.every((call) => !call.url.includes(TENANT_KEY)), true);
+});
+
 test("active tenant can draft a lead reply with tenant auth and no admin key", async () => {
   const s = storage();
   saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
@@ -187,6 +229,10 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /Workspace ID/);
   assert.match(html, /id="workspace-feature-grid"/);
   assert.match(html, /id="workspace-pro-trial"/);
+  assert.match(html, /data-plan-change="starter_monthly"/);
+  assert.match(html, /data-plan-change="growth_monthly"/);
+  assert.match(html, /data-plan-change="pro_monthly"/);
+  assert.match(js, /stripe-plan-change/);
   assert.match(js, /feature_access/);
   assert.match(js, /Pro Experience active/);
   assert.doesNotMatch(html + js, /dexters-hats|Dexter's Hats|growthwise_admin_key|X-GrowthWise-Key/);
