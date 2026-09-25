@@ -1,6 +1,6 @@
-import { resolveGrowthWisePublicOrigin } from "./_public-origin.mjs";
 import { createSquareCrypto } from "./_square-crypto.mjs";
 import { squareCryptoVersion } from "./_square-preview-secrets.mjs";
+import { squareOAuthConfigForRequest } from "./_square-oauth-config.mjs";
 import {
   SQUARE_OAUTH_SCOPES,
   configuredSquareOAuth,
@@ -29,10 +29,8 @@ function defaultCrypto() {
   });
 }
 
-function config() {
-  const publicOrigin = resolveGrowthWisePublicOrigin((name) => env(name) || "");
-  if (!publicOrigin) throw new Error("INVALID_ORIGIN");
-  return configuredSquareOAuth({ env, publicOrigin });
+function config(requestUrl) {
+  return squareOAuthConfigForRequest(requestUrl, { env });
 }
 
 function plain(status) {
@@ -115,7 +113,7 @@ export function createSquareOAuthCallbackHandler(options = {}) {
     let crypto;
     let transactionKey;
     try {
-      settings = getConfig();
+      settings = getConfig(input.url);
       const canonical = new URL(settings.publicOrigin);
       if (canonical.protocol !== "https:"
         || canonical.origin !== settings.publicOrigin
