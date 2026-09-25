@@ -65,6 +65,27 @@ test("subscription events use subscription metadata as the tenant binding", asyn
   assert.equal(store.applied[0].advanceLifecycle, true);
 });
 
+test("subscription price is authoritative for plan changes when it maps to a configured plan", async () => {
+  const store = fakeStore();
+  const service = createBillingService({
+    store,
+    priceIds: {
+      founding_monthly: "price_founder",
+      starter_monthly: "price_starter",
+      growth_monthly: "price_growth",
+      pro_monthly: "price_pro",
+    },
+  });
+
+  await service.processEvent(subscriptionEvent("customer.subscription.updated", {
+    metadata: { business_id: "tenant-a", plan_key: "growth_monthly" },
+    items: { data: [{ price: { id: "price_pro" } }] },
+  }));
+
+  assert.equal(store.applied[0].planKey, "pro_monthly");
+  assert.equal(store.applied[0].stripePriceId, "price_pro");
+});
+
 test("subscription deletion always normalizes to canceled", async () => {
   const store = fakeStore();
   const service = createBillingService({ store });
