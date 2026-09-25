@@ -24,7 +24,7 @@ jobs:
             code="$(curl --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out "%{http_code}" --max-redirs 0 "$url" || true)"
             if [ "$code" = "303" ] || [ "$code" = "302" ]; then
               location="$(awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/^[^:]*:[[:space:]]*/,""); sub(/\r$/,""); print; exit}' "$headers")"
-              python -c 'import sys,urllib.parse as u; p=u.urlparse(sys.argv[1]); q=u.parse_qs(p.query); assert p.scheme=="https" and p.netloc=="connect.squareupsandbox.com" and p.path=="/oauth2/authorize"; assert all(len(q.get(k,[]))==1 for k in ("client_id","scope","session","state")); assert q["session"][0]=="false"; print("LIVE_SQUARE_REDIRECT_OK")' "$location"
+              python -c 'import sys,urllib.parse as u; p=u.urlparse(sys.argv[1]); q=u.parse_qs(p.query); assert p.scheme=="https" and p.netloc=="connect.squareupsandbox.com" and p.path=="/oauth2/authorize"; assert all(len(q.get(k,[]))==1 for k in ("client_id","scope","state")); assert "session" not in q; print("LIVE_SQUARE_REDIRECT_OK")' "$location"
               rm -f "$headers" "$body"
               exit 0
             fi
