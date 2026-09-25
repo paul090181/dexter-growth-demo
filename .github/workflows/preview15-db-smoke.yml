@@ -20,10 +20,13 @@ jobs:
           set -euo pipefail
           url="https://deploy-preview-15--euphonious-beijinho-db4b4d.netlify.app/.netlify/functions/preview15-database-smoke"
           for attempt in $(seq 1 30); do
-            body="$(curl --silent --show-error --fail --max-time 15 "$url" 2>/dev/null || true)"
+            body_file="$(mktemp)"
+            http_code="$(curl --silent --show-error --max-time 15 --output "$body_file" --write-out "%{http_code}" "$url" 2>/dev/null || printf "000")"
+            body="$(cat "$body_file")"
+            rm -f "$body_file"
             if [ -n "$body" ]; then
-              echo "Smoke response: $body"
-              if node -e '
+              echo "Smoke HTTP $http_code: $body"
+              if [ "$http_code" = "200" ] && node -e '
                 const value = JSON.parse(process.argv[1]);
                 if (
                   value.ok === true &&
