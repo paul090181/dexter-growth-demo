@@ -26,6 +26,7 @@ test("explicit Square crypto configuration wins", () => {
 test("deploy previews derive stable separated Square crypto keys", () => {
   const read = env({
     CONTEXT: "deploy-preview",
+    GROWTHWISE_SQUARE_OAUTH_ENVIRONMENT: "sandbox",
     GROWTHWISE_SQUARE_OAUTH_APPLICATION_SECRET: "fixture-root-material-123456",
   });
 
