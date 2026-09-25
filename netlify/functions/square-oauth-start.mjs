@@ -2,6 +2,7 @@ import { authorizeTenantSquareRequest } from "./_tenant-square-auth.mjs";
 import { createSquareCrypto } from "./_square-crypto.mjs";
 import { squareCryptoVersion } from "./_square-preview-secrets.mjs";
 import { squareOAuthConfigForRequest } from "./_square-oauth-config.mjs";
+import { squareOAuthConfigForRequest } from "./_square-oauth-config.mjs";
 import {
   SQUARE_OAUTH_SCOPES,
   buildSquareAuthorizationUrl,
