@@ -38,6 +38,26 @@ function sourceTypeFromLabel(source) {
   return "other";
 }
 
+export async function authorizeRetailLeadRequest(request, {
+  businessId,
+  adminKey = "",
+  tenantStore = createTenantStore(),
+} = {}) {
+  const suppliedAdmin = request?.headers?.get("x-growthwise-key") || "";
+  if (adminKey && suppliedAdmin === adminKey) {
+    return { ok: true, via: "admin", businessId, profile: null };
+  }
+  const tenantAuth = await authorizeTenantRequest(request, { businessId, store: tenantStore });
+  if (!tenantAuth.ok) return { ok: false, via: "none", businessId: null, profile: null };
+  let profile;
+  try { profile = await tenantStore.readTenantProfile({ businessId }); }
+  catch { return { ok: false, via: "unavailable", businessId: null, profile: null }; }
+  if (!profile || profile.business_id !== businessId) {
+    return { ok: false, via: "none", businessId: null, profile: null };
+  }
+  return { ok: true, via: "tenant", businessId, profile };
+}
+
 function asksPrice(message) {
   return hasAny(message, [/how\s+much/,/price/,/cost/,/what.*\$/]);
 }
@@ -73,24 +93,23 @@ export default async (request) => {
   const db = getDatabase();
   const url = new URL(request.url);
   const requestedBusinessId = clean(url.searchParams.get("business_id"), 120);
-  const adminAuthorized = Boolean(adminKey) && (request.headers.get("x-growthwise-key") || "") === adminKey;
-  const businessId = requestedBusinessId || (adminAuthorized ? "dexters-hats" : "");
+  const hasAdminKey = Boolean(adminKey) && (request.headers.get("x-growthwise-key") || "") === adminKey;
+  const businessId = requestedBusinessId || (hasAdminKey ? "dexters-hats" : "");
   if (!businessId) return json(400, { error: "Business is required." });
 
-  const tenantStore = createTenantStore();
-  let tenantProfile = null;
-  if (!adminAuthorized) {
-    const tenantAuth = await authorizeTenantRequest(request, { businessId, store: tenantStore });
-    if (!tenantAuth.ok) return json(401, { error: "Invalid GrowthWise workspace credentials." });
-    try {
-      tenantProfile = await tenantStore.readTenantProfile({ businessId });
-    } catch {
-      return json(503, { error: "Business profile is temporarily unavailable." });
-    }
-    if (!tenantProfile || tenantProfile.business_id !== businessId) {
-      return json(401, { error: "Invalid GrowthWise workspace credentials." });
-    }
+  const auth = await authorizeRetailLeadRequest(request, {
+    businessId,
+    adminKey,
+    tenantStore: createTenantStore(),
+  });
+  if (!auth.ok) {
+    return json(auth.via === "unavailable" ? 503 : 401, {
+      error: auth.via === "unavailable"
+        ? "Business profile is temporarily unavailable."
+        : "Invalid GrowthWise workspace credentials.",
+    });
   }
+  const tenantProfile = auth.profile;
 
   if (request.method === "GET") {
     const rows = await db.sql`SELECT * FROM retail_customer_leads WHERE business_id = ${businessId} ORDER BY created_at DESC LIMIT 100`;
