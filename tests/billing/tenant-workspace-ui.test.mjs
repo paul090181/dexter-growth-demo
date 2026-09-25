@@ -105,6 +105,79 @@ test("billing management uses server-linked Stripe portal only", async () => {
   assert.equal(navigated, "https://billing.stripe.com/p/session/test_123");
 });
 
+
+
+test("active tenant can draft a lead reply with tenant auth and no admin key", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  const calls = [];
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) return response({
+        business_id: BUSINESS_ID, business_name: "North Star Books",
+      });
+      if (url.startsWith("/.netlify/functions/subscription-status?")) return response({
+        business_id: BUSINESS_ID, access_source: "stripe", status: "active", access_granted: true,
+      });
+      assert.equal(url, `/.netlify/functions/retail-lead-assistant?business_id=${encodeURIComponent(BUSINESS_ID)}`);
+      assert.equal(init.headers["X-GrowthWise-Tenant-Key"], TENANT_KEY);
+      assert.equal(Object.hasOwn(init.headers, "X-GrowthWise-Key"), false);
+      const body = JSON.parse(init.body);
+      assert.deepEqual(body, {
+        source: "Email",
+        customer_name: "Alex",
+        message: "Do you have this in stock?",
+        automation_mode: "shadow",
+      });
+      return response({
+        ok: true,
+        reply: "Which product are you asking about?",
+        intent: "product_clarification",
+        risk_level: "low",
+        decision: "auto_reply",
+        follow_up_action: "Identify the product.",
+      });
+    },
+  });
+
+  await controller.restore();
+  assert.equal(await controller.draftLead({
+    source: "Email",
+    customerName: "Alex",
+    message: "Do you have this in stock?",
+  }), true);
+
+  const state = controller.getState();
+  assert.equal(state.lead.result.reply, "Which product are you asking about?");
+  assert.equal(calls.every((call) => !call.url.includes(TENANT_KEY)), true);
+});
+
+test("locked tenant cannot call the lead assistant", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  let leadCalls = 0;
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    fetchImpl: async (url) => {
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) return response({
+        business_id: BUSINESS_ID, business_name: "North Star Books",
+      });
+      if (url.startsWith("/.netlify/functions/subscription-status?")) return response({
+        business_id: BUSINESS_ID, access_source: "stripe", status: "past_due", access_granted: false,
+      });
+      leadCalls += 1;
+      return response({});
+    },
+  });
+
+  await controller.restore();
+  assert.equal(await controller.draftLead({ source: "Email", message: "Hello" }), false);
+  assert.equal(leadCalls, 0);
+  assert.match(controller.getState().lead.error, /active workspace/i);
+});
+
 test("tenant workspace is generic and does not expose Dexter/admin credentials", () => {
   const html = fs.readFileSync(new URL("../../app.html", import.meta.url), "utf8");
   const js = fs.readFileSync(new URL("../../assets/tenant-workspace.mjs", import.meta.url), "utf8");
