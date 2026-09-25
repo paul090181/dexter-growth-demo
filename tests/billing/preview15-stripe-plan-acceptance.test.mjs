@@ -19,7 +19,7 @@ test("plan acceptance recreates stale metadata while requiring price-authoritati
   assert.match(source, /plan_key: "growth_monthly"/);
   assert.match(source, /price: proPriceId/);
   assert.match(source, /stripePro\.metadata\?\.plan_key === "growth_monthly"/);
-  assert.match(source, /proRow\?\.plan_key === "pro_monthly"/);
+  assert.match(source, /row\?\.plan_key === "pro_monthly"/);
   assert.match(source, /plan_started_at_reset/);
   assert.match(source, /pro_entitlements_active/);
 });
