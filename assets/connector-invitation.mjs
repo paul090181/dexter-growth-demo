@@ -13,7 +13,7 @@ export async function bootstrapConnectorInvitation({
   fetchImpl = globalThis.fetch,
 } = {}) {
   const url = new URL(href, globalThis.location?.origin);
-  if (!url.hash) return { exchanged: false };
+  if (!url.hash) return { exchanged: false, attempted: false };
   const rawFragment = url.hash.slice(1);
   const params = new URLSearchParams(rawFragment);
   const values = params.getAll("invite");
@@ -23,16 +23,30 @@ export async function bootstrapConnectorInvitation({
   url.hash = "";
   historyImpl.replaceState(null, "", safePath(url));
 
-  if (!token || !INVITATION_PATTERN.test(token)) return { exchanged: false };
-  const response = await fetchImpl(`${ENDPOINT}/connector-invitation-exchange`, {
-    method: "POST",
-    credentials: "same-origin",
-    cache: "no-store",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ invitation_token: token }),
-  });
-  if (!response.ok) return { exchanged: false, error: "Invitation is invalid or expired." };
-  return { exchanged: true };
+  if (!token || !INVITATION_PATTERN.test(token)) {
+    return { exchanged: false, attempted: true, error: "Invitation is invalid or expired." };
+  }
+
+  let response;
+  try {
+    response = await fetchImpl(`${ENDPOINT}/connector-invitation-exchange`, {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ invitation_token: token }),
+    });
+  } catch {
+    return { exchanged: false, attempted: true, error: "Invitation could not be verified." };
+  }
+  if (!response.ok) {
+    return { exchanged: false, attempted: true, error: "Invitation is invalid or expired." };
+  }
+  return { exchanged: true, attempted: true };
+}
+
+export function connectorInvitationAllowsPageStart(result = {}) {
+  return result?.attempted !== true || result?.exchanged === true;
 }
 
 export function consumeEmailReturnHint({ href = globalThis.location.href, historyImpl = globalThis.history } = {}) {
@@ -439,7 +453,12 @@ export function mountCustomerConnectorPage({ documentImpl = globalThis.document 
 }
 
 async function startBrowserPage() {
-  await bootstrapConnectorInvitation();
+  const invitation = await bootstrapConnectorInvitation();
+  if (!connectorInvitationAllowsPageStart(invitation)) {
+    const error = globalThis.document?.getElementById("connection-error");
+    if (error) error.textContent = invitation.error || "Invitation is invalid or expired.";
+    return;
+  }
   consumeInstagramReturnHint();
   consumeEmailReturnHint();
   mountCustomerConnectorPage();
