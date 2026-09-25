@@ -78,3 +78,13 @@ test("signup keeps the current browser signed in and hands active customers into
   assert.match(page, /planCard\.scrollIntoView/);
   assert.match(page, /accessCard\.scrollIntoView/);
 });
+
+test("signup records only milestone names through the tenant-authenticated onboarding endpoint", () => {
+  assert.match(page, /fetch\(['"]\/\.netlify\/functions\/onboarding-event['"]/);
+  assert.match(page, /workspace_created/);
+  assert.match(page, /checkout_started/);
+  assert.match(page, /checkout_completed/);
+  assert.match(page, /['"]X-GrowthWise-Tenant-Key['"]:\s*tenantKey/);
+  assert.match(page, /growthwise_onboarding_event/);
+  assert.doesNotMatch(page, /onboarding-event\?[^'"]*tenant/);
+});
