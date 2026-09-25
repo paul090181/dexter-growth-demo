@@ -31,7 +31,7 @@ function billingStore(status = "active") {
   return {
     async readSubscription({ businessId }) {
       return businessId === BUSINESS_ID
-        ? { business_id: businessId, access_source: "stripe", status }
+        ? { business_id: businessId, access_source: "stripe", plan_key: "founding_monthly", status }
         : null;
     },
   };
