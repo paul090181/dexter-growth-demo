@@ -265,29 +265,60 @@ async function cleanupAcceptance(pool, identity) {
   });
 }
 
-export default async function handler(request) {
-  if (request.method !== "GET") return json(405, { error: "Method not allowed." });
+async function browserAction(request, url) {
+  const fetchSite = request.headers.get("sec-fetch-site");
+  if (url.origin !== PREVIEW_ORIGIN
+    || url.pathname !== PATH
+    || url.search
+    || url.hash
+    || request.headers.get("origin") !== PREVIEW_ORIGIN
+    || (fetchSite !== null && fetchSite !== "same-origin")
+    || request.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase()
+      !== "application/json") {
+    return null;
+  }
 
+  let body;
+  try { body = await request.json(); }
+  catch { return ""; }
+  if (!body || typeof body !== "object" || Array.isArray(body)
+    || Object.keys(body).length !== 1
+    || !["start", "status", "cleanup"].includes(body.action)) {
+    return "";
+  }
+  return body.action;
+}
+
+export default async function handler(request) {
   let url;
   try { url = new URL(request.url); }
   catch { return json(400, { error: "Invalid request." }); }
 
-  if (url.origin !== PREVIEW_ORIGIN
-    || url.pathname !== PATH
-    || url.hash
-    || [...url.searchParams].some(([key]) => !["action", "key"].includes(key))
-    || url.searchParams.getAll("action").length !== 1
-    || url.searchParams.getAll("key").length !== 1) {
-    return json(404, { error: "Not found." });
-  }
-
   const configuredKey = env("GROWTHWISE_PREVIEW16_ACCEPTANCE_KEY");
-  const suppliedKey = url.searchParams.get("key") || "";
-  if (!safeEqual(suppliedKey, configuredKey)) return json(404, { error: "Not found." });
+  if (!configuredKey) return json(404, { error: "Not found." });
 
-  const action = url.searchParams.get("action");
-  if (!["start", "status", "cleanup"].includes(action)) {
-    return json(400, { error: "Invalid action." });
+  let action = "";
+  if (request.method === "POST") {
+    const browser = await browserAction(request, url);
+    if (browser === null) return json(404, { error: "Not found." });
+    if (!browser) return json(400, { error: "Invalid action." });
+    action = browser;
+  } else if (request.method === "GET") {
+    if (url.origin !== PREVIEW_ORIGIN
+      || url.pathname !== PATH
+      || url.hash
+      || [...url.searchParams].some(([key]) => !["action", "key"].includes(key))
+      || url.searchParams.getAll("action").length !== 1
+      || url.searchParams.getAll("key").length !== 1
+      || !safeEqual(url.searchParams.get("key") || "", configuredKey)) {
+      return json(404, { error: "Not found." });
+    }
+    action = url.searchParams.get("action") || "";
+    if (!["start", "status", "cleanup"].includes(action)) {
+      return json(400, { error: "Invalid action." });
+    }
+  } else {
+    return json(405, { error: "Method not allowed." });
   }
 
   const identity = ids(configuredKey);
