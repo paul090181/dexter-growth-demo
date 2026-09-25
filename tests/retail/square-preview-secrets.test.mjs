@@ -13,6 +13,7 @@ test("explicit Square crypto configuration wins", () => {
   const version = squareCryptoVersion("GROWTHWISE_SQUARE_OAUTH_STATE_SECRET", {
     env: env({
       CONTEXT: "deploy-preview",
+      GROWTHWISE_SQUARE_OAUTH_ENVIRONMENT: "sandbox",
       GROWTHWISE_SQUARE_OAUTH_APPLICATION_SECRET: "fixture-root-material-123456",
       GROWTHWISE_SQUARE_OAUTH_STATE_SECRET: "fixture-state-material-123456",
     }),
@@ -44,6 +45,7 @@ test("production never derives Square crypto keys from fallback material", () =>
   const version = squareCryptoVersion("GROWTHWISE_SQUARE_OAUTH_STATE_SECRET", {
     env: env({
       CONTEXT: "production",
+      GROWTHWISE_SQUARE_OAUTH_ENVIRONMENT: "production",
       GROWTHWISE_SQUARE_OAUTH_APPLICATION_SECRET: "fixture-root-material-123456",
     }),
   });
@@ -54,12 +56,14 @@ test("Preview acceptance key derives only in deploy previews", () => {
   const preview = previewAcceptanceKey({
     env: env({
       CONTEXT: "deploy-preview",
+      GROWTHWISE_SQUARE_OAUTH_ENVIRONMENT: "sandbox",
       GROWTHWISE_SQUARE_OAUTH_APPLICATION_SECRET: "fixture-root-material-123456",
     }),
   });
   const production = previewAcceptanceKey({
     env: env({
       CONTEXT: "production",
+      GROWTHWISE_SQUARE_OAUTH_ENVIRONMENT: "production",
       GROWTHWISE_SQUARE_OAUTH_APPLICATION_SECRET: "fixture-root-material-123456",
     }),
   });
