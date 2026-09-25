@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
   bootstrapConnectorInvitation,
+  connectorInvitationAllowsPageStart,
   createCustomerConnectorController,
 } from "../../assets/connector-invitation.mjs";
 
@@ -42,8 +43,27 @@ test("malformed or extra fragment fields are removed and never sent", async () =
       fetchImpl: async () => { order.push("fetch"); return response({}); },
     });
     assert.equal(result.exchanged, false);
+    assert.equal(result.attempted, true);
+    assert.match(result.error, /invalid or expired/i);
+    assert.equal(connectorInvitationAllowsPageStart(result), false);
     assert.deepEqual(order, ["history"]);
   }
+});
+
+test("failed invitation exchange cannot fall through to an older connector session", async () => {
+  const result = await bootstrapConnectorInvitation({
+    href: `${ORIGIN}/connect-accounts.html#invite=${INVITATION}`,
+    historyImpl: { replaceState() {} },
+    fetchImpl: async () => response({ error: "expired" }, 401),
+  });
+  assert.deepEqual(result, {
+    exchanged: false,
+    attempted: true,
+    error: "Invitation is invalid or expired.",
+  });
+  assert.equal(connectorInvitationAllowsPageStart(result), false);
+  assert.equal(connectorInvitationAllowsPageStart({ exchanged: false, attempted: false }), true);
+  assert.equal(connectorInvitationAllowsPageStart({ exchanged: true, attempted: true }), true);
 });
 
 test("controller loads cookie-bound session and authoritative Instagram health", async () => {
