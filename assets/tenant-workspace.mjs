@@ -3,6 +3,8 @@ const STATUS_ENDPOINT = "/.netlify/functions/subscription-status";
 const PORTAL_ENDPOINT = "/.netlify/functions/stripe-customer-portal";
 const PLAN_CHANGE_ENDPOINT = "/.netlify/functions/stripe-plan-change";
 const LEAD_ENDPOINT = "/.netlify/functions/retail-lead-assistant";
+const SQUARE_CONNECTION_ENDPOINT = "/.netlify/functions/square-connection";
+const SQUARE_OAUTH_START_ENDPOINT = "/.netlify/functions/square-oauth-start";
 
 const FEATURE_LABELS = Object.freeze([
   ["ai_business_assistant", "AI business assistant"],
@@ -64,6 +66,7 @@ export function createTenantWorkspaceController({
     error: "",
     profile: null,
     subscription: null,
+    square: { enabled: false, loading: false, error: "", status: null },
     lead: { loading: false, error: "", result: null },
   };
 
@@ -72,6 +75,30 @@ export function createTenantWorkspaceController({
     onChange(structuredClone(state));
     return structuredClone(state);
   };
+
+  async function readSquareStatus({ businessId, tenantKey, subscription }) {
+    if (subscription?.feature_access?.inventory_connection !== true) {
+      return { enabled: false, loading: false, error: "", status: null };
+    }
+    try {
+      const response = await fetchImpl(
+        `${SQUARE_CONNECTION_ENDPOINT}?business_id=${encodeURIComponent(businessId)}`,
+        { method: "GET", headers: authHeaders(tenantKey), cache: "no-store" },
+      );
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || body.business_id !== businessId || typeof body.state !== "string") {
+        throw new Error(body.error || "Square connection status is temporarily unavailable.");
+      }
+      return { enabled: true, loading: false, error: "", status: body };
+    } catch (error) {
+      return {
+        enabled: true,
+        loading: false,
+        error: error?.message || "Square connection status is temporarily unavailable.",
+        status: null,
+      };
+    }
+  }
 
   async function authenticate({ businessId, tenantKey, persist = true }) {
     const id = String(businessId || "").trim();
@@ -96,8 +123,21 @@ export function createTenantWorkspaceController({
         throw new Error(subscription.error || "Subscription status is temporarily unavailable.");
       }
 
+      const square = await readSquareStatus({
+        businessId: id,
+        tenantKey: key,
+        subscription,
+      });
+
       if (persist) saveWorkspaceCredentials({ businessId: id, tenantKey: key }, storage);
-      return publish({ loading: false, signedIn: true, error: "", profile, subscription });
+      return publish({
+        loading: false,
+        signedIn: true,
+        error: "",
+        profile,
+        subscription,
+        square,
+      });
     } catch (error) {
       clearWorkspaceCredentials(storage);
       return publish({
@@ -106,6 +146,7 @@ export function createTenantWorkspaceController({
         error: error?.message || "Workspace sign-in failed.",
         profile: null,
         subscription: null,
+        square: { enabled: false, loading: false, error: "", status: null },
       });
     }
   }
@@ -167,6 +208,63 @@ export function createTenantWorkspaceController({
     }
   }
 
+  async function connectSquare() {
+    const { businessId, tenantKey } = readWorkspaceCredentials(storage);
+    if (!state.signedIn
+      || state.subscription?.feature_access?.inventory_connection !== true
+      || !businessId
+      || !tenantKey) {
+      return false;
+    }
+
+    publish({
+      square: {
+        ...state.square,
+        enabled: true,
+        loading: true,
+        error: "",
+      },
+    });
+
+    try {
+      const response = await fetchImpl(SQUARE_OAUTH_START_ENDPOINT, {
+        method: "POST",
+        headers: {
+          ...authHeaders(tenantKey),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ business_id: businessId }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || typeof body.authorization_url !== "string") {
+        throw new Error(body.error || "Square connection could not be started.");
+      }
+
+      const url = new URL(body.authorization_url);
+      if (url.protocol !== "https:"
+        || !["connect.squareupsandbox.com", "connect.squareup.com"].includes(url.hostname)
+        || url.pathname !== "/oauth2/authorize"
+        || url.username
+        || url.password
+        || url.hash) {
+        throw new Error("Square connection returned an invalid destination.");
+      }
+
+      navigate(url.toString());
+      return true;
+    } catch (error) {
+      publish({
+        square: {
+          ...state.square,
+          enabled: true,
+          loading: false,
+          error: error?.message || "Square connection could not be started.",
+        },
+      });
+      return false;
+    }
+  }
+
   async function draftLead({ source, customerName, message }) {
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
     const text = String(message || "").trim();
@@ -217,6 +315,7 @@ export function createTenantWorkspaceController({
       error: "",
       profile: null,
       subscription: null,
+      square: { enabled: false, loading: false, error: "", status: null },
       lead: { loading: false, error: "", result: null },
     });
   }
@@ -226,6 +325,7 @@ export function createTenantWorkspaceController({
     restore,
     openBilling,
     changePlan,
+    connectSquare,
     draftLead,
     signOut,
     getState: () => structuredClone(state),
@@ -250,6 +350,11 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const planButtons = [...documentImpl.querySelectorAll("[data-plan-change]")];
   const manage = documentImpl.getElementById("workspace-manage-billing");
   const signOut = documentImpl.getElementById("workspace-signout");
+  const squareCard = documentImpl.getElementById("workspace-square-card");
+  const squareState = documentImpl.getElementById("workspace-square-state");
+  const squareDetail = documentImpl.getElementById("workspace-square-detail");
+  const squareError = documentImpl.getElementById("workspace-square-error");
+  const squareConnect = documentImpl.getElementById("workspace-square-connect");
   const leadCard = documentImpl.getElementById("workspace-lead-card");
   const leadForm = documentImpl.getElementById("workspace-lead-form");
   const leadButton = documentImpl.getElementById("workspace-lead-submit");
@@ -311,6 +416,26 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     manage.hidden = view.subscription?.access_source !== "stripe";
     manage.disabled = view.loading;
     const accessGranted = view.subscription?.access_granted === true;
+
+    squareCard.hidden = view.square?.enabled !== true;
+    if (view.square?.enabled === true) {
+      const connectionState = view.square?.status?.state || (view.square?.loading ? "Checking…" : "Not Connected");
+      squareState.textContent = connectionState;
+      squareDetail.textContent = view.square?.status?.account?.display_name
+        || view.square?.status?.action
+        || "Connect your own Square account for tenant-specific inventory and sales.";
+      squareError.hidden = !view.square?.error;
+      squareError.textContent = view.square?.error || "";
+      const connected = connectionState === "Connected";
+      squareConnect.hidden = connected;
+      squareConnect.disabled = view.square?.loading === true;
+      squareConnect.textContent = view.square?.loading
+        ? "Opening Square…"
+        : connectionState === "Needs Attention"
+          ? "Reconnect Square"
+          : "Connect Square";
+    }
+
     leadCard.hidden = !accessGranted;
     leadButton.disabled = view.lead?.loading === true;
     leadButton.textContent = view.lead?.loading ? "Drafting…" : "Draft safe reply";
@@ -340,6 +465,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     });
   });
   manage?.addEventListener("click", () => controller.openBilling());
+  squareConnect?.addEventListener("click", () => controller.connectSquare());
   planButtons.forEach((button) => button.addEventListener("click", () => controller.changePlan(button.dataset.planChange)));
   leadForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
