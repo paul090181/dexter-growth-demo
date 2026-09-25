@@ -5,6 +5,7 @@ import {
   SQUARE_OAUTH_SCOPES,
   buildSquareAuthorizationUrl,
   exchangeSquareAuthorizationCode,
+  refreshSquareAccessToken,
   retrieveSquareMerchant,
   retrieveSquareTokenStatus,
   squareCallbackUri,
@@ -136,4 +137,35 @@ test("Square merchant verification uses the scoped access token and authoritativ
     "https://connect.squareupsandbox.com/v2/merchants/MERCHANT123",
   );
   assert.equal(calls[0].init.headers.authorization, "Bearer synthetic-access-token");
+});
+
+test("Square refresh exchanges only the stored refresh token for the same merchant", async () => {
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push({ url, init });
+    return new Response(JSON.stringify({
+      access_token: "access-two",
+      refresh_token: "refresh-two",
+      merchant_id: "MERCHANT123",
+      token_type: "bearer",
+      expires_at: "2026-10-25T14:00:00Z",
+    }), { status: 200 });
+  };
+
+  const refreshed = await refreshSquareAccessToken({
+    applicationId: "sandbox-app-id",
+    applicationSecret: "synthetic-app-secret",
+    environment: "sandbox",
+    refreshToken: "refresh-one",
+    fetchImpl,
+  });
+
+  assert.equal(refreshed.merchantId, "MERCHANT123");
+  assert.equal(refreshed.accessToken, "access-two");
+  assert.deepEqual(JSON.parse(calls[0].init.body), {
+    client_id: "sandbox-app-id",
+    client_secret: "synthetic-app-secret",
+    refresh_token: "refresh-one",
+    grant_type: "refresh_token",
+  });
 });
