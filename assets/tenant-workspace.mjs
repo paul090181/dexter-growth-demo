@@ -362,7 +362,6 @@ export function createTenantWorkspaceController({
       if (url.protocol !== "https:" || url.hostname !== "billing.stripe.com" || url.username || url.password || url.hash) {
         throw new Error("Billing management returned an invalid destination.");
       }
-      await trackEvent("square_connect_started", { businessId, tenantKey });
       navigate(url.toString());
       return true;
     } catch (error) {
@@ -440,6 +439,7 @@ export function createTenantWorkspaceController({
         throw new Error("Square connection returned an invalid destination.");
       }
 
+      await trackEvent("square_connect_started", { businessId, tenantKey });
       navigate(url.toString());
       return true;
     } catch (error) {
