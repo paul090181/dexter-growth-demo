@@ -14,8 +14,8 @@
     <div class="brand">GrowthWise</div>
     <section class="hero">
       <div class="eyebrow">Founding Plan</div>
-      <h1>Set up your business in a few minutes.</h1>
-      <p>Create your private business workspace, then activate it through secure sandbox checkout.</p>
+      <h1>Set up your business and get to value fast.</h1>
+      <p>Create your private workspace, activate access, connect your business data, and move straight into your first useful result.</p>
     </section>
 
     <section class="card founder-offer" id="founderOffer">
@@ -54,15 +54,15 @@
 
     <section class="card notice hidden" id="oneTimeKeyPanel">
       <div class="eyebrow">Save once</div>
-      <h3>Save your workspace credentials</h3>
-      <p>Save both values. They are needed to reopen this preview workspace from another browser. Password recovery is not part of this preview.</p>
+      <h3>Your browser is already signed in</h3>
+      <p>This setup will continue automatically in the current browser session. Save both values only so you can reopen this preview workspace from another browser or device. Password recovery is not part of this preview yet.</p>
       <p><strong>Workspace ID</strong></p>
       <code class="key" id="oneTimeBusinessId"></code>
       <p><strong>Tenant access key</strong></p>
       <code class="key" id="oneTimeKey"></code>
       <div class="row">
         <button class="button secondary" id="copyKeyButton" type="button">Copy key</button>
-        <button class="button" id="savedKeyButton" type="button">I saved both</button>
+        <button class="button" id="savedKeyButton" type="button">Continue to activation</button>
       </div>
     </section>
 
@@ -83,7 +83,7 @@
       <div class="eyebrow">Access active</div>
       <h2>Your GrowthWise tenant is active</h2>
       <p>Stripe activation was confirmed by the GrowthWise server for this business.</p>
-      <a class="button" href="./app.html" style="display:block;text-align:center;text-decoration:none">Open business workspace</a>
+      <a class="button" href="./app.html?onboarding=1" style="display:block;text-align:center;text-decoration:none">Continue setup</a>
     </section>
   </main>
 
@@ -132,6 +132,9 @@
         subscriptionStatus.textContent = `Current status: ${labels[data.status] || data.status || 'Unknown'} — access ${accessGranted ? 'active' : 'locked'}.`;
         subscriptionStatus.className = `status ${accessGranted ? 'success' : ''}`;
         accessCard.classList.toggle('hidden', !accessGranted);
+        if(accessGranted && billingResult === 'success'){
+          accessCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
         manageBillingButton.classList.toggle('hidden', !stripeLinked);
         checkoutButton.disabled = stripeLinked;
         checkoutButton.textContent = accessGranted ? 'Subscription active' : stripeLinked ? 'Subscription linked' : 'Open secure sandbox checkout';
@@ -183,6 +186,7 @@
       oneTimeBusinessId.textContent = '';
       oneTimeKey.textContent = '';
       oneTimeKeyPanel.classList.add('hidden');
+      planCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
     checkoutButton.addEventListener('click', async ()=>{
