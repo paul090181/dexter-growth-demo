@@ -9,7 +9,7 @@ const source = await readFile(
 
 test("Stripe inspector is hard-limited to Preview 15 and never returns secrets", () => {
   assert.match(source, /startsWith\("deploy-preview-15--"\)/);
-  assert.match(source, /endsWith\("\\.netlify\\.app"\)/);
+  assert.match(source, /host\.endsWith\("\.netlify\.app"\)/);
   assert.match(source, /return json\(404/);
   assert.doesNotMatch(source, /webhook.*secret|secretKey[,}]/i);
   assert.match(source, /livemode/);
