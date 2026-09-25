@@ -8,6 +8,7 @@ const SQUARE_OAUTH_START_ENDPOINT = "/.netlify/functions/square-oauth-start";
 const SQUARE_INVENTORY_ENDPOINT = "/.netlify/functions/tenant-square-inventory";
 const SQUARE_SALES_ENDPOINT = "/.netlify/functions/tenant-square-sales";
 const ONBOARDING_EVENT_ENDPOINT = "/.netlify/functions/onboarding-event";
+const CONNECTOR_SESSION_START_ENDPOINT = "/.netlify/functions/tenant-connector-session-start";
 
 const FEATURE_LABELS = Object.freeze([
   ["ai_business_assistant", "AI business assistant"],
@@ -178,6 +179,7 @@ export function createTenantWorkspaceController({
     subscription: null,
     square: { enabled: false, loading: false, error: "", status: null },
     insights: { enabled: false, loading: false, error: "", inventory: null, sales: null, pulse: null },
+    channels: { loading: false, error: "" },
     lead: { loading: false, error: "", result: null },
   };
 
@@ -456,6 +458,43 @@ export function createTenantWorkspaceController({
     }
   }
 
+  async function openConnectorSetup() {
+    const { businessId, tenantKey } = readWorkspaceCredentials(storage);
+    if (!state.signedIn
+      || state.subscription?.feature_access?.unified_inbox !== true
+      || !businessId
+      || !tenantKey) {
+      return false;
+    }
+
+    publish({ channels: { loading: true, error: "" } });
+    try {
+      const response = await fetchImpl(CONNECTOR_SESSION_START_ENDPOINT, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          ...authHeaders(tenantKey),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ business_id: businessId }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || body?.ok !== true || body?.connection_url !== "/connect-accounts.html") {
+        throw new Error(body?.error || "Customer channel setup is temporarily unavailable.");
+      }
+      navigate(body.connection_url);
+      return true;
+    } catch (error) {
+      publish({
+        channels: {
+          loading: false,
+          error: error?.message || "Customer channel setup is temporarily unavailable.",
+        },
+      });
+      return false;
+    }
+  }
+
   async function refreshSquareInsights() {
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
     if (!state.signedIn || !businessId || !tenantKey || state.square?.status?.state !== "Connected") {
@@ -536,6 +575,7 @@ export function createTenantWorkspaceController({
       subscription: null,
       square: { enabled: false, loading: false, error: "", status: null },
       insights: { enabled: false, loading: false, error: "", inventory: null, sales: null, pulse: null },
+      channels: { loading: false, error: "" },
       lead: { loading: false, error: "", result: null },
     });
   }
@@ -548,6 +588,7 @@ export function createTenantWorkspaceController({
     changePlan,
     connectSquare,
     refreshSquareInsights,
+    openConnectorSetup,
     draftLead,
     signOut,
     getState: () => structuredClone(state),
@@ -581,6 +622,9 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const onboardingList = documentImpl.getElementById("workspace-onboarding-list");
   const journeyBanner = documentImpl.getElementById("workspace-journey-banner");
   const nextStep = documentImpl.getElementById("workspace-next-step");
+  const channelsCard = documentImpl.getElementById("workspace-channels-card");
+  const channelsError = documentImpl.getElementById("workspace-channels-error");
+  const channelsOpen = documentImpl.getElementById("workspace-channels-open");
   const pulseCard = documentImpl.getElementById("workspace-pulse-card");
   const pulseError = documentImpl.getElementById("workspace-pulse-error");
   const pulseLoading = documentImpl.getElementById("workspace-pulse-loading");
@@ -740,6 +784,15 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
       }
     }
 
+    const channelEligible = featureAccess.unified_inbox === true;
+    channelsCard.hidden = !channelEligible;
+    if (channelEligible) {
+      channelsOpen.disabled = view.channels?.loading === true;
+      channelsOpen.textContent = view.channels?.loading ? "Opening secure setup…" : "Manage customer channels";
+      channelsError.hidden = !view.channels?.error;
+      channelsError.textContent = view.channels?.error || "";
+    }
+
     pulseCard.hidden = !squareConnected;
     if (squareConnected) {
       pulseLoading.hidden = view.insights?.loading !== true;
@@ -796,6 +849,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   });
   manage?.addEventListener("click", () => controller.openBilling());
   squareConnect?.addEventListener("click", () => controller.connectSquare());
+  channelsOpen?.addEventListener("click", () => controller.openConnectorSetup());
   nextStep?.addEventListener("click", async () => {
     const action = nextStep.dataset.nextAction || "";
     if (action === "activate") {
