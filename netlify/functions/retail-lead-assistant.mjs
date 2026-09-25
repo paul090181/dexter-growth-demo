@@ -1,3 +1,5 @@
+import { authorizeTenantRequest } from "./_tenant-auth.mjs";
+import { createTenantStore } from "./_tenant-store.mjs";
 import { getDatabase } from "@netlify/database";
 
 const OPENAI_URL = "https://api.openai.com/v1/responses";
@@ -64,15 +66,31 @@ function productFactLead(product, message) {
 export default async (request) => {
   if (!["GET", "POST", "PATCH"].includes(request.method)) return json(405, { error: "Method not allowed." });
 
-  const adminKey = Netlify.env.get("GROWTHWISE_ADMIN_KEY");
+  const adminKey = Netlify.env.get("GROWTHWISE_ADMIN_KEY") || "";
   const openaiKey = Netlify.env.get("OPENAI_API_KEY");
   const model = Netlify.env.get("OPENAI_LEAD_MODEL") || Netlify.env.get("OPENAI_PRODUCT_MODEL") || "gpt-5.6-luna";
-  if (!adminKey) return json(500, { error: "GrowthWise is not configured." });
-  if ((request.headers.get("x-growthwise-key") || "") !== adminKey) return json(401, { error: "Invalid GrowthWise access key." });
 
   const db = getDatabase();
   const url = new URL(request.url);
-  const businessId = clean(url.searchParams.get("business_id") || "dexters-hats", 120);
+  const requestedBusinessId = clean(url.searchParams.get("business_id"), 120);
+  const adminAuthorized = Boolean(adminKey) && (request.headers.get("x-growthwise-key") || "") === adminKey;
+  const businessId = requestedBusinessId || (adminAuthorized ? "dexters-hats" : "");
+  if (!businessId) return json(400, { error: "Business is required." });
+
+  const tenantStore = createTenantStore();
+  let tenantProfile = null;
+  if (!adminAuthorized) {
+    const tenantAuth = await authorizeTenantRequest(request, { businessId, store: tenantStore });
+    if (!tenantAuth.ok) return json(401, { error: "Invalid GrowthWise workspace credentials." });
+    try {
+      tenantProfile = await tenantStore.readTenantProfile({ businessId });
+    } catch {
+      return json(503, { error: "Business profile is temporarily unavailable." });
+    }
+    if (!tenantProfile || tenantProfile.business_id !== businessId) {
+      return json(401, { error: "Invalid GrowthWise workspace credentials." });
+    }
+  }
 
   if (request.method === "GET") {
     const rows = await db.sql`SELECT * FROM retail_customer_leads WHERE business_id = ${businessId} ORDER BY created_at DESC LIMIT 100`;
@@ -125,7 +143,7 @@ export default async (request) => {
   const history = clean(body.history, 4000);
   const product = normalizeProduct(body.product);
   const business = {
-    name: clean(body.business?.name, 180) || "Dexter's Hats & Caps",
+    name: tenantProfile?.business_name || clean(body.business?.name, 180) || "Your business",
     location: clean(body.business?.location, 220), hours: clean(body.business?.hours, 600),
     shipping_policy: clean(body.business?.shipping_policy, 800), return_policy: clean(body.business?.return_policy, 800),
     custom_order_policy: clean(body.business?.custom_order_policy, 800),
@@ -203,26 +221,26 @@ export default async (request) => {
     intent="discount"; risk="medium"; decision="auto_reply_then_review";
     const verifiedFacts = productFactLead(product, message);
     reply = verifiedFacts
-      ? `${verifiedFacts} Dexter still needs to review whether any different price or offer is available.`
-      : "Thanks for asking. I can have Dexter review the price or any available offer and get back to you.";
+      ? `${verifiedFacts} Our team still needs to review whether any different price or offer is available.`
+      : "Thanks for asking. I can have our team review the price or any available offer and get back to you.";
     reason="GrowthWise can answer verified product facts immediately, but pricing exceptions and discounts require store approval.";
-    followUp="Dexter reviews whether any discount or promotion applies.";
+    followUp="The business owner reviews whether any discount or promotion applies.";
   } else if (hold) {
     intent="hold"; risk="medium"; decision="auto_reply_then_review";
     const verifiedFacts = productFactLead(product, message);
     reply = verifiedFacts
-      ? `${verifiedFacts} Dexter still needs to confirm whether it can be held for you, so I don't want to promise the hold until he confirms it.`
-      : "Thanks — I can have Dexter confirm whether the item can be held for you. I don't want to promise a hold until he confirms it.";
+      ? `${verifiedFacts} Our team still needs to confirm whether it can be held for you, so I don't want to promise the hold until that is confirmed.`
+      : "Thanks — I can have our team confirm whether the item can be held for you. I don't want to promise a hold until that is confirmed.";
     reason="GrowthWise can answer verified product facts immediately, but a hold changes inventory availability and requires store confirmation.";
-    followUp="Dexter confirms whether a hold is allowed and for how long.";
+    followUp="The business owner confirms whether a hold is allowed and for how long.";
   } else if (returns) {
-    intent="return_refund"; risk="high"; decision="review_required"; reply="Thanks for reaching out. Dexter will review the purchase details and get back to you about the available options."; reason="Returns, exchanges and refunds require a human review."; followUp="Dexter reviews the purchase details and store policy before replying.";
+    intent="return_refund"; risk="high"; decision="review_required"; reply="Thanks for reaching out. Our team will review the purchase details and get back to you about the available options."; reason="Returns, exchanges and refunds require a human review."; followUp="The business owner reviews the purchase details and store policy before replying.";
   } else if (custom) {
-    intent="custom_order"; risk="medium"; decision="auto_reply_then_review"; reply="Thanks for asking. I can have Dexter check whether that item or style can be special ordered and get back to you."; reason="Custom-order availability should be verified with the store or wholesaler."; followUp="Dexter checks supplier availability before promising the order.";
+    intent="custom_order"; risk="medium"; decision="auto_reply_then_review"; reply="Thanks for asking. I can have our team check whether that item or style can be special ordered and get back to you."; reason="Custom-order availability should be verified with the store or wholesaler."; followUp="Dexter checks supplier availability before promising the order.";
   } else if (complaint) {
-    intent="complaint"; risk="high"; decision="auto_reply_then_review"; reply=`Hi${customerName ? ` ${customerName}` : ""}, thanks for letting us know. Dexter will review what happened and follow up with you directly.`; reason="GrowthWise can acknowledge the concern but should not admit fault or promise a remedy."; followUp="Priority human follow-up from Dexter.";
+    intent="complaint"; risk="high"; decision="auto_reply_then_review"; reply=`Hi${customerName ? ` ${customerName}` : ""}, thanks for letting us know. Our team will review what happened and follow up with you directly.`; reason="GrowthWise can acknowledge the concern but should not admit fault or promise a remedy."; followUp="Priority human follow-up from the business owner.";
   } else if (shipping && !business.shipping_policy) {
-    intent="shipping"; risk="medium"; decision="auto_reply_then_review"; reply="Thanks for asking. I can have Dexter confirm whether shipping is available for this item and what the options would be."; reason="No verified shipping policy was supplied."; followUp="Dexter confirms shipping availability and cost before promising anything.";
+    intent="shipping"; risk="medium"; decision="auto_reply_then_review"; reply="Thanks for asking. I can have our team confirm whether shipping is available for this item and what the options would be."; reason="No verified shipping policy was supplied."; followUp="Dexter confirms shipping availability and cost before promising anything.";
   }
 
   const automationClass =
@@ -238,7 +256,7 @@ export default async (request) => {
   const automationReason =
     automationMode === "draft_only" ? "Draft-only mode is enabled." :
     decision === "auto_reply" ? "Shadow Mode judged this reply low-risk and grounded enough for future automatic sending." :
-    decision === "auto_reply_then_review" ? "Shadow Mode would send only the safe acknowledgement, then route the decision or verification to Dexter." :
+    decision === "auto_reply_then_review" ? "Shadow Mode would send only the safe acknowledgement, then route the decision or verification to the business owner." :
     "GrowthWise judged this message unsuitable for automatic sending.";
 
   const linkedProduct = productMatch === "matched" ? product : null;
