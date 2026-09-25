@@ -1,4 +1,5 @@
 import { json } from "./_lead-store.mjs";
+import { resolveGrowthWisePublicOrigin } from "./_public-origin.mjs";
 import { createBillingStore } from "./_billing-store.mjs";
 import { createStripeClient } from "./_stripe-client.mjs";
 import { authorizeTenantRequest } from "./_tenant-auth.mjs";
@@ -160,7 +161,7 @@ function environment() {
     secretKey: Netlify.env.get("STRIPE_SECRET_KEY") || "",
     priceIds: stripePlanPricesFromEnvironment(),
     portalConfigurationId: Netlify.env.get("STRIPE_PORTAL_CONFIGURATION_ID") || "",
-    origin: Netlify.env.get("GROWTHWISE_PUBLIC_ORIGIN") || "",
+    origin: resolveGrowthWisePublicOrigin(),
   };
 }
 
