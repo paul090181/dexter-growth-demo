@@ -22,6 +22,7 @@ export async function createCheckoutSession(stripe, {
     line_items: [{ price: priceId, quantity: 1 }],
     metadata,
     subscription_data: { metadata },
+    allow_promotion_codes: true,
     success_url: `${origin}${returnPath}?billing=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}${returnPath}?billing=cancelled`,
   }, { idempotencyKey });
