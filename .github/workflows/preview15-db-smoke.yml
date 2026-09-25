@@ -1,0 +1,45 @@
+name: Preview 15 database smoke
+
+on:
+  pull_request:
+    branches:
+      - platform-v1
+
+permissions:
+  contents: read
+
+jobs:
+  preview15-database-smoke:
+    if: github.event.pull_request.number == 15
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wait for Preview 15 database smoke endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://deploy-preview-15--euphonious-beijinho-db4b4d.netlify.app/.netlify/functions/preview15-database-smoke"
+          for attempt in $(seq 1 30); do
+            body="$(curl --silent --show-error --fail --max-time 15 "$url" 2>/dev/null || true)"
+            if [ -n "$body" ]; then
+              echo "Smoke response: $body"
+              if node -e '
+                const value = JSON.parse(process.argv[1]);
+                if (
+                  value.ok === true &&
+                  value.attribution_table === true &&
+                  value.plan_started_at_column === true &&
+                  value.write_read_rollback === true &&
+                  value.persisted_test_rows === 0
+                ) process.exit(0);
+                process.exit(1);
+              ' "$body"; then
+                echo "Preview 15 database smoke passed."
+                exit 0
+              fi
+            fi
+            echo "Preview not ready yet (attempt $attempt/30)."
+            sleep 5
+          done
+          echo "Preview 15 database smoke failed or timed out."
+          exit 1
