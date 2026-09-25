@@ -1,15 +1,13 @@
 import { getDatabase } from "@netlify/database";
 import { json } from "./_lead-store.mjs";
 
-function isPreview15() {
-  const context = Netlify.env.get("CONTEXT") || "";
-  const prime = Netlify.env.get("DEPLOY_PRIME_URL") || "";
-  return context === "deploy-preview" && prime.includes("deploy-preview-15--");
+function isDeployPreview() {
+  return (Netlify.env.get("CONTEXT") || "") === "deploy-preview";
 }
 
 export default async function handler(request) {
   if (request.method !== "GET") return json(405, { error: "Method not allowed" });
-  if (!isPreview15()) return json(404, { error: "Not found" });
+  if (!isDeployPreview()) return json(404, { error: "Not found" });
 
   const client = await getDatabase().pool.connect();
   try {
