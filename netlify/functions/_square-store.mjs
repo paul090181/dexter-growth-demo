@@ -67,6 +67,20 @@ const READ_CREDENTIAL = `
   WHERE business_id = $1
 `;
 
+const UPDATE_CREDENTIAL_TOKEN = `
+  UPDATE square_credentials
+     SET encrypted_credential = $3::jsonb,
+         encryption_key_version = $4,
+         token_expires_at = $5,
+         status = 'active',
+         last_verified_at = $6,
+         updated_at = CURRENT_TIMESTAMP
+   WHERE business_id = $1
+     AND account_binding_key = ANY($2::text[])
+  RETURNING business_id, environment, status, token_expires_at,
+    display_name, last_verified_at
+`;
+
 const UPDATE_STATUS = `
   UPDATE square_credentials
      SET status = $2,
@@ -315,6 +329,43 @@ export function createSquareStore({ getPool = netlifyPool, crypto } = {}) {
     };
   }
 
+  async function updateCredentialToken({
+    businessId,
+    accountId,
+    payload,
+    tokenExpiresAt,
+    now = new Date(),
+  } = {}) {
+    if (!validBusinessId(businessId)
+      || typeof accountId !== "string" || !accountId || accountId.length > 512
+      || !payload || typeof payload !== "object" || Array.isArray(payload)
+      || !(tokenExpiresAt instanceof Date) || !Number.isFinite(tokenExpiresAt.getTime())
+      || !(now instanceof Date) || !Number.isFinite(now.getTime())) {
+      throw failure("INVALID_CREDENTIAL");
+    }
+    if (!crypto?.accountBindingKeys || !crypto?.encryptCredential) {
+      throw failure("CREDENTIAL_CONFIGURATION_FAILED");
+    }
+
+    const permittedBindingKeys = crypto.accountBindingKeys(accountId);
+    const encrypted = crypto.encryptCredential({ businessId, accountId, payload });
+    try {
+      const result = await query(UPDATE_CREDENTIAL_TOKEN, [
+        businessId,
+        permittedBindingKeys,
+        JSON.stringify(encrypted),
+        encrypted.key_version,
+        tokenExpiresAt,
+        now,
+      ]);
+      if (!result.rows[0]) throw failure("CREDENTIAL_UPDATE_FAILED");
+      return result.rows[0];
+    } catch (error) {
+      if (error?.message === "CREDENTIAL_UPDATE_FAILED") throw error;
+      throw failure("CREDENTIAL_UPDATE_FAILED", error);
+    }
+  }
+
   async function markCredentialStatus({
     businessId,
     status,
@@ -354,6 +405,7 @@ export function createSquareStore({ getPool = netlifyPool, crypto } = {}) {
     connectCredential,
     readCredential,
     readDecryptedCredential,
+    updateCredentialToken,
     markCredentialStatus,
     disconnectCredential,
   };
