@@ -27,6 +27,37 @@ function json(status, body) {
   });
 }
 
+function html(status, title, lines = [], kind = "neutral") {
+  const esc = (value) => String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+  const accent = kind === "pass" ? "#225c34" : kind === "fail" ? "#87372e" : "#14202c";
+  const body = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>${esc(title)}</title><style>body{margin:0;background:#eef1f4;color:#14202c;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{max-width:680px;margin:0 auto;min-height:100vh;background:#fff;padding:28px 18px}.card{border:1px solid #e0e5e9;border-radius:18px;padding:20px}.result{font-size:30px;font-weight:900;color:${accent};margin-bottom:12px}.line{padding:8px 0;border-bottom:1px solid #edf0f2}.muted{color:#65717c;font-size:13px;margin-top:18px}</style></head><body><main><div class="card"><div class="result">${esc(title)}</div>${lines.map((line)=>`<div class="line">${esc(line)}</div>`).join("")}<div class="muted">Preview #16 only. Production untouched.</div></div></main></body></html>`;
+  return new Response(body, {
+    status,
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      pragma: "no-cache",
+      "referrer-policy": "no-referrer",
+      "x-content-type-options": "nosniff",
+    },
+  });
+}
+
+function redirect(location) {
+  return new Response(null, {
+    status: 303,
+    headers: {
+      location,
+      "cache-control": "no-store",
+      "referrer-policy": "no-referrer",
+    },
+  });
+}
+
 function safeEqual(left, right) {
   if (typeof left !== "string" || typeof right !== "string" || !left || !right) return false;
   const a = Buffer.from(left);
@@ -290,6 +321,63 @@ async function browserAction(request, url) {
   return body.action;
 }
 
+async function browserStart(pool, identity) {
+  const response = await startAcceptance(pool, identity);
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok || body.ok !== true || typeof body.authorization_url !== "string") {
+    return html(500, "Square test could not start", [
+      body.error || "Preview acceptance setup failed.",
+    ], "fail");
+  }
+  return redirect(body.authorization_url);
+}
+
+async function browserFinish(pool, identity) {
+  const resultResponse = await statusAcceptance(pool, identity);
+  const result = await resultResponse.json().catch(() => ({}));
+
+  if (result.stage !== "authorized") {
+    if (result.transaction_status === "consumed_denied") {
+      await cleanupAcceptance(pool, identity);
+      return html(200, "Square authorization cancelled", [
+        "No Square connection was kept.",
+        "Disposable Preview test data was cleaned up.",
+      ], "neutral");
+    }
+    if (result.transaction_status === "consumed_failed") {
+      await cleanupAcceptance(pool, identity);
+      return html(200, "Square authorization needs attention", [
+        "Square returned to GrowthWise, but the connection did not complete.",
+        "Disposable Preview test data was cleaned up.",
+      ], "fail");
+    }
+    return html(409, "Square test is not finished yet", [
+      "The Preview test has not received a completed Square authorization yet.",
+    ], "neutral");
+  }
+
+  const cleanupResponse = await cleanupAcceptance(pool, identity);
+  const cleanup = await cleanupResponse.json().catch(() => ({}));
+  const passed = result.ok === true && cleanup.ok === true;
+
+  return html(200, passed
+    ? "PASS — Square tenant acceptance completed"
+    : "Square acceptance checks failed", [
+      "Inventory endpoint: " + result.inventory_endpoint_status,
+      "Sales endpoint: " + result.sales_endpoint_status,
+      "Cross-tenant request: " + result.cross_tenant_request_status + " (expected 401)",
+      "Control tenant inventory: " + result.control_tenant_inventory_status + " (expected 409)",
+      "Control tenant credential present: " + result.control_tenant_has_square_credential,
+      "Required scopes present: " + result.required_scopes_present,
+      "Inventory items observed: " + (result.inventory_item_count ?? "n/a"),
+      "Completed orders (30d): " + (result.completed_order_count_30d ?? "n/a"),
+      "Test token revocation attempted: " + cleanup.oauth_access_token_revocation_attempted,
+      "Test token revoked: " + cleanup.oauth_access_token_revoked,
+      "Database rows remaining: " + cleanup.database_rows_remaining,
+      "Production touched: false",
+    ], passed ? "pass" : "fail");
+}
+
 export default async function handler(request) {
   let url;
   try { url = new URL(request.url); }
@@ -297,6 +385,27 @@ export default async function handler(request) {
 
   const configuredKey = previewAcceptanceKey();
   if (!configuredKey) return json(404, { error: "Not found." });
+
+  const identity = ids(configuredKey);
+  const pool = getDatabase().pool;
+
+  if (request.method === "GET"
+    && url.origin === PREVIEW_ORIGIN
+    && url.pathname === PATH
+    && !url.hash
+    && [...url.searchParams].length === 1
+    && url.searchParams.getAll("browser").length === 1) {
+    const browser = url.searchParams.get("browser");
+    try {
+      if (browser === "start") return await browserStart(pool, identity);
+      if (browser === "finish") return await browserFinish(pool, identity);
+    } catch {
+      return html(500, "Square acceptance failed", [
+        "Preview #16 could not complete the acceptance test.",
+      ], "fail");
+    }
+    return json(404, { error: "Not found." });
+  }
 
   let action = "";
   if (request.method === "POST") {
@@ -321,9 +430,6 @@ export default async function handler(request) {
   } else {
     return json(405, { error: "Method not allowed." });
   }
-
-  const identity = ids(configuredKey);
-  const pool = getDatabase().pool;
 
   try {
     if (action === "start") return await startAcceptance(pool, identity);
