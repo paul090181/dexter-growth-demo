@@ -52,7 +52,11 @@ function subscriptionPriceId(object) {
   return stringId(object?.items?.data?.[0]?.price);
 }
 
-export function createBillingService({ store } = {}) {
+export function createBillingService({
+  store,
+  attributionStore = null,
+  resolveCheckoutAttribution = null,
+} = {}) {
   if (!store?.applyEvent || !store?.readSubscription || !store?.findSubscriptionByStripeIds) {
     throw safeError("BILLING_STORE_REQUIRED");
   }
@@ -98,7 +102,7 @@ export function createBillingService({ store } = {}) {
     const stripeSubscriptionId = stringId(object.subscription);
     if (!businessId || !planKey || !stripeCustomerId || !stripeSubscriptionId) throw safeError("INVALID_CHECKOUT_EVENT");
     const existing = await store.readSubscription({ businessId });
-    return record(event, {
+    const recorded = await record(event, {
       businessId,
       planKey,
       status: existing?.status ?? "incomplete",
@@ -108,6 +112,29 @@ export function createBillingService({ store } = {}) {
       currentPeriodEnd: existing?.current_period_end ? new Date(existing.current_period_end) : null,
       advanceLifecycle: false,
     });
+
+    if (attributionStore?.recordAcquisition && typeof resolveCheckoutAttribution === "function") {
+      const attribution = await resolveCheckoutAttribution({
+        checkoutSessionId: stringId(object),
+        businessId,
+        planKey,
+      });
+      if (attribution?.campaignCode && attribution?.stripePromotionCodeId) {
+        await attributionStore.recordAcquisition({
+          businessId,
+          campaignCode: attribution.campaignCode,
+          stripePromotionCodeId: attribution.stripePromotionCodeId,
+          stripeCouponId: attribution.stripeCouponId ?? null,
+          stripeCheckoutSessionId: stringId(object),
+          acquisitionPlanKey: planKey,
+          sourceChannel: attribution.sourceChannel ?? null,
+          campaignName: attribution.campaignName ?? null,
+          attributedAt: new Date(event.created * 1000),
+        });
+      }
+    }
+
+    return recorded;
   }
 
   async function processInvoice(event, object) {
