@@ -82,7 +82,7 @@ export function createTenantWorkspaceController({
       if (persist) saveWorkspaceCredentials({ businessId: id, tenantKey: key }, storage);
       return publish({ loading: false, signedIn: true, error: "", profile, subscription });
     } catch (error) {
-      if (persist) clearWorkspaceCredentials(storage);
+      clearWorkspaceCredentials(storage);
       return publish({
         loading: false,
         signedIn: false,
