@@ -7,6 +7,7 @@ const SQUARE_CONNECTION_ENDPOINT = "/.netlify/functions/square-connection";
 const SQUARE_OAUTH_START_ENDPOINT = "/.netlify/functions/square-oauth-start";
 const SQUARE_INVENTORY_ENDPOINT = "/.netlify/functions/tenant-square-inventory";
 const SQUARE_SALES_ENDPOINT = "/.netlify/functions/tenant-square-sales";
+const ONBOARDING_EVENT_ENDPOINT = "/.netlify/functions/onboarding-event";
 
 const FEATURE_LABELS = Object.freeze([
   ["ai_business_assistant", "AI business assistant"],
@@ -41,6 +42,43 @@ export function clearWorkspaceCredentials(storage = globalThis.sessionStorage) {
 
 function authHeaders(tenantKey) {
   return { "X-GrowthWise-Tenant-Key": tenantKey };
+}
+
+export function createOnboardingTracker({
+  fetchImpl = globalThis.fetch,
+  storage = globalThis.sessionStorage,
+} = {}) {
+  return async function trackOnboardingEvent(eventName, { businessId, tenantKey } = {}) {
+    const name = String(eventName || "").trim();
+    const id = String(businessId || "").trim();
+    const key = String(tenantKey || "").trim();
+    if (!name || !id || !key) return false;
+
+    const dedupeKey = `growthwise_onboarding_event:${id}:${name}`;
+    if (storage?.getItem(dedupeKey) === "1") return true;
+
+    try {
+      const response = await fetchImpl(ONBOARDING_EVENT_ENDPOINT, {
+        method: "POST",
+        headers: {
+          ...authHeaders(key),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          business_id: id,
+          event_name: name,
+        }),
+        cache: "no-store",
+        keepalive: true,
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || body?.ok !== true || body?.event_name !== name) return false;
+      storage?.setItem(dedupeKey, "1");
+      return true;
+    } catch {
+      return false;
+    }
+  };
 }
 
 function money(value) {
@@ -129,6 +167,7 @@ export function createTenantWorkspaceController({
   storage = globalThis.sessionStorage,
   navigate = (url) => globalThis.location.assign(url),
   onChange = () => {},
+  trackEvent = async () => false,
 } = {}) {
   let state = {
     loading: false,
@@ -261,6 +300,17 @@ export function createTenantWorkspaceController({
         square,
       });
 
+      await trackEvent("workspace_opened", { businessId: id, tenantKey: key });
+      if (subscription?.access_source === "stripe" && subscription?.access_granted === true) {
+        await trackEvent("checkout_completed", { businessId: id, tenantKey: key });
+      }
+      if (square?.status?.state === "Connected") {
+        await trackEvent("square_connected", { businessId: id, tenantKey: key });
+      }
+      if (insights?.pulse) {
+        await trackEvent("business_pulse_loaded", { businessId: id, tenantKey: key });
+      }
+
       if (persist) saveWorkspaceCredentials({ businessId: id, tenantKey: key }, storage);
       return publish({
         loading: false,
@@ -312,6 +362,7 @@ export function createTenantWorkspaceController({
       if (url.protocol !== "https:" || url.hostname !== "billing.stripe.com" || url.username || url.password || url.hash) {
         throw new Error("Billing management returned an invalid destination.");
       }
+      await trackEvent("square_connect_started", { businessId, tenantKey });
       navigate(url.toString());
       return true;
     } catch (error) {
@@ -425,6 +476,9 @@ export function createTenantWorkspaceController({
       square: state.square,
     });
     publish({ insights });
+    if (insights?.pulse) {
+      await trackEvent("business_pulse_loaded", { businessId, tenantKey });
+    }
     return Boolean(insights.pulse);
   }
 
@@ -457,6 +511,7 @@ export function createTenantWorkspaceController({
         throw new Error(body?.error || "GrowthWise could not draft the reply.");
       }
       publish({ lead: { loading: false, error: "", result: body } });
+      await trackEvent("ai_workflow_used", { businessId, tenantKey });
       return true;
     } catch (error) {
       publish({
@@ -724,7 +779,10 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     }
   };
 
-  const controller = createTenantWorkspaceController({ onChange: render });
+  const controller = createTenantWorkspaceController({
+    onChange: render,
+    trackEvent: createOnboardingTracker(),
+  });
   render(controller.getState());
 
   form?.addEventListener("submit", async (event) => {
