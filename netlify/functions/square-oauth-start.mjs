@@ -1,5 +1,4 @@
-import { authorizeTenantRequest } from "./_tenant-auth.mjs";
-import { createTenantStore } from "./_tenant-store.mjs";
+import { authorizeTenantSquareRequest } from "./_tenant-square-auth.mjs";
 import { resolveGrowthWisePublicOrigin } from "./_public-origin.mjs";
 import { createSquareCrypto } from "./_square-crypto.mjs";
 import {
@@ -104,8 +103,7 @@ function validateAuthorizationUrl(value, settings, state) {
 }
 
 export function createSquareOAuthStartHandler(options = {}) {
-  const authorize = options.authorize ?? authorizeTenantRequest;
-  const tenantStore = options.tenantStore ?? createTenantStore();
+  const authorize = options.authorize ?? authorizeTenantSquareRequest;
   const now = options.now ?? (() => new Date());
   const rateLimiter = options.rateLimiter ?? defaultRateLimiter;
   const getConfig = options.config ?? config;
@@ -148,11 +146,14 @@ export function createSquareOAuthStartHandler(options = {}) {
     try { body = await readBody(request); }
     catch { return json(400, { error: "Invalid request." }); }
 
-    const auth = await authorize(request, {
-      businessId: body.business_id,
-      store: tenantStore,
-    });
+    const auth = await authorize(request, { businessId: body.business_id });
     if (!auth?.ok || auth.businessId !== body.business_id) {
+      if (auth?.via === "locked") {
+        return json(403, { error: "Inventory connection is not included in this plan." });
+      }
+      if (auth?.via === "unavailable") {
+        return json(503, { error: "Business account is temporarily unavailable." });
+      }
       return json(401, { error: "Tenant credentials are invalid." });
     }
 
