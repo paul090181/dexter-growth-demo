@@ -42,6 +42,9 @@ test("receiving an order uses one stable Square idempotency key and RECEIVED adj
   assert.equal(payload.idempotency_key,order.id);
   assert.equal(payload.changes[0].adjustment.from_state,"NONE");
   assert.equal(payload.changes[0].adjustment.to_state,"IN_STOCK");
+  assert.equal(payload.changes[0].adjustment.from_location_id,"loc-1");
+  assert.equal(payload.changes[0].adjustment.to_location_id,"loc-1");
+  assert.equal(Object.hasOwn(payload.changes[0].adjustment,"location_id"),false);
   assert.equal(payload.changes[0].adjustment.quantity,"5");
   assert.equal(payload.changes[0].adjustment.reason_id.type,"RECEIVED");
   assert.equal(updated.status,"received");
