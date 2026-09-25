@@ -456,6 +456,81 @@ test("workspace rejects a non-Square OAuth destination", async () => {
   assert.match(controller.getState().square.error, /invalid destination/i);
 });
 
+
+test("eligible tenant launches self-service customer channel setup without an admin invitation", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  const calls = [];
+  let navigated = "";
+
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    navigate: (url) => { navigated = url; },
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) {
+        return response({ business_id: BUSINESS_ID, business_name: "North Star Books" });
+      }
+      if (url.startsWith("/.netlify/functions/subscription-status?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          access_source: "stripe",
+          plan_key: "growth_monthly",
+          status: "active",
+          access_granted: true,
+          feature_access: { inventory_connection: false, unified_inbox: true },
+        });
+      }
+      assert.equal(url, "/.netlify/functions/tenant-connector-session-start");
+      assert.equal(init.credentials, "same-origin");
+      assert.equal(init.headers["X-GrowthWise-Tenant-Key"], TENANT_KEY);
+      assert.equal(Object.hasOwn(init.headers, "X-GrowthWise-Key"), false);
+      assert.deepEqual(JSON.parse(init.body), { business_id: BUSINESS_ID });
+      return response({
+        ok: true,
+        connection_url: "/connect-accounts.html",
+        expires_at: "2026-09-25T23:00:00.000Z",
+      });
+    },
+  });
+
+  await controller.restore();
+  assert.equal(await controller.openConnectorSetup(), true);
+  assert.equal(navigated, "/connect-accounts.html");
+  assert.equal(calls.every((call) => !call.url.includes(TENANT_KEY)), true);
+});
+
+test("Starter tenant cannot launch customer channel setup", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  let connectorCalls = 0;
+
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    fetchImpl: async (url) => {
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) {
+        return response({ business_id: BUSINESS_ID, business_name: "North Star Books" });
+      }
+      if (url.startsWith("/.netlify/functions/subscription-status?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          access_source: "stripe",
+          plan_key: "starter_monthly",
+          status: "active",
+          access_granted: true,
+          feature_access: { inventory_connection: false, unified_inbox: false },
+        });
+      }
+      connectorCalls += 1;
+      return response({});
+    },
+  });
+
+  await controller.restore();
+  assert.equal(await controller.openConnectorSetup(), false);
+  assert.equal(connectorCalls, 0);
+});
+
 test("active tenant can draft a lead reply with tenant auth and no admin key", async () => {
   const s = storage();
   saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
@@ -542,6 +617,8 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /id="workspace-onboarding-list"/);
   assert.match(html, /id="workspace-journey-banner"/);
   assert.match(html, /id="workspace-next-step"/);
+  assert.match(html, /id="workspace-channels-card"/);
+  assert.match(html, /id="workspace-channels-open"/);
   assert.match(html, /id="workspace-pulse-card"/);
   assert.match(html, /id="workspace-pulse-sales"/);
   assert.match(html, /id="workspace-pulse-inventory-value"/);
@@ -558,6 +635,8 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /nextAction/);
   assert.match(js, /connect-square/);
   assert.match(js, /refresh-insights/);
+  assert.match(js, /tenant-connector-session-start/);
+  assert.match(js, /openConnectorSetup/);
   assert.match(js, /feature_access/);
   assert.match(js, /Pro Experience active/);
   assert.doesNotMatch(html + js, /dexters-hats|Dexter's Hats|Dexter|growthwise_admin_key|X-GrowthWise-Key/);
