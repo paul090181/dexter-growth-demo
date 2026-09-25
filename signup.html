@@ -111,7 +111,8 @@
     async function trackMilestone(eventName){
       const { businessId, tenantKey } = credentials();
       if(!businessId || !tenantKey || !eventName) return false;
-      const dedupeKey = `growthwise_onboarding_event:${businessId}:${eventName}`;
+      const eventDay = new Date().toISOString().slice(0, 10);
+      const dedupeKey = `growthwise_onboarding_event:${businessId}:${eventName}:${eventDay}`;
       if(sessionStorage.getItem(dedupeKey) === '1') return true;
       try{
         const response = await fetch('/.netlify/functions/onboarding-event', {
