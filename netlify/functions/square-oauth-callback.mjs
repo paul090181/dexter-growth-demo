@@ -45,10 +45,13 @@ function plain(status) {
 function redirect(origin, hint, businessId = "") {
   const isAcceptance = /^gw-square-accept-a-[a-f0-9]{10}$/.test(businessId);
   const target = new URL(
-    isAcceptance ? "/square-acceptance-preview16.html" : "/app.html",
+    isAcceptance
+      ? "/.netlify/functions/preview16-square-acceptance"
+      : "/app.html",
     origin,
   );
-  target.searchParams.set("square", hint);
+  if (isAcceptance) target.searchParams.set("browser", "finish");
+  else target.searchParams.set("square", hint);
   return new Response(null, {
     status: 303,
     headers: { ...SAFE_HEADERS, location: target.toString() },
