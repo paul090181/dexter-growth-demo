@@ -366,6 +366,17 @@ test("Dexter successful callback returns to the Dexter integration page", async 
   assert.equal(response.headers.get("location"), `${ORIGIN}/?instagram=connected`);
 });
 
+test("customer-session callback accepts only its fixed return destination", async () => {
+  const fixture = callbackFixture();
+  fixture.transaction.business_id = "paid-shop-abcdef123456";
+  fixture.transaction.return_destination_id = "connector-customer-integration";
+  const response = await fixture.handler(callbackRequest("state=v1.valid.tag&code=ok"));
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.get("location"), `${ORIGIN}/connect-accounts.html?instagram=connected`);
+  assert.equal(fixture.calls.connect[0].businessId, "paid-shop-abcdef123456");
+  assert.equal(fixture.calls.connect[0].payload.scope, INSTAGRAM_IDENTITY_SCOPE);
+});
+
 test("rolled-back credential binding never redirects connected", async () => {
   const fixture = callbackFixture(); fixture.store.connectCredential = async () => { throw new Error("rollback"); };
   assert.match((await fixture.handler(callbackRequest("state=v1.valid.tag&code=ok"))).headers.get("location"), /instagram=attention$/);

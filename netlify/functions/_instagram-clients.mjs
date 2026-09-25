@@ -10,16 +10,19 @@ const CLIENT_CONFIGS = [
 export const INSTAGRAM_CLIENTS = Object.freeze(Object.fromEntries(CLIENT_CONFIGS.map(([businessId, config, returnDestinationId]) => {
   if (config.business_id !== businessId) throw new Error("Instagram client configuration mismatch.");
   const reviewPublishEnabled = config.integrations?.instagram?.review_publish_enabled === true;
+  const messagesEnabled = config.integrations?.instagram?.messages_enabled === true;
   return [businessId, Object.freeze({
     business_id: businessId,
     returnDestinationId,
-    authorizationScope: reviewPublishEnabled ? INSTAGRAM_AUTHORIZATION_SCOPE : INSTAGRAM_IDENTITY_SCOPE,
+    authorizationScope: reviewPublishEnabled || messagesEnabled ? INSTAGRAM_AUTHORIZATION_SCOPE : INSTAGRAM_IDENTITY_SCOPE,
+    messagesEnabled,
   })];
 })));
 
 export const INSTAGRAM_RETURN_DESTINATIONS = Object.freeze({
   "growthwise-dev-integration": "/instagram-dev.html",
   "dexter-integration": "/",
+  "connector-customer-integration": "/connect-accounts.html",
 });
 
 const SAFE_HINTS = new Set(["connected", "cancelled", "attention"]);
@@ -29,6 +32,20 @@ export function getInstagramClient(businessId) {
     throw new Error("Instagram client is not configured.");
   }
   return INSTAGRAM_CLIENTS[businessId];
+}
+
+export function getInstagramConnectorClient(businessId) {
+  if (typeof businessId !== "string" || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(businessId) || businessId.length > 80) {
+    throw new Error("Instagram client is not configured.");
+  }
+  if (Object.hasOwn(INSTAGRAM_CLIENTS, businessId)) return INSTAGRAM_CLIENTS[businessId];
+  return Object.freeze({
+    business_id: businessId,
+    returnDestinationId: "connector-customer-integration",
+    authorizationScope: INSTAGRAM_IDENTITY_SCOPE,
+    messagesEnabled: false,
+    integrations: { instagram: {} },
+  });
 }
 
 function canonicalOrigin(publicOrigin) {

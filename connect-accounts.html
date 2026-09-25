@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <meta name="Referrer-Policy" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+  <title>Connect your accounts | GrowthWise</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, system-ui, sans-serif; background: #f4f7fb; color: #172235; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+    main { width: min(680px, 100%); }
+    .eyebrow { color: #3456a4; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: .78rem; }
+    h1 { margin: 8px 0 4px; font-size: clamp(2rem, 7vw, 3rem); }
+    .intro { color: #526175; margin: 0 0 24px; }
+    .card { background: #fff; border: 1px solid #dbe3ef; border-radius: 18px; padding: 22px; margin: 14px 0; box-shadow: 0 10px 30px rgba(29, 48, 78, .08); }
+    .row { display: flex; gap: 18px; align-items: center; justify-content: space-between; }
+    h2 { margin: 0 0 6px; }
+    p { margin: 0; line-height: 1.5; }
+    .status { font-weight: 800; color: #3456a4; }
+    .detail { color: #526175; margin-top: 8px; }
+    button { border: 0; border-radius: 12px; background: #173f8f; color: #fff; font: inherit; font-weight: 800; padding: 12px 16px; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: wait; }
+    .secondary { background: #eef2f7; color: #344155; }
+    .unavailable { color: #6b7280; background: #eef2f7; border-radius: 999px; padding: 7px 11px; font-weight: 700; white-space: nowrap; }
+    .email-warning { margin-top: 14px; padding: 14px; border-radius: 14px; background: #eef5ff; border: 1px solid #cbdaf4; }
+    .email-warning strong { display: block; margin-bottom: 5px; }
+    .choice { display: flex; gap: 9px; align-items: flex-start; margin-top: 10px; color: #364357; }
+    .choice input { margin-top: 4px; }
+    .helper-link { display: inline-block; margin-top: 10px; color: #173f8f; font-weight: 800; }
+    #connection-error { color: #a12121; min-height: 1.5em; margin: 10px 0; }
+    .inbox-message { border-top: 1px solid #e4eaf2; padding: 14px 0; }
+    .inbox-message:first-child { border-top: 0; padding-top: 4px; }
+    .inbox-message-top { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+    .inbox-message p { margin-top: 8px; white-space: pre-wrap; color: #2f3c50; }
+    .inbox-message small { display: block; margin-top: 8px; color: #6b7280; }
+    .inbox-source { background: #eef5ff; color: #3456a4; border-radius: 999px; padding: 5px 9px; font-size: .78rem; font-weight: 800; }
+    @media (max-width: 520px) { .row { align-items: flex-start; flex-direction: column; } button { width: 100%; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">GrowthWise secure setup</div>
+    <h1>Connect your accounts</h1>
+    <p class="intro">Set up supported business accounts for <strong id="business-name">Your business</strong>.</p>
+    <p id="connection-error" role="alert"></p>
+
+    <section class="card" aria-labelledby="instagram-title">
+      <div class="row">
+        <div>
+          <h2 id="instagram-title">Instagram</h2>
+          <p id="instagram-status" class="status">Checking…</p>
+          <p id="instagram-detail" class="detail">Checking your secure connection.</p>
+        </div>
+        <button id="instagram-connect" type="button" hidden>Connect Instagram</button>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="email-title">
+      <div class="row">
+        <div>
+          <h2 id="email-title">Email</h2>
+          <p id="email-status" class="status">Setup unavailable</p>
+          <p id="email-detail" class="detail">Microsoft email connection is not available yet.</p>
+        </div>
+        <span id="email-unavailable" class="unavailable">Coming later</span>
+        <div>
+          <button id="email-connect" type="button" hidden disabled>Connect Microsoft Email</button>
+          <button id="email-disconnect" class="secondary" type="button" hidden>Disconnect</button>
+        </div>
+      </div>
+      <div id="email-consent" class="email-warning">
+        <strong>Before connecting email</strong>
+        <p>GrowthWise strongly recommends a mailbox used only for your business. If you connect a personal mailbox, GrowthWise may be able to access personal messages under the permissions you approve.</p>
+        <label class="choice"><input type="radio" name="email-mailbox-context" value="business"> <span>This is a business mailbox.</span></label>
+        <label class="choice"><input type="radio" name="email-mailbox-context" value="personal_acknowledged"> <span>I understand this mailbox also contains personal email and I still want to continue.</span></label>
+        <a class="helper-link" href="./business-email-help.html">Need a separate business email? See setup options.</a>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="facebook-title">
+      <div class="row">
+        <div>
+          <h2 id="facebook-title">Facebook</h2>
+          <p id="facebook-status" class="status">Setup unavailable</p>
+          <p class="detail">Facebook connection setup is not available yet.</p>
+        </div>
+        <span class="unavailable">Coming later</span>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="connector-inbox-title">
+      <div>
+        <h2 id="connector-inbox-title">Recent inbound messages</h2>
+        <p id="connector-inbox-status" class="detail">Checking secure inbox…</p>
+        <p class="detail">This read-only view is bound to the current secure business session. The browser cannot choose or override the tenant.</p>
+      </div>
+      <div id="connector-inbox-list" aria-live="polite"></div>
+    </section>
+  </main>
+  <script type="module" src="./assets/connector-invitation.mjs"></script>
+  <!-- Microsoft mail preview configuration refresh -->
+</body>
+</html>

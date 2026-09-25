@@ -1,5 +1,5 @@
 import { createInstagramCrypto } from "./_instagram-crypto.mjs";
-import { getInstagramClient, resolveInstagramReturnDestination } from "./_instagram-clients.mjs";
+import { getInstagramClient, getInstagramConnectorClient, resolveInstagramReturnDestination } from "./_instagram-clients.mjs";
 import {
   configuredInstagramOAuth, exchangeAuthorizationCode, exchangeLongLivedToken,
   verifyProfessionalIdentity,
@@ -8,7 +8,8 @@ import { instagramDatabase } from "./_instagram-store.mjs";
 
 const PATH = "/.netlify/functions/instagram-oauth-callback";
 const MAX_QUERY_BYTES = 8192;
-const DESTINATIONS = new Set(["growthwise-dev-integration", "dexter-integration"]);
+const CONNECTOR_DESTINATION = "connector-customer-integration";
+const DESTINATIONS = new Set(["growthwise-dev-integration", "dexter-integration", CONNECTOR_DESTINATION]);
 
 function env(name) { return globalThis.Netlify?.env?.get(name); }
 function versions(name) { return { current: { id: "v1", key: env(name) } }; }
@@ -112,7 +113,9 @@ export function createInstagramOAuthCallbackHandler(options = {}) {
         throw new Error("INVALID_IDENTITY");
       }
       const expiresAt = new Date(now().getTime() + long.expiresInSeconds * 1000);
-      const client = getInstagramClient(transaction.business_id);
+      const client = transaction.return_destination_id === CONNECTOR_DESTINATION
+        ? getInstagramConnectorClient(transaction.business_id)
+        : getInstagramClient(transaction.business_id);
       failureStage = "credential_store";
       await store.connectCredential({
         businessId: transaction.business_id, accountId: identity.accountId,

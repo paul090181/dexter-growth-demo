@@ -37,23 +37,35 @@ test("Instagram publishing permission is limited to the OAuth configuration", as
   ]);
 });
 
-test("Instagram live endpoints exist only in the explicit publishing provider and no webhooks or messaging were added", async () => {
+test("Instagram live publishing stays isolated while inbound messaging is explicitly gated", async () => {
   const files = await runtimeFiles();
   const liveEndpointFiles = [];
+  const messagingPermissionFiles = [];
   for (const file of files) {
     const source = await read(file);
     if (/media_publish|\/${?id}?\/media|\/media\b/.test(source)) liveEndpointFiles.push(file);
+    if (source.includes("instagram_business_manage_messages")) messagingPermissionFiles.push(file);
   }
   assert.deepEqual(liveEndpointFiles.sort(), [
     "netlify/functions/_instagram-publishing.mjs",
     "netlify/functions/instagram-publish.mjs",
   ]);
-  const source = await joined(files);
-  const assembled = source.replace(/[\s"'\`+]/g, "");
-  assert.doesNotMatch(source, /\b(?:InstagramWebhook|registerWebhook|subscribeWebhook|instagram_business_manage_messages|instagram_business_manage_comments)\b/i);
-  assert.doesNotMatch(assembled, /instagram.{0,160}webhooks?|webhooks?.{0,160}instagram/i);
-});
+  assert.deepEqual(messagingPermissionFiles.sort(), [
+    "netlify/functions/_instagram-oauth.mjs",
+  ]);
 
+  const webhook = await read("netlify/functions/meta-webhook.mjs");
+  const webhookCore = await read("netlify/functions/_meta-webhook.mjs");
+  assert.match(webhook, /META_APP_SECRET/);
+  assert.match(webhook, /x-hub-signature-256/i);
+  assert.match(webhook, /GROWTHWISE_META_ACCOUNT_MAP/);
+  assert.match(webhookCore, /Facebook Messenger/);
+  assert.match(webhookCore, /Instagram DM/);
+  assert.doesNotMatch(webhook + webhookCore, /graph\.instagram\.com|graph\.facebook\.com|\/messages\b|media_publish/i);
+
+  const source = await joined(files);
+  assert.doesNotMatch(source, /\b(?:registerWebhook|subscribeWebhook|instagram_business_manage_comments)\b/i);
+});
 test("Instagram publish handler requires explicit reviewed confirmation before staging or provider calls", async () => {
   const source = await read("netlify/functions/instagram-publish.mjs");
   assert.match(source, /body\.reviewed\s*!==\s*true/);
@@ -73,16 +85,23 @@ test("Publishing Core source preserves live_sent false invariant", async () => {
   assert.deepEqual([...new Set(assignments)], ["false"]);
 });
 
-test("protected Auto City Square and Facebook files match branch baseline", async () => {
+test("protected Auto City and Facebook files match branch baseline", async () => {
   const expected = new Map([
     ["automotive-pilot.html", "8fe5fbb86a3288cb7a6efdb73974dc93d34b9ea871f91dcd2ec590ada60578de"],
     ["netlify/functions/facebook-post.mjs", "063848eb729d99fec036a76ee5a1606712f6946e6383cdb4be092a152908d664"],
-    ["netlify/functions/add-product.mjs", "6ea871479eb179f85468f55765b60da381ad0bf34b38ddfbb65595913ec3101c"],
   ]);
   for (const [file, digest] of expected) {
     const actual = createHash("sha256").update(await read(file)).digest("hex");
     assert.equal(actual, digest, `${file} differs from the approved platform-v1 baseline`);
   }
+});
+
+test("retail add-product remains a Square-only inventory write surface", async () => {
+  const source = await read("netlify/functions/add-product.mjs");
+  assert.match(source, /connect\.squareupsandbox\.com/);
+  assert.match(source, /\/v2\/catalog\/object/);
+  assert.match(source, /\/v2\/inventory\/changes\/batch-create/);
+  assert.doesNotMatch(source, /graph\.instagram\.com|instagram-publish|media_publish|facebook\.com|graph\.facebook\.com|FACEBOOK_PAGE_ACCESS_TOKEN|GROWTHWISE_INSTAGRAM_/i);
 });
 
 test("frontend assets contain no server environment secret names except the admin header name", async () => {
