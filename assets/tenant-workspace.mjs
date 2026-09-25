@@ -3,6 +3,20 @@ const STATUS_ENDPOINT = "/.netlify/functions/subscription-status";
 const PORTAL_ENDPOINT = "/.netlify/functions/stripe-customer-portal";
 const LEAD_ENDPOINT = "/.netlify/functions/retail-lead-assistant";
 
+const FEATURE_LABELS = Object.freeze([
+  ["ai_business_assistant", "AI business assistant"],
+  ["lead_reply_drafting", "AI lead reply"],
+  ["promotion_content", "Promotions & content"],
+  ["inventory_connection", "Inventory connection"],
+  ["unified_inbox", "Unified inbox"],
+  ["automated_publishing", "Automated publishing"],
+  ["orders_restock", "Orders & restock"],
+  ["business_insights", "Business insights"],
+  ["multi_channel_automation", "Multi-channel automation"],
+  ["advanced_ai_automation", "Advanced AI automation"],
+  ["multi_location", "Multiple locations"],
+]);
+
 export function readWorkspaceCredentials(storage = globalThis.sessionStorage) {
   return {
     businessId: storage?.getItem("growthwise_business_id") || "",
@@ -200,6 +214,9 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const contact = documentImpl.getElementById("workspace-contact");
   const status = documentImpl.getElementById("workspace-status");
   const access = documentImpl.getElementById("workspace-access");
+  const plan = documentImpl.getElementById("workspace-plan");
+  const proTrial = documentImpl.getElementById("workspace-pro-trial");
+  const featureGrid = documentImpl.getElementById("workspace-feature-grid");
   const manage = documentImpl.getElementById("workspace-manage-billing");
   const signOut = documentImpl.getElementById("workspace-signout");
   const leadCard = documentImpl.getElementById("workspace-lead-card");
@@ -223,6 +240,32 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     contact.textContent = [view.profile?.contact_name, view.profile?.contact_email].filter(Boolean).join(" · ");
     status.textContent = controller.statusLabel(view.subscription?.status);
     access.textContent = view.subscription?.access_granted ? "Active" : "Locked";
+    plan.textContent = view.subscription?.plan_name
+      ? `${view.subscription.plan_name}${view.subscription.monthly_price_usd ? ` · ${view.subscription.monthly_price_usd}/mo` : ""}`
+      : "No active plan";
+
+    const trial = view.subscription?.pro_experience;
+    const trialActive = trial?.active === true;
+    proTrial.hidden = !trialActive;
+    if (trialActive) {
+      const end = trial.ends_at ? new Date(trial.ends_at) : null;
+      const endLabel = end && Number.isFinite(end.getTime()) ? end.toLocaleDateString() : "the trial end date";
+      proTrial.textContent = `Pro Experience active · ${trial.remaining_days} day${trial.remaining_days === 1 ? "" : "s"} remaining · returns to Growth on ${endLabel} unless you choose Pro.`;
+    }
+
+    const featureAccess = view.subscription?.feature_access || {};
+    featureGrid.replaceChildren();
+    for (const [key, label] of FEATURE_LABELS) {
+      const item = documentImpl.createElement("div");
+      item.className = `feature-item ${featureAccess[key] ? "included" : "locked"}`;
+      const name = documentImpl.createElement("strong");
+      name.textContent = label;
+      const state = documentImpl.createElement("span");
+      state.textContent = featureAccess[key] ? "Included" : "Locked";
+      item.append(name, state);
+      featureGrid.append(item);
+    }
+
     manage.hidden = view.subscription?.access_source !== "stripe";
     manage.disabled = view.loading;
     const accessGranted = view.subscription?.access_granted === true;
