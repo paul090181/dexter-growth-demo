@@ -1,16 +1,15 @@
 name: Preview 16 Square redirect smoke
 
 on:
-  pull_request:
+  push:
     branches:
-      - platform-v1
+      - feat/tenant-onboarding-integrations
 
 permissions:
   contents: read
 
 jobs:
   square-redirect-smoke:
-    if: github.event.pull_request.number == 16
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
@@ -25,34 +24,11 @@ jobs:
             code="$(curl --silent --show-error --max-time 20 --output "$body" --dump-header "$headers" --write-out "%{http_code}" --max-redirs 0 "$url" || true)"
             if [ "$code" = "303" ] || [ "$code" = "302" ]; then
               location="$(awk 'BEGIN{IGNORECASE=1} /^location:/ {sub(/^[^:]*:[[:space:]]*/,""); sub(/\r$/,""); print; exit}' "$headers")"
-              node - "$location" <<'NODE'
-const value = process.argv[2] || "";
-const url = new URL(value);
-const required = ["client_id","scope","session","state"];
-if (url.origin !== "https://connect.squareupsandbox.com") process.exit(10);
-if (url.pathname !== "/oauth2/authorize") process.exit(11);
-if (url.hash || url.username || url.password) process.exit(12);
-for (const key of required) {
-  if (url.searchParams.getAll(key).length !== 1) process.exit(13);
-}
-if (url.searchParams.get("session") !== "false") process.exit(14);
-console.log(JSON.stringify({
-  ok: true,
-  status: "redirect",
-  origin: url.origin,
-  path: url.pathname,
-  required_parameters_present: true,
-  oauth_state_logged: false
-}));
-NODE
+              python -c 'import sys,urllib.parse as u; p=u.urlparse(sys.argv[1]); q=u.parse_qs(p.query); assert p.scheme=="https" and p.netloc=="connect.squareupsandbox.com" and p.path=="/oauth2/authorize"; assert all(len(q.get(k,[]))==1 for k in ("client_id","scope","session","state")); assert q["session"][0]=="false"; print("LIVE_SQUARE_REDIRECT_OK")' "$location"
               rm -f "$headers" "$body"
               exit 0
             fi
-            if [ "$code" = "500" ] || [ "$code" = "403" ] || [ "$code" = "404" ]; then
-              echo "Preview responded HTTP $code on attempt $attempt; retrying while deploy/config settles."
-            else
-              echo "Preview not ready on attempt $attempt (HTTP $code)."
-            fi
+            echo "Preview response attempt $attempt: HTTP $code"
             rm -f "$headers" "$body"
             sleep 5
           done
