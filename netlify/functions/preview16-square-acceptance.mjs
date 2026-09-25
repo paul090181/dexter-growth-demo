@@ -1,0 +1,308 @@
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { getDatabase } from "@netlify/database";
+import { hashTenantAccessKey } from "./_tenant-auth.mjs";
+import { createSquareOAuthStartHandler } from "./square-oauth-start.mjs";
+import { createSquareCrypto } from "./_square-crypto.mjs";
+import { createSquareStore } from "./_square-store.mjs";
+import { getSquareAccess } from "./_square-access.mjs";
+import { retrieveSquareTokenStatus, SQUARE_API_VERSION, SQUARE_OAUTH_SCOPES } from "./_square-oauth.mjs";
+import { createTenantSquareInventoryHandler } from "./tenant-square-inventory.mjs";
+import { createTenantSquareSalesHandler } from "./tenant-square-sales.mjs";
+
+const PREVIEW_ORIGIN = "https://deploy-preview-16--euphonious-beijinho-db4b4d.netlify.app";
+const PATH = "/.netlify/functions/preview16-square-acceptance";
+
+function env(name) { return globalThis.Netlify?.env?.get(name) || ""; }
+function versions(name) { return { current: { id: "v1", key: env(name) } }; }
+
+function json(status, body) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+      pragma: "no-cache",
+      "referrer-policy": "no-referrer",
+    },
+  });
+}
+
+function safeEqual(left, right) {
+  if (typeof left !== "string" || typeof right !== "string" || !left || !right) return false;
+  const a = Buffer.from(left);
+  const b = Buffer.from(right);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+function ids(secret) {
+  const suffix = createHash("sha256").update(secret, "utf8").digest("hex").slice(0, 10);
+  const tenantKey = (label) =>
+    `gw_tenant_${createHmac("sha256", secret).update(label, "utf8").digest("base64url")}`;
+  return {
+    primaryId: `gw-square-accept-a-${suffix}`,
+    controlId: `gw-square-accept-b-${suffix}`,
+    primaryKey: tenantKey("primary"),
+    controlKey: tenantKey("control"),
+  };
+}
+
+function cryptoForSquare() {
+  return createSquareCrypto({
+    bindingSecrets: versions("GROWTHWISE_SQUARE_ACCOUNT_BINDING_SECRET"),
+    credentialKeys: versions("GROWTHWISE_SQUARE_CREDENTIAL_ENCRYPTION_KEY"),
+  });
+}
+
+async function cleanupRows(pool, { primaryId, controlId }) {
+  const ids = [primaryId, controlId];
+  await pool.query("DELETE FROM square_credentials WHERE business_id = ANY($1::text[])", [ids]);
+  await pool.query("DELETE FROM square_oauth_transactions WHERE business_id = ANY($1::text[])", [ids]);
+  await pool.query("DELETE FROM growthwise_subscriptions WHERE business_id = ANY($1::text[])", [ids]);
+  await pool.query("DELETE FROM growthwise_tenants WHERE business_id = ANY($1::text[])", [ids]);
+}
+
+async function insertTenant(pool, businessId, businessName, tenantKey) {
+  await pool.query(
+    `INSERT INTO growthwise_tenants
+      (business_id, business_name, contact_name, contact_email, access_key_hash)
+     VALUES ($1,$2,$3,$4,$5)`,
+    [
+      businessId,
+      businessName,
+      "GrowthWise Acceptance",
+      `${businessId}@example.invalid`,
+      hashTenantAccessKey(tenantKey),
+    ],
+  );
+  await pool.query(
+    `INSERT INTO growthwise_subscriptions
+      (business_id, access_source, plan_key, status, plan_started_at)
+     VALUES ($1,'pilot','growth_monthly','pilot',CURRENT_TIMESTAMP)`,
+    [businessId],
+  );
+}
+
+async function startAcceptance(pool, identity) {
+  await cleanupRows(pool, identity);
+  await insertTenant(pool, identity.primaryId, "Square Acceptance Primary", identity.primaryKey);
+  await insertTenant(pool, identity.controlId, "Square Acceptance Control", identity.controlKey);
+
+  const handler = createSquareOAuthStartHandler();
+  const request = new Request(`${PREVIEW_ORIGIN}/.netlify/functions/square-oauth-start`, {
+    method: "POST",
+    headers: {
+      origin: PREVIEW_ORIGIN,
+      "sec-fetch-site": "same-origin",
+      "content-type": "application/json",
+      "x-growthwise-tenant-key": identity.primaryKey,
+    },
+    body: JSON.stringify({ business_id: identity.primaryId }),
+  });
+  const response = await handler(request);
+  const body = await response.json().catch(() => ({}));
+  if (response.status !== 200 || typeof body.authorization_url !== "string") {
+    await cleanupRows(pool, identity);
+    return json(500, {
+      ok: false,
+      stage: "oauth_start",
+      status: response.status,
+      error: body.error || "Square OAuth start failed.",
+    });
+  }
+
+  let url;
+  try { url = new URL(body.authorization_url); }
+  catch {
+    await cleanupRows(pool, identity);
+    return json(500, { ok: false, stage: "authorization_url", error: "Invalid authorization URL." });
+  }
+  if (url.origin !== "https://connect.squareupsandbox.com"
+    || url.pathname !== "/oauth2/authorize") {
+    await cleanupRows(pool, identity);
+    return json(500, { ok: false, stage: "authorization_url", error: "Unsafe authorization URL." });
+  }
+
+  return json(200, {
+    ok: true,
+    stage: "awaiting_square_authorization",
+    business_id: identity.primaryId,
+    control_business_id: identity.controlId,
+    authorization_url: url.toString(),
+    production_touched: false,
+  });
+}
+
+async function statusAcceptance(pool, identity) {
+  const squareCrypto = cryptoForSquare();
+  const squareStore = createSquareStore({ crypto: squareCrypto });
+  const credential = await squareStore.readDecryptedCredential({ businessId: identity.primaryId });
+  const control = await squareStore.readCredential({ businessId: identity.controlId });
+
+  if (!credential) {
+    const tx = await pool.query(
+      `SELECT status FROM square_oauth_transactions
+        WHERE business_id = $1
+        ORDER BY created_at DESC LIMIT 1`,
+      [identity.primaryId],
+    );
+    return json(200, {
+      ok: true,
+      stage: "awaiting_square_authorization",
+      transaction_status: tx.rows[0]?.status || null,
+      production_touched: false,
+    });
+  }
+
+  const access = await getSquareAccess({ businessId: identity.primaryId });
+  const tokenStatus = await retrieveSquareTokenStatus({
+    accessToken: access.accessToken,
+    environment: access.environment,
+  });
+  const requiredScopesPresent = SQUARE_OAUTH_SCOPES.every((scope) =>
+    tokenStatus.scopes.includes(scope));
+
+  const inventoryHandler = createTenantSquareInventoryHandler();
+  const salesHandler = createTenantSquareSalesHandler();
+
+  const primaryInventory = await inventoryHandler(new Request(
+    `${PREVIEW_ORIGIN}/.netlify/functions/tenant-square-inventory?business_id=${encodeURIComponent(identity.primaryId)}`,
+    { method: "GET", headers: { "x-growthwise-tenant-key": identity.primaryKey } },
+  ));
+  const inventoryBody = await primaryInventory.json().catch(() => ({}));
+
+  const primarySales = await salesHandler(new Request(
+    `${PREVIEW_ORIGIN}/.netlify/functions/tenant-square-sales?business_id=${encodeURIComponent(identity.primaryId)}&days=30`,
+    { method: "GET", headers: { "x-growthwise-tenant-key": identity.primaryKey } },
+  ));
+  const salesBody = await primarySales.json().catch(() => ({}));
+
+  const wrongTenant = await inventoryHandler(new Request(
+    `${PREVIEW_ORIGIN}/.netlify/functions/tenant-square-inventory?business_id=${encodeURIComponent(identity.primaryId)}`,
+    { method: "GET", headers: { "x-growthwise-tenant-key": identity.controlKey } },
+  ));
+
+  const controlInventory = await inventoryHandler(new Request(
+    `${PREVIEW_ORIGIN}/.netlify/functions/tenant-square-inventory?business_id=${encodeURIComponent(identity.controlId)}`,
+    { method: "GET", headers: { "x-growthwise-tenant-key": identity.controlKey } },
+  ));
+
+  return json(200, {
+    ok: primaryInventory.status === 200
+      && primarySales.status === 200
+      && wrongTenant.status === 401
+      && controlInventory.status === 409
+      && !control
+      && requiredScopesPresent,
+    stage: "authorized",
+    square_environment: credential.environment,
+    connected_status: credential.status,
+    required_scopes_present: requiredScopesPresent,
+    granted_scope_count: tokenStatus.scopes.length,
+    inventory_endpoint_status: primaryInventory.status,
+    sales_endpoint_status: primarySales.status,
+    cross_tenant_request_status: wrongTenant.status,
+    control_tenant_inventory_status: controlInventory.status,
+    control_tenant_has_square_credential: Boolean(control),
+    inventory_item_count: inventoryBody?.summary?.item_count ?? null,
+    inventory_variation_count: inventoryBody?.summary?.variation_count ?? null,
+    completed_order_count_30d: salesBody?.summary?.completed_order_count ?? null,
+    token_refreshed_during_test: access.refreshed === true,
+    production_touched: false,
+  });
+}
+
+async function revokeAcceptanceToken(credential) {
+  if (!credential?.payload?.access_token) return { attempted: false, success: null };
+  const applicationId = env("GROWTHWISE_SQUARE_OAUTH_APPLICATION_ID");
+  const applicationSecret = env("GROWTHWISE_SQUARE_OAUTH_APPLICATION_SECRET");
+  if (!applicationId || !applicationSecret) return { attempted: false, success: false };
+
+  try {
+    const response = await fetch("https://connect.squareupsandbox.com/oauth2/revoke", {
+      method: "POST",
+      headers: {
+        Authorization: `Client ${applicationSecret}`,
+        "Square-Version": SQUARE_API_VERSION,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        client_id: applicationId,
+        access_token: credential.payload.access_token,
+        revoke_only_access_token: true,
+      }),
+    });
+    const body = await response.json().catch(() => ({}));
+    return { attempted: true, success: response.ok && body.success === true };
+  } catch {
+    return { attempted: true, success: false };
+  }
+}
+
+async function cleanupAcceptance(pool, identity) {
+  const squareStore = createSquareStore({ crypto: cryptoForSquare() });
+  let credential = null;
+  try {
+    credential = await squareStore.readDecryptedCredential({ businessId: identity.primaryId });
+  } catch {}
+  const revocation = await revokeAcceptanceToken(credential);
+  await cleanupRows(pool, identity);
+
+  const checks = await Promise.all([
+    pool.query("SELECT COUNT(*)::int AS count FROM square_credentials WHERE business_id = ANY($1::text[])", [[identity.primaryId, identity.controlId]]),
+    pool.query("SELECT COUNT(*)::int AS count FROM square_oauth_transactions WHERE business_id = ANY($1::text[])", [[identity.primaryId, identity.controlId]]),
+    pool.query("SELECT COUNT(*)::int AS count FROM growthwise_subscriptions WHERE business_id = ANY($1::text[])", [[identity.primaryId, identity.controlId]]),
+    pool.query("SELECT COUNT(*)::int AS count FROM growthwise_tenants WHERE business_id = ANY($1::text[])", [[identity.primaryId, identity.controlId]]),
+  ]);
+  const remaining = checks.reduce((sum, result) => sum + Number(result.rows[0]?.count || 0), 0);
+
+  return json(200, {
+    ok: remaining === 0,
+    stage: "cleanup",
+    oauth_access_token_revocation_attempted: revocation.attempted,
+    oauth_access_token_revoked: revocation.success,
+    database_rows_remaining: remaining,
+    production_touched: false,
+  });
+}
+
+export default async function handler(request) {
+  if (request.method !== "GET") return json(405, { error: "Method not allowed." });
+
+  let url;
+  try { url = new URL(request.url); }
+  catch { return json(400, { error: "Invalid request." }); }
+
+  if (url.origin !== PREVIEW_ORIGIN
+    || url.pathname !== PATH
+    || url.hash
+    || [...url.searchParams].some(([key]) => !["action", "key"].includes(key))
+    || url.searchParams.getAll("action").length !== 1
+    || url.searchParams.getAll("key").length !== 1) {
+    return json(404, { error: "Not found." });
+  }
+
+  const configuredKey = env("GROWTHWISE_PREVIEW16_ACCEPTANCE_KEY");
+  const suppliedKey = url.searchParams.get("key") || "";
+  if (!safeEqual(suppliedKey, configuredKey)) return json(404, { error: "Not found." });
+
+  const action = url.searchParams.get("action");
+  if (!["start", "status", "cleanup"].includes(action)) {
+    return json(400, { error: "Invalid action." });
+  }
+
+  const identity = ids(configuredKey);
+  const pool = getDatabase().pool;
+
+  try {
+    if (action === "start") return await startAcceptance(pool, identity);
+    if (action === "status") return await statusAcceptance(pool, identity);
+    return await cleanupAcceptance(pool, identity);
+  } catch {
+    return json(500, {
+      ok: false,
+      stage: action,
+      error: "Preview 16 Square acceptance failed.",
+      production_touched: false,
+    });
+  }
+}
