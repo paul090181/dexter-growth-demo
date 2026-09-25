@@ -1,4 +1,5 @@
 import { authorized as defaultAuthorized, json } from "./_lead-store.mjs";
+import { resolveGrowthWisePublicOrigin } from "./_public-origin.mjs";
 import { DEFAULT_BILLING_TENANTS, billingTenantsFromEnvironment } from "./_billing-tenants.mjs";
 import { createCheckoutSession, createStripeClient } from "./_stripe-client.mjs";
 import { authorizeTenantRequest } from "./_tenant-auth.mjs";
@@ -110,7 +111,7 @@ function environment() {
   return {
     secretKey: Netlify.env.get("STRIPE_SECRET_KEY") || "",
     priceIds: stripePlanPricesFromEnvironment(),
-    origin: Netlify.env.get("GROWTHWISE_PUBLIC_ORIGIN") || "",
+    origin: resolveGrowthWisePublicOrigin(),
     tenants: billingTenantsFromEnvironment(Netlify.env.get("GROWTHWISE_BILLING_TENANTS") || ""),
   };
 }
