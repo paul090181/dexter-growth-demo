@@ -59,7 +59,7 @@ test("Checkout ignores client pricing and uses server configuration", async () =
   const response = await handler(request({ business_id: "growthwise-dev", price: "price_attacker", amount: 1 }));
 
   assert.equal(response.status, 200);
-  assert.equal(createCalls[0].line_items[0].price, "price_growth");
+  assert.equal(createCalls[0].line_items[0].price, "price_founding");
   assert.equal(createCalls[0].mode, "subscription");
   assert.deepEqual(createCalls[0].metadata, { business_id: "growthwise-dev", plan_key: "founding_monthly" });
   assert.deepEqual(createCalls[0].subscription_data.metadata, { business_id: "growthwise-dev", plan_key: "founding_monthly" });
@@ -144,7 +144,7 @@ test("tenant checkout requires its exact business ID and uses only server-mapped
     business_id: "tenant-self-abcdef123456",
     plan_key: "growth_monthly",
   });
-  assert.equal(createCalls[0].line_items[0].price, "price_founding");
+  assert.equal(createCalls[0].line_items[0].price, "price_growth");
   assert.equal(createCalls[0].success_url,
     "https://deploy-preview-14--euphonious-beijinho-db4b4d.netlify.app/signup.html?billing=success&session_id={CHECKOUT_SESSION_ID}");
   assert.equal(createCalls[0].cancel_url,
