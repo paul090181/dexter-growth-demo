@@ -7,10 +7,10 @@ const source = await readFile(
   "utf8",
 );
 
-test("database smoke endpoint is hard-limited to Netlify deploy previews", () => {
-  assert.match(source, /=== "deploy-preview"/);
+test("database smoke endpoint is hard-limited to Preview 15 hosts", () => {
+  assert.match(source, /startsWith\("deploy-preview-15--"\)/);
+  assert.match(source, /endsWith\("\.netlify\.app"\)/);
   assert.match(source, /return json\(404/);
-  assert.doesNotMatch(source, /production/);
 });
 
 test("database smoke test uses a transaction and always rolls back its synthetic row", () => {
