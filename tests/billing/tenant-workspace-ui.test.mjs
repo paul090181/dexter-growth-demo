@@ -185,6 +185,10 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
 
   assert.match(html, /Business workspace/);
   assert.match(html, /Workspace ID/);
+  assert.match(html, /id="workspace-feature-grid"/);
+  assert.match(html, /id="workspace-pro-trial"/);
+  assert.match(js, /feature_access/);
+  assert.match(js, /Pro Experience active/);
   assert.doesNotMatch(html + js, /dexters-hats|Dexter's Hats|growthwise_admin_key|X-GrowthWise-Key/);
   assert.doesNotMatch(html + js, /localStorage/);
   assert.match(headers, /\/app\.html\n\s+Cache-Control: no-store/);
