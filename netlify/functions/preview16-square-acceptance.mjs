@@ -3,6 +3,7 @@ import { getDatabase } from "@netlify/database";
 import { hashTenantAccessKey } from "./_tenant-auth.mjs";
 import { createSquareOAuthStartHandler } from "./square-oauth-start.mjs";
 import { createSquareCrypto } from "./_square-crypto.mjs";
+import { previewAcceptanceKey, squareCryptoVersion } from "./_square-preview-secrets.mjs";
 import { createSquareStore } from "./_square-store.mjs";
 import { getSquareAccess } from "./_square-access.mjs";
 import { retrieveSquareTokenStatus, SQUARE_API_VERSION, SQUARE_OAUTH_SCOPES } from "./_square-oauth.mjs";
@@ -13,7 +14,6 @@ const PREVIEW_ORIGIN = "https://deploy-preview-16--euphonious-beijinho-db4b4d.ne
 const PATH = "/.netlify/functions/preview16-square-acceptance";
 
 function env(name) { return globalThis.Netlify?.env?.get(name) || ""; }
-function versions(name) { return { current: { id: "v1", key: env(name) } }; }
 
 function json(status, body) {
   return new Response(JSON.stringify(body), {
@@ -48,8 +48,8 @@ function ids(secret) {
 
 function cryptoForSquare() {
   return createSquareCrypto({
-    bindingSecrets: versions("GROWTHWISE_SQUARE_ACCOUNT_BINDING_SECRET"),
-    credentialKeys: versions("GROWTHWISE_SQUARE_CREDENTIAL_ENCRYPTION_KEY"),
+    bindingSecrets: squareCryptoVersion("GROWTHWISE_SQUARE_ACCOUNT_BINDING_SECRET"),
+    credentialKeys: squareCryptoVersion("GROWTHWISE_SQUARE_CREDENTIAL_ENCRYPTION_KEY"),
   });
 }
 
@@ -267,11 +267,12 @@ async function cleanupAcceptance(pool, identity) {
 
 async function browserAction(request, url) {
   const fetchSite = request.headers.get("sec-fetch-site");
+  const requestOrigin = request.headers.get("origin");
   if (url.origin !== PREVIEW_ORIGIN
     || url.pathname !== PATH
     || url.search
     || url.hash
-    || request.headers.get("origin") !== PREVIEW_ORIGIN
+    || (requestOrigin !== null && requestOrigin !== url.origin)
     || (fetchSite !== null && fetchSite !== "same-origin")
     || request.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase()
       !== "application/json") {
@@ -294,7 +295,7 @@ export default async function handler(request) {
   try { url = new URL(request.url); }
   catch { return json(400, { error: "Invalid request." }); }
 
-  const configuredKey = env("GROWTHWISE_PREVIEW16_ACCEPTANCE_KEY");
+  const configuredKey = previewAcceptanceKey();
   if (!configuredKey) return json(404, { error: "Not found." });
 
   let action = "";
