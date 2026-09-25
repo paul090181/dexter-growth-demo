@@ -1,13 +1,18 @@
 import { getDatabase } from "@netlify/database";
 import { json } from "./_lead-store.mjs";
 
-function isDeployPreview() {
-  return (Netlify.env.get("CONTEXT") || "") === "deploy-preview";
+function isPreview15(request) {
+  try {
+    const host = new URL(request.url).hostname;
+    return host.startsWith("deploy-preview-15--") && host.endsWith(".netlify.app");
+  } catch {
+    return false;
+  }
 }
 
 export default async function handler(request) {
   if (request.method !== "GET") return json(405, { error: "Method not allowed" });
-  if (!isDeployPreview()) return json(404, { error: "Not found" });
+  if (!isPreview15(request)) return json(404, { error: "Not found" });
 
   const client = await getDatabase().pool.connect();
   try {
