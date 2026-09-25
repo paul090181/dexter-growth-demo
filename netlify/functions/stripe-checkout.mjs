@@ -1,9 +1,11 @@
 import { authorized as defaultAuthorized, json } from "./_lead-store.mjs";
+import { resolveGrowthWisePublicOrigin } from "./_public-origin.mjs";
 import { DEFAULT_BILLING_TENANTS, billingTenantsFromEnvironment } from "./_billing-tenants.mjs";
 import { createCheckoutSession, createStripeClient } from "./_stripe-client.mjs";
 import { authorizeTenantRequest } from "./_tenant-auth.mjs";
 import { createTenantStore } from "./_tenant-store.mjs";
 import { createBillingStore } from "./_billing-store.mjs";
+import { resolveStripePlanPrice, stripePlanPricesFromEnvironment } from "./_stripe-plans.mjs";
 
 const MAX_BODY_BYTES = 16_384;
 
@@ -42,7 +44,7 @@ async function readJson(request) {
 export function createStripeCheckoutHandler({
   authorized = defaultAuthorized,
   stripe,
-  priceId,
+  priceIds,
   origin,
   tenants = DEFAULT_BILLING_TENANTS,
   tenantStore,
@@ -50,7 +52,7 @@ export function createStripeCheckoutHandler({
 }) {
   return async function stripeCheckoutHandler(request) {
     if (request.method !== "POST") return json(405, { error: "Method not allowed" });
-    if (!stripe || !priceId || !validOrigin(origin)) {
+    if (!stripe || !validOrigin(origin)) {
       return json(503, { error: "Billing is not configured." });
     }
 
@@ -62,6 +64,13 @@ export function createStripeCheckoutHandler({
     }
 
     const businessId = String(body?.business_id || "").trim();
+    const requestedPlanKey = String(body?.plan_key || "founding_monthly").trim();
+    const plan = resolveStripePlanPrice(priceIds, requestedPlanKey);
+    if (!plan.ok) {
+      return json(plan.code === "UNKNOWN_PLAN" ? 400 : 503, {
+        error: plan.code === "UNKNOWN_PLAN" ? "Plan is not available." : "Selected plan is not configured.",
+      });
+    }
     const adminAuth = authorized(request);
     let auth = adminAuth;
     if (adminAuth.ok) {
@@ -82,9 +91,10 @@ export function createStripeCheckoutHandler({
 
     try {
       const session = await createCheckoutSession(stripe, {
-        priceId,
+        priceId: plan.priceId,
         businessId,
         origin,
+        planKey: plan.planKey,
         returnPath: auth.via === "tenant" ? "/signup.html" : "/",
       });
       if (!approvedCheckoutUrl(session?.url)) {
@@ -100,8 +110,8 @@ export function createStripeCheckoutHandler({
 function environment() {
   return {
     secretKey: Netlify.env.get("STRIPE_SECRET_KEY") || "",
-    priceId: Netlify.env.get("STRIPE_PRICE_ID") || "",
-    origin: Netlify.env.get("GROWTHWISE_PUBLIC_ORIGIN") || "",
+    priceIds: stripePlanPricesFromEnvironment(),
+    origin: resolveGrowthWisePublicOrigin(),
     tenants: billingTenantsFromEnvironment(Netlify.env.get("GROWTHWISE_BILLING_TENANTS") || ""),
   };
 }

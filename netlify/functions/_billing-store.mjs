@@ -1,7 +1,7 @@
 const READ_SUBSCRIPTION = `
   SELECT business_id, access_source, plan_key, status, stripe_customer_id,
          stripe_subscription_id, stripe_price_id, current_period_end,
-         last_event_created_at, created_at, updated_at
+         plan_started_at, last_event_created_at, created_at, updated_at
     FROM growthwise_subscriptions
    WHERE business_id = $1`;
 
@@ -41,7 +41,7 @@ const FIND_BINDING_CONFLICT = `
 const FIND_SUBSCRIPTION_BY_STRIPE_IDS = `
   SELECT business_id, access_source, plan_key, status, stripe_customer_id,
          stripe_subscription_id, stripe_price_id, current_period_end,
-         last_event_created_at, created_at, updated_at
+         plan_started_at, last_event_created_at, created_at, updated_at
     FROM growthwise_subscriptions
    WHERE ($1::text IS NOT NULL AND stripe_customer_id = $1)
       OR ($2::text IS NOT NULL AND stripe_subscription_id = $2)
@@ -51,9 +51,15 @@ const UPSERT_SUBSCRIPTION = `
   INSERT INTO growthwise_subscriptions
     (business_id, access_source, plan_key, status, stripe_customer_id,
      stripe_subscription_id, stripe_price_id, current_period_end,
-     last_event_created_at)
-  VALUES ($1, 'stripe', $2, $3, $4, $5, $6, $7, $8)
+     plan_started_at, last_event_created_at)
+  VALUES ($1, 'stripe', $2, $3, $4, $5, $6, $7, COALESCE($8, CURRENT_TIMESTAMP), $8)
   ON CONFLICT (business_id) DO UPDATE SET
+    plan_started_at = CASE
+      WHEN growthwise_subscriptions.access_source = 'pilot' THEN growthwise_subscriptions.plan_started_at
+      WHEN growthwise_subscriptions.plan_key IS DISTINCT FROM EXCLUDED.plan_key
+        THEN COALESCE(EXCLUDED.last_event_created_at, CURRENT_TIMESTAMP)
+      ELSE growthwise_subscriptions.plan_started_at
+    END,
     plan_key = CASE WHEN growthwise_subscriptions.access_source = 'pilot'
       THEN growthwise_subscriptions.plan_key ELSE EXCLUDED.plan_key END,
     status = CASE WHEN growthwise_subscriptions.access_source = 'pilot'
@@ -66,7 +72,7 @@ const UPSERT_SUBSCRIPTION = `
     updated_at = CURRENT_TIMESTAMP
   RETURNING business_id, access_source, plan_key, status, stripe_customer_id,
             stripe_subscription_id, stripe_price_id, current_period_end,
-            last_event_created_at, created_at, updated_at`;
+            plan_started_at, last_event_created_at, created_at, updated_at`;
 
 async function netlifyPool() {
   const { getDatabase } = await import("@netlify/database");

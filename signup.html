@@ -54,12 +54,15 @@
 
     <section class="card notice hidden" id="oneTimeKeyPanel">
       <div class="eyebrow">Save once</div>
-      <h3>Your tenant access key</h3>
-      <p>This is shown only during this signup session. Store it securely; password recovery is not part of this preview.</p>
+      <h3>Save your workspace credentials</h3>
+      <p>Save both values. They are needed to reopen this preview workspace from another browser. Password recovery is not part of this preview.</p>
+      <p><strong>Workspace ID</strong></p>
+      <code class="key" id="oneTimeBusinessId"></code>
+      <p><strong>Tenant access key</strong></p>
       <code class="key" id="oneTimeKey"></code>
       <div class="row">
         <button class="button secondary" id="copyKeyButton" type="button">Copy key</button>
-        <button class="button" id="savedKeyButton" type="button">I saved it</button>
+        <button class="button" id="savedKeyButton" type="button">I saved both</button>
       </div>
     </section>
 
@@ -70,6 +73,7 @@
       </div>
       <p><strong>Founder savings:</strong> $50/month ($600/year) compared with the planned $99/month standard price after launch.</p>
       <p>Your workspace remains locked until GrowthWise receives and verifies Stripe’s signed subscription webhook.</p>
+      <p><strong>Have a promo code?</strong> Enter it securely on the Stripe checkout page. Stripe validates the code and calculates the discount before you confirm.</p>
       <button class="button" id="checkoutButton" type="button">Open secure sandbox checkout</button>
       <button class="button secondary hidden" id="manageBillingButton" type="button" style="margin-top:9px">Manage billing</button>
       <div class="status" id="subscriptionStatus">Current status: Not subscribed — access locked.</div>
@@ -79,6 +83,7 @@
       <div class="eyebrow">Access active</div>
       <h2>Your GrowthWise tenant is active</h2>
       <p>Stripe activation was confirmed by the GrowthWise server for this business.</p>
+      <a class="button" href="./app.html" style="display:block;text-align:center;text-decoration:none">Open business workspace</a>
     </section>
   </main>
 
@@ -88,6 +93,7 @@
     const signupButton = document.getElementById('signupButton');
     const signupStatus = document.getElementById('signupStatus');
     const oneTimeKeyPanel = document.getElementById('oneTimeKeyPanel');
+    const oneTimeBusinessId = document.getElementById('oneTimeBusinessId');
     const oneTimeKey = document.getElementById('oneTimeKey');
     const planCard = document.getElementById('planCard');
     const checkoutButton = document.getElementById('checkoutButton');
@@ -156,6 +162,7 @@
         if(!response.ok) throw new Error(data.error || 'Signup is temporarily unavailable.');
         sessionStorage.setItem('growthwise_business_id', data.business_id);
         sessionStorage.setItem('growthwise_tenant_key', data.tenant_key);
+        oneTimeBusinessId.textContent = data.business_id;
         oneTimeKey.textContent = data.tenant_key;
         oneTimeKeyPanel.classList.remove('hidden');
         showWorkspace();
@@ -173,6 +180,7 @@
       document.getElementById('copyKeyButton').textContent = 'Copied';
     });
     document.getElementById('savedKeyButton').addEventListener('click', ()=>{
+      oneTimeBusinessId.textContent = '';
       oneTimeKey.textContent = '';
       oneTimeKeyPanel.classList.add('hidden');
     });

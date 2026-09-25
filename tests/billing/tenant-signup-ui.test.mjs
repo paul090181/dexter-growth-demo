@@ -63,3 +63,9 @@ test("founding pricing states the continuous-membership rule", () => {
   assert.match(page, /If your membership ends and you later rejoin, the then-current standard rate will apply/i);
   assert.match(page, /Temporary payment-recovery periods do not automatically end founder pricing/i);
 });
+
+
+test("signup tells customers promotion codes are entered and validated in Stripe Checkout", () => {
+  assert.match(page, /Have a promo code\?/);
+  assert.match(page, /Stripe validates the code/);
+});

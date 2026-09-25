@@ -16,12 +16,13 @@ export async function createCheckoutSession(stripe, {
   returnPath = "/",
 }) {
   const metadata = { business_id: businessId, plan_key: planKey };
-  const idempotencyKey = `growthwise-founding-${createHash("sha256").update(businessId).digest("hex").slice(0, 32)}`;
+  const idempotencyKey = `growthwise-checkout-${createHash("sha256").update(`${businessId}|${planKey}`).digest("hex").slice(0, 32)}`;
   return stripe.checkout.sessions.create({
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
     metadata,
     subscription_data: { metadata },
+    allow_promotion_codes: true,
     success_url: `${origin}${returnPath}?billing=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}${returnPath}?billing=cancelled`,
   }, { idempotencyKey });

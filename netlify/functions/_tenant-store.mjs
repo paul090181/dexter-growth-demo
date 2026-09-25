@@ -11,7 +11,7 @@ const READ_TENANT_AUTH = `
    WHERE business_id = $1`;
 
 const READ_TENANT_PROFILE = `
-  SELECT business_id, business_name
+  SELECT business_id, business_name, contact_name, contact_email, created_at, updated_at
     FROM growthwise_tenants
    WHERE business_id = $1`;
 

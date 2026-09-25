@@ -54,15 +54,22 @@ function fakeDatabase({ subscriptions = [], tenants = ["tenant-a"], failUpsert =
     if (text.includes("INSERT INTO growthwise_subscriptions")) {
       if (failUpsert) throw new Error("synthetic database failure");
       const existing = transactionState.subscriptions.get(values[0]);
+      const nextPlanKey = existing?.access_source === "pilot" ? existing.plan_key : values[1];
+      const planChanged = existing && existing.access_source !== "pilot" && existing.plan_key !== nextPlanKey;
       const row = {
         business_id: values[0],
         access_source: existing?.access_source === "pilot" ? "pilot" : "stripe",
-        plan_key: existing?.access_source === "pilot" ? existing.plan_key : values[1],
+        plan_key: nextPlanKey,
         status: existing?.access_source === "pilot" ? "pilot" : values[2],
         stripe_customer_id: values[3] ?? existing?.stripe_customer_id ?? null,
         stripe_subscription_id: values[4] ?? existing?.stripe_subscription_id ?? null,
         stripe_price_id: values[5] ?? existing?.stripe_price_id ?? null,
         current_period_end: values[6],
+        plan_started_at: existing?.access_source === "pilot"
+          ? (existing.plan_started_at ?? existing.created_at ?? new Date("2026-09-21T00:00:00Z"))
+          : planChanged
+            ? (values[7] ?? new Date("2026-09-21T20:00:00Z"))
+            : (existing?.plan_started_at ?? values[7] ?? new Date("2026-09-21T20:00:00Z")),
         last_event_created_at: values[7] ?? existing?.last_event_created_at ?? null,
         created_at: existing?.created_at ?? new Date("2026-09-21T00:00:00Z"),
         updated_at: new Date("2026-09-21T20:00:00Z"),
@@ -244,4 +251,31 @@ test("later checkout linkage cannot make an earlier subscription activation stal
   assert.equal(subscription.stale, false);
   assert.equal(subscription.subscription.status, "active");
   assert.equal((await store.readSubscription({ businessId: "tenant-a" })).status, "active");
+});
+
+
+test("plan start time stays stable within a plan and resets only when the plan changes", async () => {
+  const db = fakeDatabase();
+  const store = createBillingStore({ getPool: async () => db.pool });
+
+  await store.applyEvent(eventAt(
+    "evt_growth_start", "active", "2026-09-21T20:00:00Z", "tenant-a",
+    { planKey: "growth_monthly" },
+  ));
+  const first = await store.readSubscription({ businessId: "tenant-a" });
+  assert.equal(new Date(first.plan_started_at).toISOString(), "2026-09-21T20:00:00.000Z");
+
+  await store.applyEvent(eventAt(
+    "evt_growth_update", "active", "2026-09-22T20:00:00Z", "tenant-a",
+    { planKey: "growth_monthly" },
+  ));
+  const samePlan = await store.readSubscription({ businessId: "tenant-a" });
+  assert.equal(new Date(samePlan.plan_started_at).toISOString(), "2026-09-21T20:00:00.000Z");
+
+  await store.applyEvent(eventAt(
+    "evt_pro_upgrade", "active", "2026-09-23T20:00:00Z", "tenant-a",
+    { planKey: "pro_monthly" },
+  ));
+  const upgraded = await store.readSubscription({ businessId: "tenant-a" });
+  assert.equal(new Date(upgraded.plan_started_at).toISOString(), "2026-09-23T20:00:00.000Z");
 });

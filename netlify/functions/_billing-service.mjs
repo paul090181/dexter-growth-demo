@@ -52,7 +52,22 @@ function subscriptionPriceId(object) {
   return stringId(object?.items?.data?.[0]?.price);
 }
 
-export function createBillingService({ store } = {}) {
+function planKeyFromPriceId(priceIds, priceId) {
+  if (!priceId || !priceIds || typeof priceIds !== "object") return null;
+  const matches = Object.entries(priceIds)
+    .filter(([, configuredPriceId]) => typeof configuredPriceId === "string"
+      && configuredPriceId.trim()
+      && configuredPriceId.trim() === priceId)
+    .map(([planKey]) => planKey);
+  return matches.length === 1 ? matches[0] : null;
+}
+
+export function createBillingService({
+  store,
+  attributionStore = null,
+  resolveCheckoutAttribution = null,
+  priceIds = null,
+} = {}) {
   if (!store?.applyEvent || !store?.readSubscription || !store?.findSubscriptionByStripeIds) {
     throw safeError("BILLING_STORE_REQUIRED");
   }
@@ -75,10 +90,11 @@ export function createBillingService({ store } = {}) {
   async function processSubscription(event, object) {
     const meta = metadata(object);
     const businessId = typeof meta.business_id === "string" ? meta.business_id.trim() : "";
-    const planKey = typeof meta.plan_key === "string" ? meta.plan_key.trim() : "";
+    const metadataPlanKey = typeof meta.plan_key === "string" ? meta.plan_key.trim() : "";
     const stripeSubscriptionId = stringId(object);
     const stripeCustomerId = stringId(object.customer);
     const stripePriceId = subscriptionPriceId(object);
+    const planKey = planKeyFromPriceId(priceIds, stripePriceId) || metadataPlanKey;
     const status = event.type === "customer.subscription.deleted" ? "canceled" : object.status;
     if (!businessId || !planKey || !stripeSubscriptionId || !stripeCustomerId || !SUBSCRIPTION_STATUSES.has(status)) {
       throw safeError("INVALID_SUBSCRIPTION_EVENT");
@@ -98,7 +114,7 @@ export function createBillingService({ store } = {}) {
     const stripeSubscriptionId = stringId(object.subscription);
     if (!businessId || !planKey || !stripeCustomerId || !stripeSubscriptionId) throw safeError("INVALID_CHECKOUT_EVENT");
     const existing = await store.readSubscription({ businessId });
-    return record(event, {
+    const recorded = await record(event, {
       businessId,
       planKey,
       status: existing?.status ?? "incomplete",
@@ -108,6 +124,29 @@ export function createBillingService({ store } = {}) {
       currentPeriodEnd: existing?.current_period_end ? new Date(existing.current_period_end) : null,
       advanceLifecycle: false,
     });
+
+    if (attributionStore?.recordAcquisition && typeof resolveCheckoutAttribution === "function") {
+      const attribution = await resolveCheckoutAttribution({
+        checkoutSessionId: stringId(object),
+        businessId,
+        planKey,
+      });
+      if (attribution?.campaignCode && attribution?.stripePromotionCodeId) {
+        await attributionStore.recordAcquisition({
+          businessId,
+          campaignCode: attribution.campaignCode,
+          stripePromotionCodeId: attribution.stripePromotionCodeId,
+          stripeCouponId: attribution.stripeCouponId ?? null,
+          stripeCheckoutSessionId: stringId(object),
+          acquisitionPlanKey: planKey,
+          sourceChannel: attribution.sourceChannel ?? null,
+          campaignName: attribution.campaignName ?? null,
+          attributedAt: new Date(event.created * 1000),
+        });
+      }
+    }
+
+    return recorded;
   }
 
   async function processInvoice(event, object) {
