@@ -39,7 +39,9 @@ function summarize(rows) {
 
   const sorted = [...ttfv].sort((a, b) => a - b);
   const median = sorted.length
-    ? sorted[Math.floor((sorted.length - 1) / 2)]
+    ? sorted.length % 2 === 1
+      ? sorted[Math.floor(sorted.length / 2)]
+      : Math.round((sorted[(sorted.length / 2) - 1] + sorted[sorted.length / 2]) / 2)
     : null;
 
   return {
