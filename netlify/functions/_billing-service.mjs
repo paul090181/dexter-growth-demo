@@ -52,10 +52,21 @@ function subscriptionPriceId(object) {
   return stringId(object?.items?.data?.[0]?.price);
 }
 
+function planKeyFromPriceId(priceIds, priceId) {
+  if (!priceId || !priceIds || typeof priceIds !== "object") return null;
+  const matches = Object.entries(priceIds)
+    .filter(([, configuredPriceId]) => typeof configuredPriceId === "string"
+      && configuredPriceId.trim()
+      && configuredPriceId.trim() === priceId)
+    .map(([planKey]) => planKey);
+  return matches.length === 1 ? matches[0] : null;
+}
+
 export function createBillingService({
   store,
   attributionStore = null,
   resolveCheckoutAttribution = null,
+  priceIds = null,
 } = {}) {
   if (!store?.applyEvent || !store?.readSubscription || !store?.findSubscriptionByStripeIds) {
     throw safeError("BILLING_STORE_REQUIRED");
@@ -79,10 +90,11 @@ export function createBillingService({
   async function processSubscription(event, object) {
     const meta = metadata(object);
     const businessId = typeof meta.business_id === "string" ? meta.business_id.trim() : "";
-    const planKey = typeof meta.plan_key === "string" ? meta.plan_key.trim() : "";
+    const metadataPlanKey = typeof meta.plan_key === "string" ? meta.plan_key.trim() : "";
     const stripeSubscriptionId = stringId(object);
     const stripeCustomerId = stringId(object.customer);
     const stripePriceId = subscriptionPriceId(object);
+    const planKey = planKeyFromPriceId(priceIds, stripePriceId) || metadataPlanKey;
     const status = event.type === "customer.subscription.deleted" ? "canceled" : object.status;
     if (!businessId || !planKey || !stripeSubscriptionId || !stripeCustomerId || !SUBSCRIPTION_STATUSES.has(status)) {
       throw safeError("INVALID_SUBSCRIPTION_EVENT");
