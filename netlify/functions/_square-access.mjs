@@ -1,5 +1,6 @@
 import { resolveGrowthWisePublicOrigin } from "./_public-origin.mjs";
 import { createSquareCrypto } from "./_square-crypto.mjs";
+import { squareCryptoVersion } from "./_square-preview-secrets.mjs";
 import {
   SQUARE_OAUTH_SCOPES,
   configuredSquareOAuth,
@@ -10,12 +11,11 @@ import { createSquareStore } from "./_square-store.mjs";
 const REFRESH_SAFETY_MS = 5 * 60 * 1000;
 
 function env(name) { return globalThis.Netlify?.env?.get(name); }
-function versions(name) { return { current: { id: "v1", key: env(name) } }; }
 
 function defaultCrypto() {
   return createSquareCrypto({
-    bindingSecrets: versions("GROWTHWISE_SQUARE_ACCOUNT_BINDING_SECRET"),
-    credentialKeys: versions("GROWTHWISE_SQUARE_CREDENTIAL_ENCRYPTION_KEY"),
+    bindingSecrets: squareCryptoVersion("GROWTHWISE_SQUARE_ACCOUNT_BINDING_SECRET"),
+    credentialKeys: squareCryptoVersion("GROWTHWISE_SQUARE_CREDENTIAL_ENCRYPTION_KEY"),
   });
 }
 
