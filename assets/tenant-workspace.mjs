@@ -291,6 +291,11 @@ export function createTenantWorkspaceController({
     return authenticate({ ...credentials, persist: false });
   }
 
+  function openActivation() {
+    navigate("./signup.html");
+    return true;
+  }
+
   async function openBilling() {
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
     if (!businessId || !tenantKey || state.subscription?.access_source !== "stripe") return false;
@@ -482,6 +487,7 @@ export function createTenantWorkspaceController({
   return {
     authenticate,
     restore,
+    openActivation,
     openBilling,
     changePlan,
     connectSquare,
@@ -517,6 +523,8 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const squareConnect = documentImpl.getElementById("workspace-square-connect");
   const onboardingSummary = documentImpl.getElementById("workspace-onboarding-summary");
   const onboardingList = documentImpl.getElementById("workspace-onboarding-list");
+  const journeyBanner = documentImpl.getElementById("workspace-journey-banner");
+  const nextStep = documentImpl.getElementById("workspace-next-step");
   const pulseCard = documentImpl.getElementById("workspace-pulse-card");
   const pulseError = documentImpl.getElementById("workspace-pulse-error");
   const pulseLoading = documentImpl.getElementById("workspace-pulse-loading");
@@ -637,6 +645,45 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
       onboardingList.append(item);
     });
 
+    const query = new URLSearchParams(globalThis.location?.search || "");
+    const returnedFromSquare = query.get("square") === "connected";
+    const firstRun = query.get("onboarding") === "1";
+    journeyBanner.hidden = true;
+    journeyBanner.textContent = "";
+
+    nextStep.hidden = false;
+    nextStep.disabled = view.loading || view.square?.loading === true || view.insights?.loading === true;
+
+    if (!accessGranted) {
+      nextStep.dataset.nextAction = "activate";
+      nextStep.textContent = "Activate access";
+      if (firstRun) {
+        journeyBanner.hidden = false;
+        journeyBanner.textContent = "Your workspace is ready. Activate access to continue setup.";
+      }
+    } else if (squareEligible && !squareConnected) {
+      nextStep.dataset.nextAction = "connect-square";
+      nextStep.textContent = "Connect Square";
+      if (firstRun) {
+        journeyBanner.hidden = false;
+        journeyBanner.textContent = "Access is active. Connect this business's Square account to unlock your first Business Pulse.";
+      }
+    } else if (squareConnected && !pulseReady) {
+      nextStep.dataset.nextAction = "refresh-insights";
+      nextStep.textContent = view.insights?.error ? "Retry Business Pulse" : "Load Business Pulse";
+      if (returnedFromSquare) {
+        journeyBanner.hidden = false;
+        journeyBanner.textContent = "Square is connected. GrowthWise is turning your business data into your first Business Pulse.";
+      }
+    } else {
+      nextStep.dataset.nextAction = "lead";
+      nextStep.textContent = "Try AI lead reply";
+      if (returnedFromSquare || firstRun) {
+        journeyBanner.hidden = false;
+        journeyBanner.textContent = "Setup is complete. Your Business Pulse is ready—now try a customer-facing workflow.";
+      }
+    }
+
     pulseCard.hidden = !squareConnected;
     if (squareConnected) {
       pulseLoading.hidden = view.insights?.loading !== true;
@@ -690,6 +737,25 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   });
   manage?.addEventListener("click", () => controller.openBilling());
   squareConnect?.addEventListener("click", () => controller.connectSquare());
+  nextStep?.addEventListener("click", async () => {
+    const action = nextStep.dataset.nextAction || "";
+    if (action === "activate") {
+      controller.openActivation();
+      return;
+    }
+    if (action === "connect-square") {
+      await controller.connectSquare();
+      return;
+    }
+    if (action === "refresh-insights") {
+      await controller.refreshSquareInsights();
+      return;
+    }
+    if (action === "lead") {
+      leadCard?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      leadForm?.querySelector?.("textarea[name='message']")?.focus?.();
+    }
+  });
   planButtons.forEach((button) => button.addEventListener("click", () => controller.changePlan(button.dataset.planChange)));
   leadForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
