@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>GrowthWise Square Acceptance</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#eef1f4;color:#14202c;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    main{width:min(680px,100%);min-height:100vh;margin:0 auto;background:#fff;padding:28px 18px 48px}
+    .eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:900;color:#8f6d2b}
+    h1{font-size:32px;line-height:1.06;margin:8px 0 12px}p{line-height:1.5;color:#586572}
+    .card{border:1px solid #e0e5e9;border-radius:18px;padding:18px;margin-top:16px}
+    button,a.action{display:block;width:100%;border:0;border-radius:13px;padding:14px 16px;background:#0e1b2b;color:#fff;font:inherit;font-weight:850;text-align:center;text-decoration:none;cursor:pointer}
+    button:disabled{opacity:.55}.status{border-radius:13px;padding:13px;background:#f4f7f9;margin-top:12px;white-space:pre-wrap;font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}
+    .good{background:#eef8f1;color:#225c34}.bad{background:#fff0ee;color:#87372e}.muted{font-size:13px;color:#6b7680}
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Preview #16 only</div>
+  <h1>Square tenant-isolation acceptance</h1>
+  <p>This creates two disposable Growth tenants in the Preview database. Only the primary tenant is authorized with Square. GrowthWise then verifies tenant-specific inventory, sales, scope enforcement, and cross-tenant isolation before cleaning up the test data.</p>
+
+  <section class="card">
+    <strong>What you need to do</strong>
+    <p>Tap the button below. A Square Sandbox authorization page will open. Approve the requested read-only permissions, then return to this tab. The test will continue automatically.</p>
+    <button id="start" type="button">Start Square sandbox test</button>
+    <a id="manual" class="action" href="#" target="_blank" rel="noopener noreferrer" hidden>Open Square authorization</a>
+    <div id="status" class="status">Ready.</div>
+    <p class="muted">No Production configuration or customer data is used. The test does not display or store raw Square credentials in this page.</p>
+  </section>
+</main>
+<script type="module">
+const endpoint="/.netlify/functions/preview16-square-acceptance";
+const startButton=document.getElementById("start");
+const manual=document.getElementById("manual");
+const status=document.getElementById("status");
+let pollTimer=null;
+let finished=false;
+
+function show(message,kind){
+  status.className="status"+(kind?" "+kind:"");
+  status.textContent=message;
+}
+
+async function action(name){
+  const response=await fetch(endpoint,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({action:name}),
+    cache:"no-store",
+    credentials:"same-origin"
+  });
+  const body=await response.json().catch(function(){return {};});
+  if(!response.ok) throw new Error(body.error||("Acceptance "+name+" failed."));
+  return body;
+}
+
+async function cleanup(result){
+  try{
+    const cleaned=await action("cleanup");
+    const summary=[
+      "PASS — Square tenant acceptance completed.",
+      "",
+      "Inventory endpoint: "+result.inventory_endpoint_status,
+      "Sales endpoint: "+result.sales_endpoint_status,
+      "Cross-tenant request: "+result.cross_tenant_request_status+" (expected 401)",
+      "Control tenant inventory: "+result.control_tenant_inventory_status+" (expected 409)",
+      "Control tenant credential present: "+result.control_tenant_has_square_credential,
+      "Required scopes present: "+result.required_scopes_present,
+      "Inventory items observed: "+(result.inventory_item_count ?? "n/a"),
+      "Completed orders (30d): "+(result.completed_order_count_30d ?? "n/a"),
+      "",
+      "Test token revocation attempted: "+cleaned.oauth_access_token_revocation_attempted,
+      "Test token revoked: "+cleaned.oauth_access_token_revoked,
+      "Database rows remaining: "+cleaned.database_rows_remaining,
+      "Production touched: false"
+    ].join("\n");
+    show(summary,cleaned.ok?"good":"bad");
+  }catch(error){
+    show("Acceptance passed, but cleanup needs attention:\n"+error.message,"bad");
+  }
+}
+
+async function poll(){
+  if(finished)return;
+  try{
+    const result=await action("status");
+    if(result.stage==="awaiting_square_authorization"){
+      show("Waiting for Square approval…\nTransaction: "+(result.transaction_status||"pending"));
+      return;
+    }
+    if(result.stage==="authorized"){
+      finished=true;
+      clearInterval(pollTimer);
+      if(result.ok){
+        show("Square authorization succeeded. Running cleanup…","good");
+        await cleanup(result);
+      }else{
+        show("Acceptance checks failed:\n"+JSON.stringify(result,null,2),"bad");
+      }
+    }
+  }catch(error){
+    show(error.message,"bad");
+  }
+}
+
+startButton.addEventListener("click",async function(){
+  startButton.disabled=true;
+  manual.hidden=true;
+  show("Creating disposable Growth tenants and authorization transaction…");
+  const popup=window.open("about:blank","_blank");
+  try{
+    const result=await action("start");
+    if(!result.ok||!result.authorization_url)throw new Error("Square authorization could not be started.");
+    manual.href=result.authorization_url;
+    manual.hidden=false;
+    show("Square authorization is ready. Approve it in the opened tab, then return here.");
+    if(popup){
+      popup.opener=null;
+      popup.location=result.authorization_url;
+    }
+    pollTimer=setInterval(poll,3000);
+    await poll();
+  }catch(error){
+    if(popup)popup.close();
+    show(error.message,"bad");
+    startButton.disabled=false;
+  }
+});
+
+document.addEventListener("visibilitychange",function(){
+  if(!document.hidden&&!finished)poll();
+});
+</script>
+</body>
+</html>
