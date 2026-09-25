@@ -84,8 +84,8 @@ function validateAuthorizationUrl(value, settings, state) {
   const required = {
     client_id: settings.applicationId,
     scope: SQUARE_OAUTH_SCOPES.join(" "),
-    session: "false",
     state,
+    ...(settings.environment === "production" ? { session: "false" } : {}),
   };
   if ([...url.searchParams].length !== Object.keys(required).length) {
     throw new Error("UNSAFE_AUTHORIZATION_URL");
@@ -95,6 +95,9 @@ function validateAuthorizationUrl(value, settings, state) {
     if (values.length !== 1 || values[0] !== expected) {
       throw new Error("UNSAFE_AUTHORIZATION_URL");
     }
+  }
+  if (settings.environment === "sandbox" && url.searchParams.has("session")) {
+    throw new Error("UNSAFE_AUTHORIZATION_URL");
   }
   return url;
 }
