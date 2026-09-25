@@ -61,6 +61,7 @@ test("Checkout ignores client pricing and uses server configuration", async () =
   assert.equal(response.status, 200);
   assert.equal(createCalls[0].line_items[0].price, "price_founding");
   assert.equal(createCalls[0].mode, "subscription");
+  assert.equal(createCalls[0].allow_promotion_codes, true);
   assert.deepEqual(createCalls[0].metadata, { business_id: "growthwise-dev", plan_key: "founding_monthly" });
   assert.deepEqual(createCalls[0].subscription_data.metadata, { business_id: "growthwise-dev", plan_key: "founding_monthly" });
 });
