@@ -42,8 +42,12 @@ function plain(status) {
   });
 }
 
-function redirect(origin, hint) {
-  const target = new URL("/app.html", origin);
+function redirect(origin, hint, businessId = "") {
+  const isAcceptance = /^gw-square-accept-a-[a-f0-9]{10}$/.test(businessId);
+  const target = new URL(
+    isAcceptance ? "/square-acceptance-preview16.html" : "/app.html",
+    origin,
+  );
   target.searchParams.set("square", hint);
   return new Response(null, {
     status: 303,
@@ -152,7 +156,7 @@ export function createSquareOAuthCallbackHandler(options = {}) {
           status: "consumed_denied",
           now: now(),
         });
-        return redirect(settings.publicOrigin, "cancelled");
+        return redirect(settings.publicOrigin, "cancelled", transaction.business_id);
       } catch {
         safeWarn("denial_finalize");
         return plain(500);
@@ -211,7 +215,7 @@ export function createSquareOAuthCallbackHandler(options = {}) {
         consumedAt: verifiedAt,
       });
 
-      return redirect(settings.publicOrigin, "connected");
+      return redirect(settings.publicOrigin, "connected", transaction.business_id);
     } catch (error) {
       safeWarn(stage, error?.httpStatus);
       try {
@@ -220,7 +224,7 @@ export function createSquareOAuthCallbackHandler(options = {}) {
           status: "consumed_failed",
           now: now(),
         });
-        return redirect(settings.publicOrigin, "attention");
+        return redirect(settings.publicOrigin, "attention", transaction.business_id);
       } catch {
         safeWarn("failure_finalize");
         return plain(500);
