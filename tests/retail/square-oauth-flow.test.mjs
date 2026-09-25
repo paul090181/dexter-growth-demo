@@ -73,6 +73,7 @@ test("Square OAuth start is tenant-authenticated and persists a server-bound tra
 
   assert.equal(authorization.origin, "https://connect.squareupsandbox.com");
   assert.equal(authorization.searchParams.get("scope"), SQUARE_OAUTH_SCOPES.join(" "));
+  assert.equal(authorization.searchParams.has("session"), false);
   assert.equal(
     calls.find((call) => call.kind === "transaction").input.businessId,
     "tenant-a",
