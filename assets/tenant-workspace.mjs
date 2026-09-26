@@ -9,6 +9,9 @@ const SQUARE_INVENTORY_ENDPOINT = "/.netlify/functions/tenant-square-inventory";
 const SQUARE_SALES_ENDPOINT = "/.netlify/functions/tenant-square-sales";
 const ONBOARDING_EVENT_ENDPOINT = "/.netlify/functions/onboarding-event";
 const CONNECTOR_SESSION_START_ENDPOINT = "/.netlify/functions/tenant-connector-session-start";
+const LOGIN_REQUEST_ENDPOINT = "/.netlify/functions/tenant-login-request";
+const TENANT_SESSION_ENDPOINT = "/.netlify/functions/tenant-session";
+const TENANT_SESSION_LOGOUT_ENDPOINT = "/.netlify/functions/tenant-session-logout";
 
 const FEATURE_LABELS = Object.freeze([
   ["ai_business_assistant", "AI business assistant"],
@@ -31,9 +34,10 @@ export function readWorkspaceCredentials(storage = globalThis.sessionStorage) {
   };
 }
 
-export function saveWorkspaceCredentials({ businessId, tenantKey }, storage = globalThis.sessionStorage) {
+export function saveWorkspaceCredentials({ businessId, tenantKey = "" }, storage = globalThis.sessionStorage) {
   storage?.setItem("growthwise_business_id", businessId);
-  storage?.setItem("growthwise_tenant_key", tenantKey);
+  if (tenantKey) storage?.setItem("growthwise_tenant_key", tenantKey);
+  else storage?.removeItem("growthwise_tenant_key");
 }
 
 export function clearWorkspaceCredentials(storage = globalThis.sessionStorage) {
@@ -42,7 +46,8 @@ export function clearWorkspaceCredentials(storage = globalThis.sessionStorage) {
 }
 
 function authHeaders(tenantKey) {
-  return { "X-GrowthWise-Tenant-Key": tenantKey };
+  const key = String(tenantKey || "").trim();
+  return key ? { "X-GrowthWise-Tenant-Key": key } : {};
 }
 
 export function createOnboardingTracker({
@@ -53,7 +58,7 @@ export function createOnboardingTracker({
     const name = String(eventName || "").trim();
     const id = String(businessId || "").trim();
     const key = String(tenantKey || "").trim();
-    if (!name || !id || !key) return false;
+    if (!name || !id) return false;
 
     const eventDay = new Date().toISOString().slice(0, 10);
     const dedupeKey = `growthwise_onboarding_event:${id}:${name}:${eventDay}`;
@@ -71,6 +76,7 @@ export function createOnboardingTracker({
           event_name: name,
         }),
         cache: "no-store",
+        credentials: "same-origin",
         keepalive: true,
       });
       const body = await response.json().catch(() => ({}));
@@ -180,6 +186,7 @@ export function createTenantWorkspaceController({
     square: { enabled: false, loading: false, error: "", status: null },
     insights: { enabled: false, loading: false, error: "", inventory: null, sales: null, pulse: null },
     channels: { loading: false, error: "" },
+    emailLogin: { loading: false, error: "", message: "" },
     lead: { loading: false, error: "", result: null },
   };
 
@@ -196,7 +203,7 @@ export function createTenantWorkspaceController({
     try {
       const response = await fetchImpl(
         `${SQUARE_CONNECTION_ENDPOINT}?business_id=${encodeURIComponent(businessId)}`,
-        { method: "GET", headers: authHeaders(tenantKey), cache: "no-store" },
+        { method: "GET", headers: authHeaders(tenantKey), cache: "no-store", credentials: "same-origin" },
       );
       const body = await response.json().catch(() => ({}));
       if (!response.ok || body.business_id !== businessId || typeof body.state !== "string") {
@@ -230,11 +237,11 @@ export function createTenantWorkspaceController({
       const [inventoryResponse, salesResponse] = await Promise.all([
         fetchImpl(
           `${SQUARE_INVENTORY_ENDPOINT}?business_id=${encodeURIComponent(businessId)}`,
-          { method: "GET", headers: authHeaders(tenantKey), cache: "no-store" },
+          { method: "GET", headers: authHeaders(tenantKey), cache: "no-store", credentials: "same-origin" },
         ),
         fetchImpl(
           `${SQUARE_SALES_ENDPOINT}?business_id=${encodeURIComponent(businessId)}&days=30`,
-          { method: "GET", headers: authHeaders(tenantKey), cache: "no-store" },
+          { method: "GET", headers: authHeaders(tenantKey), cache: "no-store", credentials: "same-origin" },
         ),
       ]);
       const [inventory, sales] = await Promise.all([
@@ -267,15 +274,23 @@ export function createTenantWorkspaceController({
     }
   }
 
-  async function authenticate({ businessId, tenantKey, persist = true }) {
+  async function authenticate({ businessId, tenantKey = "", persist = true, sessionAuth = false }) {
     const id = String(businessId || "").trim();
     const key = String(tenantKey || "").trim();
-    if (!id || !key) return publish({ loading: false, signedIn: false, error: "Enter your Workspace ID and access key.", profile: null, subscription: null });
+    if (!id || (!key && !sessionAuth)) {
+      return publish({
+        loading: false,
+        signedIn: false,
+        error: "Enter your Workspace ID and access key.",
+        profile: null,
+        subscription: null,
+      });
+    }
 
     publish({ loading: true, error: "" });
     try {
       const profileResponse = await fetchImpl(`${PROFILE_ENDPOINT}?business_id=${encodeURIComponent(id)}`, {
-        method: "GET", headers: authHeaders(key), cache: "no-store",
+        method: "GET", headers: authHeaders(key), cache: "no-store", credentials: "same-origin", credentials: "same-origin",
       });
       const profile = await profileResponse.json().catch(() => ({}));
       if (!profileResponse.ok || profile.business_id !== id || typeof profile.business_name !== "string") {
@@ -283,7 +298,7 @@ export function createTenantWorkspaceController({
       }
 
       const statusResponse = await fetchImpl(`${STATUS_ENDPOINT}?business_id=${encodeURIComponent(id)}`, {
-        method: "GET", headers: authHeaders(key), cache: "no-store",
+        method: "GET", headers: authHeaders(key), cache: "no-store", credentials: "same-origin",
       });
       const subscription = await statusResponse.json().catch(() => ({}));
       if (!statusResponse.ok || subscription.business_id !== id) {
@@ -315,6 +330,7 @@ export function createTenantWorkspaceController({
       }
 
       if (persist) saveWorkspaceCredentials({ businessId: id, tenantKey: key }, storage);
+      else if (sessionAuth) saveWorkspaceCredentials({ businessId: id, tenantKey: "" }, storage);
       return publish({
         loading: false,
         signedIn: true,
@@ -340,8 +356,69 @@ export function createTenantWorkspaceController({
 
   async function restore() {
     const credentials = readWorkspaceCredentials(storage);
-    if (!credentials.businessId || !credentials.tenantKey) return publish({ loading: false, signedIn: false, error: "" });
-    return authenticate({ ...credentials, persist: false });
+    if (credentials.businessId && credentials.tenantKey) {
+      return authenticate({ ...credentials, persist: false });
+    }
+
+    try {
+      const response = await fetchImpl(TENANT_SESSION_ENDPOINT, {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      const body = await response.json().catch(() => ({}));
+      if (response.ok && body?.ok === true && typeof body?.business_id === "string" && body.business_id) {
+        saveWorkspaceCredentials({ businessId: body.business_id, tenantKey: "" }, storage);
+        return authenticate({
+          businessId: body.business_id,
+          tenantKey: "",
+          persist: false,
+          sessionAuth: true,
+        });
+      }
+    } catch {}
+
+    clearWorkspaceCredentials(storage);
+    return publish({ loading: false, signedIn: false, error: "" });
+  }
+
+  async function requestEmailSignIn(email) {
+    const value = String(email || "").trim().toLowerCase();
+    if (!value || !value.includes("@")) {
+      publish({ emailLogin: { loading: false, error: "Enter a valid email address.", message: "" } });
+      return false;
+    }
+
+    publish({ emailLogin: { loading: true, error: "", message: "" } });
+    try {
+      const response = await fetchImpl(LOGIN_REQUEST_ENDPOINT, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: value }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || body?.ok !== true) {
+        throw new Error(body?.error || "Email sign-in is temporarily unavailable.");
+      }
+      publish({
+        emailLogin: {
+          loading: false,
+          error: "",
+          message: body.message || "If that email belongs to a workspace, a secure sign-in link will arrive shortly.",
+        },
+      });
+      return true;
+    } catch (error) {
+      publish({
+        emailLogin: {
+          loading: false,
+          error: error?.message || "Email sign-in is temporarily unavailable.",
+          message: "",
+        },
+      });
+      return false;
+    }
   }
 
   function openActivation() {
@@ -351,11 +428,12 @@ export function createTenantWorkspaceController({
 
   async function openBilling() {
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
-    if (!businessId || !tenantKey || state.subscription?.access_source !== "stripe") return false;
+    if (!businessId || state.subscription?.access_source !== "stripe") return false;
     publish({ loading: true, error: "" });
     try {
       const response = await fetchImpl(PORTAL_ENDPOINT, {
         method: "POST",
+        credentials: "same-origin",
         headers: { ...authHeaders(tenantKey), "Content-Type": "application/json" },
         body: JSON.stringify({ business_id: businessId }),
       });
@@ -376,11 +454,12 @@ export function createTenantWorkspaceController({
   async function changePlan(targetPlanKey) {
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
     const target = String(targetPlanKey || "").trim();
-    if (!businessId || !tenantKey || !["starter_monthly","growth_monthly","pro_monthly"].includes(target)) return false;
+    if (!businessId || !["starter_monthly","growth_monthly","pro_monthly"].includes(target)) return false;
     publish({ loading: true, error: "" });
     try {
       const response = await fetchImpl(PLAN_CHANGE_ENDPOINT, {
         method: "POST",
+        credentials: "same-origin",
         headers: { ...authHeaders(tenantKey), "Content-Type": "application/json" },
         body: JSON.stringify({ business_id: businessId, plan_key: target }),
       });
@@ -404,8 +483,7 @@ export function createTenantWorkspaceController({
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
     if (!state.signedIn
       || state.subscription?.feature_access?.inventory_connection !== true
-      || !businessId
-      || !tenantKey) {
+      || !businessId) {
       return false;
     }
 
@@ -421,6 +499,7 @@ export function createTenantWorkspaceController({
     try {
       const response = await fetchImpl(SQUARE_OAUTH_START_ENDPOINT, {
         method: "POST",
+        credentials: "same-origin",
         headers: {
           ...authHeaders(tenantKey),
           "Content-Type": "application/json",
@@ -462,8 +541,7 @@ export function createTenantWorkspaceController({
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
     if (!state.signedIn
       || state.subscription?.feature_access?.unified_inbox !== true
-      || !businessId
-      || !tenantKey) {
+      || !businessId) {
       return false;
     }
 
@@ -471,6 +549,7 @@ export function createTenantWorkspaceController({
     try {
       const response = await fetchImpl(CONNECTOR_SESSION_START_ENDPOINT, {
         method: "POST",
+        credentials: "same-origin",
         credentials: "same-origin",
         headers: {
           ...authHeaders(tenantKey),
@@ -497,7 +576,7 @@ export function createTenantWorkspaceController({
 
   async function refreshSquareInsights() {
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
-    if (!state.signedIn || !businessId || !tenantKey || state.square?.status?.state !== "Connected") {
+    if (!state.signedIn || !businessId || state.square?.status?.state !== "Connected") {
       return false;
     }
 
@@ -525,7 +604,7 @@ export function createTenantWorkspaceController({
   async function draftLead({ source, customerName, message }) {
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
     const text = String(message || "").trim();
-    if (!state.signedIn || state.subscription?.access_granted !== true || !businessId || !tenantKey) {
+    if (!state.signedIn || state.subscription?.access_granted !== true || !businessId) {
       publish({ lead: { loading: false, error: "An active workspace is required.", result: null } });
       return false;
     }
@@ -538,6 +617,7 @@ export function createTenantWorkspaceController({
     try {
       const response = await fetchImpl(`${LEAD_ENDPOINT}?business_id=${encodeURIComponent(businessId)}`, {
         method: "POST",
+        credentials: "same-origin",
         headers: { ...authHeaders(tenantKey), "Content-Type": "application/json" },
         body: JSON.stringify({
           source: String(source || "Customer message").slice(0, 120),
@@ -565,7 +645,14 @@ export function createTenantWorkspaceController({
     }
   }
 
-  function signOut() {
+  async function signOut() {
+    try {
+      await fetchImpl(TENANT_SESSION_LOGOUT_ENDPOINT, {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+    } catch {}
     clearWorkspaceCredentials(storage);
     return publish({
       loading: false,
@@ -576,6 +663,7 @@ export function createTenantWorkspaceController({
       square: { enabled: false, loading: false, error: "", status: null },
       insights: { enabled: false, loading: false, error: "", inventory: null, sales: null, pulse: null },
       channels: { loading: false, error: "" },
+      emailLogin: { loading: false, error: "", message: "" },
       lead: { loading: false, error: "", result: null },
     });
   }
@@ -583,6 +671,7 @@ export function createTenantWorkspaceController({
   return {
     authenticate,
     restore,
+    requestEmailSignIn,
     openActivation,
     openBilling,
     changePlan,
@@ -598,6 +687,9 @@ export function createTenantWorkspaceController({
 
 export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}) {
   const form = documentImpl.getElementById("workspace-signin-form");
+  const emailSigninForm = documentImpl.getElementById("workspace-email-signin-form");
+  const emailSigninButton = documentImpl.getElementById("workspace-email-signin-submit");
+  const emailSigninStatus = documentImpl.getElementById("workspace-email-signin-status");
   const signedOut = documentImpl.getElementById("workspace-signed-out");
   const signedIn = documentImpl.getElementById("workspace-signed-in");
   const error = documentImpl.getElementById("workspace-error");
@@ -650,6 +742,18 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     signedIn.hidden = !view.signedIn;
     error.hidden = !view.error;
     error.textContent = view.error || "";
+    if (emailSigninButton) {
+      emailSigninButton.disabled = view.emailLogin?.loading === true;
+      emailSigninButton.textContent = view.emailLogin?.loading === true
+        ? "Sending secure link…"
+        : "Email me a sign-in link";
+    }
+    if (emailSigninStatus) {
+      const loginText = view.emailLogin?.error || view.emailLogin?.message || "";
+      emailSigninStatus.hidden = !loginText;
+      emailSigninStatus.textContent = loginText;
+      emailSigninStatus.className = view.emailLogin?.error ? "status" : "plan-banner";
+    }
 
     if (!view.signedIn) return;
     businessName.textContent = view.profile?.business_name || "Your business";
@@ -839,6 +943,12 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   });
   render(controller.getState());
 
+  emailSigninForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const data = new FormData(emailSigninForm);
+    await controller.requestEmailSignIn(data.get("email"));
+  });
+
   form?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = new FormData(form);
@@ -879,7 +989,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
       message: data.get("message"),
     });
   });
-  signOut?.addEventListener("click", () => controller.signOut());
+  signOut?.addEventListener("click", async () => { await controller.signOut(); });
   controller.restore();
   return controller;
 }
