@@ -84,7 +84,7 @@ export async function authorizeTenantRequest(request, { businessId, store, now =
     }
     if (tenant && tenant.business_id === id
       && hashesMatch(hashTenantAccessKey(key), tenant.access_key_hash)) {
-      return { ok: true, via: "tenant_key", businessId: id };
+      return { ok: true, via: "tenant", businessId: id };
     }
   }
 
