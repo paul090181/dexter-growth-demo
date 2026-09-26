@@ -4,7 +4,7 @@ import test from "node:test";
 import { createPilotAccessGrantHandler } from "../../netlify/functions/pilot-access-grant.mjs";
 
 const BUSINESS_ID = "north-star-books-abcdef123456";
-const ORIGIN = "https://deploy-preview-17--growthwise.example";
+const ORIGIN = "https://deploy-preview-17--euphonious-beijinho-db4b4d.netlify.app";
 
 function request(body = { business_id: BUSINESS_ID }) {
   return new Request(`${ORIGIN}/.netlify/functions/pilot-access-grant`, {
@@ -33,6 +33,20 @@ test("pilot access grant is admin-only and preview-gated", async () => {
     billingStore: { async grantPilotAccess() { throw new Error("should not run"); } },
   });
   assert.equal((await disabled(request())).status, 404);
+});
+
+test("pilot access grant is unavailable outside the GrowthWise deploy-preview host", async () => {
+  const handler = createPilotAccessGrantHandler({
+    isAuthorized: () => ({ ok: true }),
+    tenantStore: { async readTenantProfile() { throw new Error("should not run"); } },
+    billingStore: { async grantPilotAccess() { throw new Error("should not run"); } },
+  });
+  const response = await handler(new Request("https://growthwise.example/.netlify/functions/pilot-access-grant", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ business_id: BUSINESS_ID }),
+  }));
+  assert.equal(response.status, 404);
 });
 
 test("pilot access is granted only to an existing workspace with the founding plan", async () => {
