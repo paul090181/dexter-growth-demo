@@ -31,3 +31,38 @@ test("invalid or insecure origins fail closed", () => {
   };
   assert.equal(resolveGrowthWisePublicOrigin((name) => values[name] || ""), "");
 });
+
+
+test("current GrowthWise deploy-preview request wins when runtime deploy origin is unavailable", () => {
+  const values = {
+    GROWTHWISE_PUBLIC_ORIGIN: "https://deploy-preview-14--euphonious-beijinho-db4b4d.netlify.app",
+  };
+  const requestUrl = "https://deploy-preview-17--euphonious-beijinho-db4b4d.netlify.app/.netlify/functions/tenant-login-request";
+  assert.equal(
+    resolveGrowthWisePublicOrigin((name) => values[name] || "", requestUrl),
+    "https://deploy-preview-17--euphonious-beijinho-db4b4d.netlify.app",
+  );
+});
+
+test("arbitrary request hosts cannot override the configured origin", () => {
+  const values = {
+    GROWTHWISE_PUBLIC_ORIGIN: "https://deploy-preview-14--euphonious-beijinho-db4b4d.netlify.app",
+  };
+  assert.equal(
+    resolveGrowthWisePublicOrigin(
+      (name) => values[name] || "",
+      "https://evil.example/.netlify/functions/tenant-login-request",
+    ),
+    values.GROWTHWISE_PUBLIC_ORIGIN,
+  );
+});
+
+test("lookalike Netlify preview hosts are rejected", () => {
+  assert.equal(
+    resolveGrowthWisePublicOrigin(
+      () => "",
+      "https://deploy-preview-17--euphonious-beijinho-db4b4d.netlify.app.evil.example/path",
+    ),
+    "",
+  );
+});
