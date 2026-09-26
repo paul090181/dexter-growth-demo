@@ -290,7 +290,7 @@ export function createTenantWorkspaceController({
     publish({ loading: true, error: "" });
     try {
       const profileResponse = await fetchImpl(`${PROFILE_ENDPOINT}?business_id=${encodeURIComponent(id)}`, {
-        method: "GET", headers: authHeaders(key), cache: "no-store", credentials: "same-origin", credentials: "same-origin",
+        method: "GET", headers: authHeaders(key), cache: "no-store", credentials: "same-origin",
       });
       const profile = await profileResponse.json().catch(() => ({}));
       if (!profileResponse.ok || profile.business_id !== id || typeof profile.business_name !== "string") {
@@ -549,7 +549,6 @@ export function createTenantWorkspaceController({
     try {
       const response = await fetchImpl(CONNECTOR_SESSION_START_ENDPOINT, {
         method: "POST",
-        credentials: "same-origin",
         credentials: "same-origin",
         headers: {
           ...authHeaders(tenantKey),
