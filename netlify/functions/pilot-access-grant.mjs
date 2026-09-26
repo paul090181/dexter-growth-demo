@@ -18,8 +18,14 @@ function cleanBusinessId(value) {
 }
 
 // Intentionally opt-in by deploy context; Production stays disabled unless explicitly configured.
-function previewPilotAccessEnabled() {
-  return Netlify.env.get("GROWTHWISE_PILOT_ACCESS_ENABLED") === "true";
+function previewPilotAccessEnabled(request) {
+  try {
+    const url = new URL(request.url);
+    return url.protocol === "https:"
+      && /^deploy-preview-\d+--euphonious-beijinho-db4b4d\.netlify\.app$/.test(url.hostname);
+  } catch {
+    return false;
+  }
 }
 
 export function createPilotAccessGrantHandler({
@@ -32,7 +38,7 @@ export function createPilotAccessGrantHandler({
   return async function pilotAccessGrant(request) {
     if (request.method !== "POST") return json(405, { error: "Method not allowed." });
     if (!isAuthorized(request)?.ok) return json(401, { error: "Unauthorized." });
-    if (!isEnabled()) return json(404, { error: "Pilot access is not enabled." });
+    if (!isEnabled(request)) return json(404, { error: "Pilot access is not enabled." });
 
     let body;
     try { body = await request.json(); }
