@@ -172,9 +172,9 @@ export function createTenantStore({ getPool = netlifyPool } = {}) {
     }
   }
 
-  async function authorizeTenantSession({ sessionHash, businessId, now } = {}) {
+  async function authorizeTenantSession({ sessionHash, businessId = null, now } = {}) {
     const hash = requiredString(sessionHash, "INVALID_SESSION_HASH", 64);
-    const id = requiredString(businessId, "INVALID_BUSINESS_ID", 80);
+    const id = businessId == null ? null : requiredString(businessId, "INVALID_BUSINESS_ID", 80);
     const checkedAt = now instanceof Date ? now : new Date(now);
     if (!/^[a-f0-9]{64}$/.test(hash) || !Number.isFinite(checkedAt.getTime())) {
       throw safeError("SESSION_INVALID");
@@ -182,7 +182,7 @@ export function createTenantStore({ getPool = netlifyPool } = {}) {
     try {
       const row = (await (await getPool()).query(READ_TENANT_SESSION, [hash])).rows[0];
       const expiresAt = row?.expires_at ? new Date(row.expires_at) : null;
-      if (!row || row.business_id !== id || row.revoked_at || !expiresAt
+      if (!row || (id && row.business_id !== id) || row.revoked_at || !expiresAt
         || !Number.isFinite(expiresAt.getTime()) || expiresAt.getTime() <= checkedAt.getTime()) {
         throw safeError("SESSION_INVALID");
       }
