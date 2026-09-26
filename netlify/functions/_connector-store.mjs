@@ -1,5 +1,5 @@
 const ALLOWED_CONNECTORS = new Set(["email", "facebook", "instagram"]);
-const SESSION_TTL_MS = 30 * 60 * 1000;
+export const CONNECTOR_SESSION_TTL_MS = 30 * 60 * 1000;
 
 const INSERT_INVITATION = `
   INSERT INTO growthwise_connector_invitations
@@ -112,7 +112,7 @@ export function createConnectorStore({ getPool = netlifyPool } = {}) {
         throw failure("INVITATION_INVALID");
       }
       const connectors = connectorList(invitation.connectors);
-      const sessionExpiresAt = new Date(redeemedAt.getTime() + SESSION_TTL_MS);
+      const sessionExpiresAt = new Date(redeemedAt.getTime() + CONNECTOR_SESSION_TTL_MS);
       await client.query(INSERT_SESSION, [sessionHash, businessId(invitation.business_id), connectors, sessionExpiresAt]);
       const marked = await client.query(MARK_USED, [invitationHash, redeemedAt]);
       if (!marked.rows[0]) throw failure("INVITATION_INVALID");
@@ -124,6 +124,26 @@ export function createConnectorStore({ getPool = netlifyPool } = {}) {
       throw failure("INVITATION_REDEEM_FAILED", error);
     } finally {
       client.release();
+    }
+  }
+
+  async function createSession(input = {}) {
+    const values = [
+      hash(input.sessionHash, "INVALID_SESSION_HASH"),
+      businessId(input.businessId),
+      connectorList(input.connectors),
+      date(input.expiresAt, "INVALID_SESSION_EXPIRY"),
+    ];
+    try {
+      await (await getPool()).query(INSERT_SESSION, values);
+      return {
+        business_id: values[1],
+        connectors: values[2],
+        expires_at: values[3],
+      };
+    } catch (error) {
+      if (String(error?.message || "").startsWith("INVALID_")) throw error;
+      throw failure("SESSION_CREATE_FAILED", error);
     }
   }
 
@@ -158,5 +178,5 @@ export function createConnectorStore({ getPool = netlifyPool } = {}) {
     }
   }
 
-  return { createInvitation, redeemInvitation, authorizeSession, revokeInvitation };
+  return { createInvitation, redeemInvitation, createSession, authorizeSession, revokeInvitation };
 }

@@ -32,11 +32,13 @@ test("status and checkout send the tenant key only with its stored business ID",
 test("the page grants access only from server-confirmed subscription status", () => {
   assert.match(page, /data\.access_granted\s*===\s*true/);
   assert.match(page, /data\.access_source\s*===\s*['"]stripe['"]/);
+  assert.match(page, /data\.access_source\s*===\s*['"]pilot['"]/);
+  assert.match(page, /Pilot access active/);
   assert.match(page, /billingResult\s*===\s*['"]success['"]/);
   assert.match(page, /billingResult\s*===\s*['"]success['"][\s\S]{0,300}refreshStatus\(\)/);
   assert.doesNotMatch(page, /billingResult\s*===\s*['"]success['"][\s\S]{0,300}accessGranted\s*=\s*true/);
   assert.match(page, /const stripeLinked = data\.access_source === ['"]stripe['"]/);
-  assert.match(page, /checkoutButton\.disabled\s*=\s*stripeLinked/);
+  assert.match(page, /checkoutButton\.disabled\s*=\s*stripeLinked\s*\|\|\s*data\.access_source\s*===\s*['"]pilot['"]/);
 });
 
 test("the standalone tenant page does not load Dexter integrations or data", () => {
@@ -68,4 +70,37 @@ test("founding pricing states the continuous-membership rule", () => {
 test("signup tells customers promotion codes are entered and validated in Stripe Checkout", () => {
   assert.match(page, /Have a promo code\?/);
   assert.match(page, /Stripe validates the code/);
+});
+
+test("signup keeps the current browser signed in and hands active customers into guided setup", () => {
+  assert.match(page, /This setup will continue automatically in the current browser session/i);
+  assert.match(page, /Continue to activation/);
+  assert.match(page, /href="\.\/app\.html\?onboarding=1"/);
+  assert.match(page, /Continue setup/);
+  assert.match(page, /planCard\.scrollIntoView/);
+  assert.match(page, /accessCard\.scrollIntoView/);
+});
+
+test("signup records only milestone names through the tenant-authenticated onboarding endpoint", () => {
+  assert.match(page, /fetch\(['"]\/\.netlify\/functions\/onboarding-event['"]/);
+  assert.match(page, /workspace_created/);
+  assert.match(page, /checkout_started/);
+  assert.match(page, /checkout_completed/);
+  assert.match(page, /['"]X-GrowthWise-Tenant-Key['"]:\s*tenantKey/);
+  assert.match(page, /growthwise_onboarding_event/);
+  assert.doesNotMatch(page, /onboarding-event\?[^'"]*tenant/);
+});
+
+test("returning businesses can find passwordless sign in directly from signup", () => {
+  assert.match(page, /Already have a workspace\? Sign in/);
+  assert.match(page, /Sign in by email/);
+  assert.match(page, /href="\.\/app\.html"/);
+  assert.doesNotMatch(page, /Password recovery is not part of this preview yet/i);
+  assert.match(page, /use email sign-in from the business workspace/i);
+});
+
+
+test("signup gives prospective customers direct access to the privacy policy", () => {
+  assert.match(page, /href="\.\/privacy-policy\.html"/);
+  assert.match(page, /Privacy Policy/);
 });

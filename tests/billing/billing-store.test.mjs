@@ -279,3 +279,43 @@ test("plan start time stays stable within a plan and resets only when the plan c
   const upgraded = await store.readSubscription({ businessId: "tenant-a" });
   assert.equal(new Date(upgraded.plan_started_at).toISOString(), "2026-09-23T20:00:00.000Z");
 });
+
+
+test("pilot access grant is tenant-bound and keeps the plan server-controlled", async () => {
+  const calls = [];
+  const row = {
+    business_id: "tenant-a",
+    access_source: "pilot",
+    plan_key: "founding_monthly",
+    status: "pilot",
+    plan_started_at: new Date("2026-09-26T04:30:00Z"),
+  };
+  const pool = {
+    async query(text, values) {
+      calls.push({ text, values });
+      return { rows: [row] };
+    },
+  };
+  const store = createBillingStore({ getPool: async () => pool });
+  const startedAt = new Date("2026-09-26T04:30:00Z");
+  const result = await store.grantPilotAccess({
+    businessId: "tenant-a",
+    planKey: "founding_monthly",
+    startedAt,
+  });
+
+  assert.equal(result.access_source, "pilot");
+  assert.equal(result.plan_key, "founding_monthly");
+  assert.deepEqual(calls[0].values, ["tenant-a", "founding_monthly", startedAt]);
+  assert.match(calls[0].text, /FROM growthwise_tenants/);
+  assert.match(calls[0].text, /WHERE growthwise_subscriptions\.access_source = 'pilot'/);
+});
+
+test("pilot access grant cannot overwrite an existing Stripe-managed subscription", async () => {
+  const pool = { async query() { return { rows: [] }; } };
+  const store = createBillingStore({ getPool: async () => pool });
+  await assert.rejects(
+    store.grantPilotAccess({ businessId: "tenant-a", planKey: "founding_monthly" }),
+    /PILOT_ACCESS_NOT_GRANTED/,
+  );
+});

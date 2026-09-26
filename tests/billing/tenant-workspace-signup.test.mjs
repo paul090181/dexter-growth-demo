@@ -6,7 +6,8 @@ const html = fs.readFileSync(new URL("../../signup.html", import.meta.url), "utf
 
 test("signup hands off both workspace credentials to the customer", () => {
   assert.match(html, /id="oneTimeBusinessId"/);
-  assert.match(html, /Save both values/);
+  assert.match(html, /current browser session/i);
+  assert.match(html, /another browser or device/i);
   assert.match(html, /oneTimeBusinessId\.textContent = data\.business_id/);
-  assert.match(html, /href="\.\/app\.html"/);
+  assert.match(html, /href="\.\/app\.html\?onboarding=1"/);
 });

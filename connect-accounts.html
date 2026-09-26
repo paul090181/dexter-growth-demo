@@ -30,6 +30,7 @@
     .choice { display: flex; gap: 9px; align-items: flex-start; margin-top: 10px; color: #364357; }
     .choice input { margin-top: 4px; }
     .helper-link { display: inline-block; margin-top: 10px; color: #173f8f; font-weight: 800; }
+    .back-link { display: inline-block; margin-top: 18px; color: #173f8f; font-weight: 800; text-decoration: none; }
     #connection-error { color: #a12121; min-height: 1.5em; margin: 10px 0; }
     .inbox-message { border-top: 1px solid #e4eaf2; padding: 14px 0; }
     .inbox-message:first-child { border-top: 0; padding-top: 4px; }
@@ -44,7 +45,7 @@
   <main>
     <div class="eyebrow">GrowthWise secure setup</div>
     <h1>Connect your accounts</h1>
-    <p class="intro">Set up supported business accounts for <strong id="business-name">Your business</strong>.</p>
+    <p class="intro">Set up supported business accounts for <strong id="business-name">Your business</strong>. Sign in directly with each provider; GrowthWise never needs those provider passwords.</p>
     <p id="connection-error" role="alert"></p>
 
     <section class="card" aria-labelledby="instagram-title">
@@ -90,6 +91,8 @@
         <span class="unavailable">Coming later</span>
       </div>
     </section>
+
+    <a class="back-link" href="./app.html">← Back to business workspace</a>
 
     <section class="card" aria-labelledby="connector-inbox-title">
       <div>

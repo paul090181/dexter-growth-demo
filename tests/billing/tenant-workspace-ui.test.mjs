@@ -3,7 +3,10 @@ import fs from "node:fs";
 import test from "node:test";
 
 import {
+  buildOnboardingSteps,
+  buildSquareBusinessPulse,
   clearWorkspaceCredentials,
+  createOnboardingTracker,
   createTenantWorkspaceController,
   readWorkspaceCredentials,
   saveWorkspaceCredentials,
@@ -31,6 +34,295 @@ test("workspace credentials stay in session storage only", () => {
   assert.deepEqual(readWorkspaceCredentials(s), { businessId: BUSINESS_ID, tenantKey: TENANT_KEY });
   clearWorkspaceCredentials(s);
   assert.deepEqual(readWorkspaceCredentials(s), { businessId: "", tenantKey: "" });
+});
+
+test("Starter onboarding does not count unavailable Square features as unfinished setup", () => {
+  assert.deepEqual(buildOnboardingSteps({
+    accessGranted: true,
+    squareEligible: false,
+  }), [
+    ["Workspace ready", true, "Done"],
+    ["Plan active", true, "Done"],
+  ]);
+});
+
+test("Growth onboarding includes Square and Business Pulse only when entitled", () => {
+  assert.deepEqual(buildOnboardingSteps({
+    accessGranted: true,
+    squareEligible: true,
+    squareConnected: true,
+    pulseReady: false,
+  }), [
+    ["Workspace ready", true, "Done"],
+    ["Plan active", true, "Done"],
+    ["Square connected", true, "Done"],
+    ["Business pulse ready", false, "Next"],
+  ]);
+});
+
+test("business pulse turns Square summaries into useful metrics and actions", () => {
+  const pulse = buildSquareBusinessPulse({
+    summary: {
+      item_count: 2,
+      total_units_in_stock: 7,
+      inventory_value: "525.00",
+    },
+    products: [
+      { item_name: "Classic Hat", variation_name: "Black", track_inventory: true, quantity: 1 },
+      { item_name: "Fedora", variation_name: "Brown", track_inventory: true, quantity: 6 },
+    ],
+  }, {
+    summary: {
+      completed_order_count: 4,
+      total_collected: "360.00",
+      average_order: "90.00",
+    },
+    top_products: [
+      { item_name: "Classic Hat", total_collected: "200.00" },
+    ],
+  });
+
+  assert.deepEqual(pulse.metrics, {
+    sales: "$360.00",
+    orders: 4,
+    inventoryValue: "$525.00",
+    units: 7,
+  });
+  assert.match(pulse.headline, /Classic Hat/);
+  assert.match(pulse.primary, /top product/i);
+  assert.equal(pulse.recommendations.some((item) => /2 units or fewer/i.test(item)), true);
+  assert.equal(pulse.recommendations.some((item) => /Average completed order is \$90\.00/i.test(item)), true);
+});
+
+test("connected tenant loads only its own Square inventory and sales for the business pulse", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  const calls = [];
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      assert.equal(init.headers["X-GrowthWise-Tenant-Key"], TENANT_KEY);
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) {
+        return response({ business_id: BUSINESS_ID, business_name: "North Star Books" });
+      }
+      if (url.startsWith("/.netlify/functions/subscription-status?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          plan_key: "growth_monthly",
+          status: "active",
+          access_granted: true,
+          feature_access: { inventory_connection: true },
+        });
+      }
+      if (url.startsWith("/.netlify/functions/square-connection?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          state: "Connected",
+          account: { display_name: "North Star Square" },
+        });
+      }
+      if (url.startsWith("/.netlify/functions/tenant-square-inventory?")) {
+        return response({
+          ok: true,
+          business_id: BUSINESS_ID,
+          summary: { item_count: 1, total_units_in_stock: 3, inventory_value: "150.00" },
+          products: [{ item_name: "Book", track_inventory: true, quantity: 3 }],
+        });
+      }
+      if (url.startsWith("/.netlify/functions/tenant-square-sales?")) {
+        assert.match(url, /days=30/);
+        return response({
+          ok: true,
+          business_id: BUSINESS_ID,
+          summary: { completed_order_count: 2, total_collected: "80.00", average_order: "40.00" },
+          top_products: [{ item_name: "Book", total_collected: "80.00" }],
+        });
+      }
+      throw new Error(`unexpected URL ${url}`);
+    },
+  });
+
+  const state = await controller.restore();
+  assert.equal(state.square.status.state, "Connected");
+  assert.equal(state.insights.enabled, true);
+  assert.equal(state.insights.pulse.metrics.sales, "$80.00");
+  assert.equal(state.insights.pulse.metrics.inventoryValue, "$150.00");
+  assert.equal(calls.every((call) => !call.url.includes(TENANT_KEY)), true);
+  assert.equal(calls.filter((call) => call.url.includes(BUSINESS_ID)).length >= 5, true);
+});
+
+test("unconnected tenant never calls inventory or sales endpoints", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  const calls = [];
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) {
+        return response({ business_id: BUSINESS_ID, business_name: "North Star Books" });
+      }
+      if (url.startsWith("/.netlify/functions/subscription-status?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          plan_key: "growth_monthly",
+          status: "active",
+          access_granted: true,
+          feature_access: { inventory_connection: true },
+        });
+      }
+      if (url.startsWith("/.netlify/functions/square-connection?")) {
+        return response({ business_id: BUSINESS_ID, state: "Not Connected" });
+      }
+      throw new Error(`unexpected URL ${url}`);
+    },
+  });
+
+  const state = await controller.restore();
+  assert.equal(state.insights.pulse, null);
+  assert.equal(calls.some((call) => call.url.includes("tenant-square-inventory")), false);
+  assert.equal(calls.some((call) => call.url.includes("tenant-square-sales")), false);
+});
+
+test("workspace milestone tracker keeps tenant keys out of URLs and dedupes within the session", async () => {
+  const s = storage();
+  const calls = [];
+  const tracker = createOnboardingTracker({
+    storage: s,
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      assert.equal(url, "/.netlify/functions/onboarding-event");
+      assert.equal(url.includes(TENANT_KEY), false);
+      assert.equal(init.headers["X-GrowthWise-Tenant-Key"], TENANT_KEY);
+      assert.deepEqual(JSON.parse(init.body), {
+        business_id: BUSINESS_ID,
+        event_name: "workspace_opened",
+      });
+      return response({ ok: true, event_name: "workspace_opened", recorded: true });
+    },
+  });
+
+  assert.equal(await tracker("workspace_opened", {
+    businessId: BUSINESS_ID,
+    tenantKey: TENANT_KEY,
+  }), true);
+  assert.equal(await tracker("workspace_opened", {
+    businessId: BUSINESS_ID,
+    tenantKey: TENANT_KEY,
+  }), true);
+  assert.equal(calls.length, 1);
+});
+
+test("analytics failures do not block the tenant workspace", async () => {
+  const s = storage();
+  const tracker = createOnboardingTracker({
+    storage: s,
+    fetchImpl: async () => response({ error: "analytics unavailable" }, 503),
+  });
+  assert.equal(await tracker("workspace_opened", {
+    businessId: BUSINESS_ID,
+    tenantKey: TENANT_KEY,
+  }), false);
+});
+
+
+test("passwordless tenant session restores the workspace without a JavaScript tenant key", async () => {
+  const s = storage();
+  const calls = [];
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    fetchImpl: async (url, init = {}) => {
+      calls.push({ url, init });
+      if (url === "/.netlify/functions/tenant-session") {
+        assert.equal(init.credentials, "same-origin");
+        return response({
+          ok: true,
+          business_id: BUSINESS_ID,
+          expires_at: "2026-10-26T01:30:00.000Z",
+        });
+      }
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) {
+        assert.equal(init.headers["X-GrowthWise-Tenant-Key"], undefined);
+        assert.equal(init.credentials, "same-origin");
+        return response({
+          business_id: BUSINESS_ID,
+          business_name: "North Star Books",
+          contact_name: "Jamie",
+          contact_email: "jamie@example.com",
+        });
+      }
+      if (url.startsWith("/.netlify/functions/subscription-status?")) {
+        assert.equal(init.headers["X-GrowthWise-Tenant-Key"], undefined);
+        return response({
+          business_id: BUSINESS_ID,
+          access_source: "stripe",
+          plan_key: "starter_monthly",
+          status: "active",
+          access_granted: true,
+          feature_access: { inventory_connection: false, unified_inbox: false },
+        });
+      }
+      if (url === "/.netlify/functions/onboarding-event") {
+        return response({ ok: true, event_name: JSON.parse(init.body).event_name, recorded: true });
+      }
+      throw new Error(`unexpected URL ${url}`);
+    },
+    trackEvent: async () => true,
+  });
+
+  const state = await controller.restore();
+  assert.equal(state.signedIn, true);
+  assert.equal(state.profile.business_name, "North Star Books");
+  assert.deepEqual(readWorkspaceCredentials(s), {
+    businessId: BUSINESS_ID,
+    tenantKey: "",
+  });
+  assert.equal(calls.some((call) => call.url.includes(TENANT_KEY)), false);
+});
+
+test("workspace requests a passwordless sign-in link without revealing account existence", async () => {
+  const s = storage();
+  const calls = [];
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    fetchImpl: async (url, init = {}) => {
+      calls.push({ url, init });
+      assert.equal(url, "/.netlify/functions/tenant-login-request");
+      assert.equal(init.credentials, "same-origin");
+      assert.deepEqual(JSON.parse(init.body), { email: "jamie@example.com" });
+      return response({
+        ok: true,
+        message: "If that email belongs to a GrowthWise workspace, a secure sign-in link will arrive shortly.",
+      });
+    },
+  });
+
+  assert.equal(await controller.requestEmailSignIn("Jamie@Example.com"), true);
+  assert.match(controller.getState().emailLogin.message, /If that email belongs/i);
+  assert.equal(calls.length, 1);
+});
+
+test("sign out revokes the browser session and clears preview credentials", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  const calls = [];
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    fetchImpl: async (url, init = {}) => {
+      calls.push({ url, init });
+      if (url === "/.netlify/functions/tenant-session-logout") {
+        assert.equal(init.method, "POST");
+        assert.equal(init.credentials, "same-origin");
+        return response({ ok: true });
+      }
+      return response({ error: "unused" }, 500);
+    },
+  });
+
+  await controller.signOut();
+  assert.deepEqual(readWorkspaceCredentials(s), { businessId: "", tenantKey: "" });
+  assert.equal(calls.length, 1);
 });
 
 test("workspace sign-in validates tenant profile and subscription before persisting", async () => {
@@ -288,6 +580,81 @@ test("workspace rejects a non-Square OAuth destination", async () => {
   assert.match(controller.getState().square.error, /invalid destination/i);
 });
 
+
+test("eligible tenant launches self-service customer channel setup without an admin invitation", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  const calls = [];
+  let navigated = "";
+
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    navigate: (url) => { navigated = url; },
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) {
+        return response({ business_id: BUSINESS_ID, business_name: "North Star Books" });
+      }
+      if (url.startsWith("/.netlify/functions/subscription-status?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          access_source: "stripe",
+          plan_key: "growth_monthly",
+          status: "active",
+          access_granted: true,
+          feature_access: { inventory_connection: false, unified_inbox: true },
+        });
+      }
+      assert.equal(url, "/.netlify/functions/tenant-connector-session-start");
+      assert.equal(init.credentials, "same-origin");
+      assert.equal(init.headers["X-GrowthWise-Tenant-Key"], TENANT_KEY);
+      assert.equal(Object.hasOwn(init.headers, "X-GrowthWise-Key"), false);
+      assert.deepEqual(JSON.parse(init.body), { business_id: BUSINESS_ID });
+      return response({
+        ok: true,
+        connection_url: "/connect-accounts.html",
+        expires_at: "2026-09-25T23:00:00.000Z",
+      });
+    },
+  });
+
+  await controller.restore();
+  assert.equal(await controller.openConnectorSetup(), true);
+  assert.equal(navigated, "/connect-accounts.html");
+  assert.equal(calls.every((call) => !call.url.includes(TENANT_KEY)), true);
+});
+
+test("Starter tenant cannot launch customer channel setup", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  let connectorCalls = 0;
+
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    fetchImpl: async (url) => {
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) {
+        return response({ business_id: BUSINESS_ID, business_name: "North Star Books" });
+      }
+      if (url.startsWith("/.netlify/functions/subscription-status?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          access_source: "stripe",
+          plan_key: "starter_monthly",
+          status: "active",
+          access_granted: true,
+          feature_access: { inventory_connection: false, unified_inbox: false },
+        });
+      }
+      connectorCalls += 1;
+      return response({});
+    },
+  });
+
+  await controller.restore();
+  assert.equal(await controller.openConnectorSetup(), false);
+  assert.equal(connectorCalls, 0);
+});
+
 test("active tenant can draft a lead reply with tenant auth and no admin key", async () => {
   const s = storage();
   saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
@@ -366,19 +733,42 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
 
   assert.match(html, /Business workspace/);
   assert.match(html, /Workspace ID/);
+  assert.match(html, /id="workspace-email-signin-form"/);
+  assert.match(html, /Email me a sign-in link/);
   assert.match(html, /id="workspace-feature-grid"/);
   assert.match(html, /id="workspace-pro-trial"/);
   assert.match(html, /id="workspace-square-card"/);
   assert.match(html, /id="workspace-square-connect"/);
+  assert.match(html, /id="workspace-onboarding-card"/);
+  assert.match(html, /id="workspace-onboarding-list"/);
+  assert.match(html, /id="workspace-journey-banner"/);
+  assert.match(html, /id="workspace-next-step"/);
+  assert.match(html, /id="workspace-channels-card"/);
+  assert.match(html, /id="workspace-channels-open"/);
+  assert.match(html, /id="workspace-pulse-card"/);
+  assert.match(html, /id="workspace-pulse-sales"/);
+  assert.match(html, /id="workspace-pulse-inventory-value"/);
   assert.match(html, /data-plan-change="starter_monthly"/);
   assert.match(html, /data-plan-change="growth_monthly"/);
   assert.match(html, /data-plan-change="pro_monthly"/);
   assert.match(js, /stripe-plan-change/);
   assert.match(js, /square-connection/);
   assert.match(js, /square-oauth-start/);
+  assert.match(js, /tenant-square-inventory/);
+  assert.match(js, /tenant-square-sales/);
+  assert.match(js, /buildSquareBusinessPulse/);
+  assert.match(js, /openActivation/);
+  assert.match(js, /nextAction/);
+  assert.match(js, /connect-square/);
+  assert.match(js, /refresh-insights/);
+  assert.match(js, /tenant-connector-session-start/);
+  assert.match(js, /openConnectorSetup/);
+  assert.match(js, /tenant-login-request/);
+  assert.match(js, /tenant-session-logout/);
+  assert.match(js, /You're signed in securely/);
   assert.match(js, /feature_access/);
   assert.match(js, /Pro Experience active/);
-  assert.doesNotMatch(html + js, /dexters-hats|Dexter's Hats|growthwise_admin_key|X-GrowthWise-Key/);
+  assert.doesNotMatch(html + js, /dexters-hats|Dexter's Hats|Dexter|growthwise_admin_key|X-GrowthWise-Key/);
   assert.doesNotMatch(html + js, /localStorage/);
   assert.match(headers, /\/app\.html\n\s+Cache-Control: no-store/);
   assert.match(headers, /Referrer-Policy: no-referrer/);
