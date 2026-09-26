@@ -157,7 +157,8 @@
         });
         const data = await response.json().catch(()=>({}));
         if(!response.ok) throw new Error(data.error || 'Status is temporarily unavailable.');
-        const accessGranted = data.access_granted === true && data.access_source === 'stripe';
+        const accessGranted = data.access_granted === true
+          && (data.access_source === 'stripe' || data.access_source === 'pilot');
         const stripeLinked = data.access_source === 'stripe';
         if(accessGranted && stripeLinked) await trackMilestone('checkout_completed');
         const labels = { active:'Active', trialing:'Trialing', incomplete:'Checkout pending', past_due:'Payment needs attention', unpaid:'Payment needs attention', paused:'Paused', canceled:'Canceled', not_subscribed:'Not subscribed' };
@@ -169,7 +170,13 @@
         }
         manageBillingButton.classList.toggle('hidden', !stripeLinked);
         checkoutButton.disabled = stripeLinked;
-        checkoutButton.textContent = accessGranted ? 'Subscription active' : stripeLinked ? 'Subscription linked' : 'Open secure sandbox checkout';
+        checkoutButton.textContent = data.access_source === 'pilot'
+          ? 'Pilot access active'
+          : accessGranted
+            ? 'Subscription active'
+            : stripeLinked
+              ? 'Subscription linked'
+              : 'Open secure sandbox checkout';
       }catch(error){
         subscriptionStatus.textContent = error.message || 'Status is temporarily unavailable.';
         subscriptionStatus.className = 'status error';
