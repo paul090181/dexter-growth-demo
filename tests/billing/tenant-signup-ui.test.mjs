@@ -32,6 +32,8 @@ test("status and checkout send the tenant key only with its stored business ID",
 test("the page grants access only from server-confirmed subscription status", () => {
   assert.match(page, /data\.access_granted\s*===\s*true/);
   assert.match(page, /data\.access_source\s*===\s*['"]stripe['"]/);
+  assert.match(page, /data\.access_source\s*===\s*['"]pilot['"]/);
+  assert.match(page, /Pilot access active/);
   assert.match(page, /billingResult\s*===\s*['"]success['"]/);
   assert.match(page, /billingResult\s*===\s*['"]success['"][\s\S]{0,300}refreshStatus\(\)/);
   assert.doesNotMatch(page, /billingResult\s*===\s*['"]success['"][\s\S]{0,300}accessGranted\s*=\s*true/);
