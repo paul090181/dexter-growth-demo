@@ -7,8 +7,8 @@ import { canonicalOrigin, connectorJson } from "./_connector-http.mjs";
 import { resolveGrowthWisePublicOrigin } from "./_public-origin.mjs";
 import { createTenantStore } from "./_tenant-store.mjs";
 
-function configuredOrigin() {
-  return resolveGrowthWisePublicOrigin();
+function configuredOrigin(requestUrl = "") {
+  return resolveGrowthWisePublicOrigin(undefined, requestUrl);
 }
 
 const CLEAR_COOKIE = `${TENANT_SESSION_COOKIE}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax`;
@@ -25,7 +25,7 @@ export function createTenantSessionLogoutHandler(options = {}) {
     let origin;
     let url;
     try {
-      origin = canonicalOrigin(publicOrigin());
+      origin = canonicalOrigin(publicOrigin(request.url));
       url = new URL(request.url);
     } catch {
       return connectorJson(200, { ok: true }, { "set-cookie": CLEAR_COOKIE });
