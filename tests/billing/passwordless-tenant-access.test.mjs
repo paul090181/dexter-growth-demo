@@ -179,16 +179,22 @@ test("tenant session metadata and logout never expose the raw cookie token", asy
   assert.equal(sessionBody.business_id, BUSINESS_ID);
   assert.equal(JSON.stringify(sessionBody).includes(rawSession), false);
 
+  let logoutOriginRequestUrl = "";
   const logout = createTenantSessionLogoutHandler({
     store,
-    publicOrigin: () => ORIGIN,
+    publicOrigin: (requestUrl) => {
+      logoutOriginRequestUrl = requestUrl;
+      return ORIGIN;
+    },
     now: () => NOW,
   });
+  const logoutRequestUrl = `${ORIGIN}/.netlify/functions/tenant-session-logout`;
   const logoutResponse = await logout(new Request(
-    `${ORIGIN}/.netlify/functions/tenant-session-logout`,
+    logoutRequestUrl,
     { method: "POST", headers: { cookie, origin: ORIGIN } },
   ));
   assert.equal(logoutResponse.status, 200);
+  assert.equal(logoutOriginRequestUrl, logoutRequestUrl);
   assert.match(logoutResponse.headers.get("set-cookie") || "", /Max-Age=0/);
 });
 
