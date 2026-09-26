@@ -169,7 +169,7 @@
           accessCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
         manageBillingButton.classList.toggle('hidden', !stripeLinked);
-        checkoutButton.disabled = stripeLinked;
+        checkoutButton.disabled = stripeLinked || data.access_source === 'pilot';
         checkoutButton.textContent = data.access_source === 'pilot'
           ? 'Pilot access active'
           : accessGranted
