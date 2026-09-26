@@ -3,6 +3,7 @@ import fs from "node:fs";
 import test from "node:test";
 
 import {
+  buildOnboardingSteps,
   buildSquareBusinessPulse,
   clearWorkspaceCredentials,
   createOnboardingTracker,
@@ -33,6 +34,30 @@ test("workspace credentials stay in session storage only", () => {
   assert.deepEqual(readWorkspaceCredentials(s), { businessId: BUSINESS_ID, tenantKey: TENANT_KEY });
   clearWorkspaceCredentials(s);
   assert.deepEqual(readWorkspaceCredentials(s), { businessId: "", tenantKey: "" });
+});
+
+test("Starter onboarding does not count unavailable Square features as unfinished setup", () => {
+  assert.deepEqual(buildOnboardingSteps({
+    accessGranted: true,
+    squareEligible: false,
+  }), [
+    ["Workspace ready", true, "Done"],
+    ["Plan active", true, "Done"],
+  ]);
+});
+
+test("Growth onboarding includes Square and Business Pulse only when entitled", () => {
+  assert.deepEqual(buildOnboardingSteps({
+    accessGranted: true,
+    squareEligible: true,
+    squareConnected: true,
+    pulseReady: false,
+  }), [
+    ["Workspace ready", true, "Done"],
+    ["Plan active", true, "Done"],
+    ["Square connected", true, "Done"],
+    ["Business pulse ready", false, "Next"],
+  ]);
 });
 
 test("business pulse turns Square summaries into useful metrics and actions", () => {
@@ -740,6 +765,7 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /openConnectorSetup/);
   assert.match(js, /tenant-login-request/);
   assert.match(js, /tenant-session-logout/);
+  assert.match(js, /You're signed in securely/);
   assert.match(js, /feature_access/);
   assert.match(js, /Pro Experience active/);
   assert.doesNotMatch(html + js, /dexters-hats|Dexter's Hats|Dexter|growthwise_admin_key|X-GrowthWise-Key/);
