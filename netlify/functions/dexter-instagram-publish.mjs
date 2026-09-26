@@ -1,5 +1,5 @@
-import { authorizeConnectorRequest } from "./_connector-auth.mjs";
-import { createConnectorStore } from "./_connector-store.mjs";
+import { authorizePilotRequest } from "./_pilot-auth.mjs";
+import { createPilotStore } from "./_pilot-store.mjs";
 import { createInstagramPublishHandler } from "./instagram-publish.mjs";
 
 const BUSINESS_ID = "dexters-hats";
@@ -13,17 +13,16 @@ function json(status, body) {
 }
 
 export function createDexterInstagramPublishHandler({
-  connectorStore = createConnectorStore(),
-  connectorAuthorize = authorizeConnectorRequest,
+  pilotStore = createPilotStore(),
+  pilotAuthorize = authorizePilotRequest,
   innerHandler = createInstagramPublishHandler({ adminKey: () => INTERNAL_AUTH }),
 } = {}) {
   return async function dexterInstagramPublish(request) {
     if (request.method !== "POST") return json(405, { error: "Method not allowed." });
 
-    const auth = await connectorAuthorize(request, {
-      store: connectorStore,
+    const auth = await pilotAuthorize(request, {
+      store: pilotStore,
       businessId: BUSINESS_ID,
-      connector: "instagram",
       now: new Date(),
     });
     if (!auth?.ok || auth.businessId !== BUSINESS_ID) {

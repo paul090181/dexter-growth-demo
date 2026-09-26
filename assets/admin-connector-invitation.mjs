@@ -148,7 +148,21 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
 
 
 const DEXTER_BUSINESS_ID = "dexters-hats";
-const DEXTER_CONNECTORS = Object.freeze(["instagram"]);
+const DEXTER_PILOT_ENDPOINT = "/.netlify/functions/dexter-pilot-invitation-create";
+const DEXTER_INVITE_FRAGMENT = /^#invite=gw_pilot_inv_[A-Za-z0-9_-]{43}$/;
+
+function sameOriginDexterPilotInvitation(value, origin) {
+  const target = new URL(value, origin);
+  if (target.origin !== origin
+    || target.pathname !== "/dexter-pilot.html"
+    || target.search
+    || !DEXTER_INVITE_FRAGMENT.test(target.hash)
+    || target.username
+    || target.password) {
+    throw new Error("unsafe_dexter_pilot_invitation_url");
+  }
+  return target;
+}
 
 export function createDexterPilotInvitationController({
   fetchImpl = globalThis.fetch,
@@ -173,10 +187,10 @@ export function createDexterPilotInvitationController({
     onState({ status: "loading", message: "Creating Dexter's secure pilot link…" });
     let response;
     try {
-      response = await fetchImpl(ENDPOINT, {
+      response = await fetchImpl(DEXTER_PILOT_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-GrowthWise-Key": adminKey },
-        body: JSON.stringify({ business_id: DEXTER_BUSINESS_ID, connectors: [...DEXTER_CONNECTORS] }),
+        body: JSON.stringify({ business_id: DEXTER_BUSINESS_ID }),
       });
     } catch {
       onState({ status: "error", message: "Pilot invitation service could not be reached." });
@@ -188,22 +202,22 @@ export function createDexterPilotInvitationController({
       onState({ status: "locked", message: "GrowthWise admin session expired. Unlock again." });
       return null;
     }
-    if (!response.ok
-      || body?.business_id !== DEXTER_BUSINESS_ID
-      || !Array.isArray(body?.connectors)
-      || body.connectors.length !== 1
-      || body.connectors[0] !== "instagram"
+    if (!response.ok || body?.business_id !== DEXTER_BUSINESS_ID
       || typeof body?.invitation_url !== "string") {
       onState({ status: "error", message: "Dexter pilot link could not be created." });
       return null;
     }
     let target;
-    try { target = sameOriginInvitation(body.invitation_url, origin); }
+    try { target = sameOriginDexterPilotInvitation(body.invitation_url, origin); }
     catch {
       onState({ status: "error", message: "Pilot invitation response was rejected." });
       return null;
     }
-    onState({ status: "ready", message: "Dexter pilot link ready. It expires in 24 hours if unused.", url: target.toString() });
+    onState({
+      status: "ready",
+      message: "Dexter pilot link ready. It expires in 72 hours if unused; after he opens it, this device stays signed in for 30 days.",
+      url: target.toString(),
+    });
     return target.toString();
   }
 

@@ -35,6 +35,7 @@
       <div class="tag">INSTAGRAM</div>
       <h2>Post a hat in a few taps</h2>
       <div class="connection"><span id="igDot" class="dot"></span><small id="igStatus">Checking Instagram…</small></div>
+      <button id="igConnectButton" class="button secondary hidden" type="button" style="margin-top:10px">Connect Instagram</button>
       <p>Nothing posts until you review the photo and caption and tap the final button.</p>
       <input id="photoInput" type="file" accept="image/jpeg,image/png" capture="environment">
       <img id="photoPreview" class="preview hidden" alt="Selected hat photo">
@@ -69,82 +70,6 @@
     <button id="anotherButton" class="button secondary hidden" type="button" style="margin-top:14px">Try another hat</button>
   </section>
 </main>
-<script>
-(() => {
-  const BUSINESS_ID="dexters-hats",$=id=>document.getElementById(id);
-  const sessionStatus=$("sessionStatus"),app=$("pilotApp"),photoInput=$("photoInput"),photoPreview=$("photoPreview"),draftButton=$("draftButton"),draftStatus=$("draftStatus"),draftCard=$("draftCard"),productLabel=$("productLabel"),caption=$("caption"),uncertainty=$("uncertainty"),reviewed=$("reviewed"),publishButton=$("publishButton"),publishStatus=$("publishStatus"),feedbackCard=$("feedbackCard"),feedbackNote=$("feedbackNote"),feedbackButton=$("feedbackButton"),feedbackStatus=$("feedbackStatus"),anotherButton=$("anotherButton"),igStatus=$("igStatus"),igDot=$("igDot");
-  let imageDataUrl="",feedbackResult="";
-  function show(el,text,kind=""){el.textContent=text;el.className=("status "+kind).trim();el.classList.remove("hidden");}
-  async function track(name){try{await fetch("/.netlify/functions/dexter-pilot-event",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify({event_name:name})});}catch{}}
-
-  async function session(){
-    const r=await fetch("/.netlify/functions/connector-session",{credentials:"same-origin",cache:"no-store"});
-    if(!r.ok)return false;
-    const b=await r.json().catch(()=>({}));
-    return b.business_id===BUSINESS_ID && b.connectors?.instagram?.allowed===true;
-  }
-
-  async function checkInstagram(){
-    try{
-      const r=await fetch("/.netlify/functions/instagram-connection?business_id="+encodeURIComponent(BUSINESS_ID),{credentials:"same-origin",cache:"no-store"});
-      const b=await r.json().catch(()=>({}));
-      if(!r.ok)throw new Error();
-      if(b.state==="Connected"){igDot.classList.add("ok");igStatus.textContent=b.account?.username?"Connected to @"+b.account.username:"Instagram connected";}
-      else igStatus.textContent="Instagram still needs to be connected. Go back to the connection page before trying to post.";
-    }catch{igStatus.textContent="Instagram connection could not be checked right now.";}
-  }
-
-  photoInput.addEventListener("change",()=>{
-    const file=photoInput.files?.[0];if(!file)return;
-    if(!["image/jpeg","image/png"].includes(file.type)||file.size>7*1024*1024){show(draftStatus,"Choose a JPG or PNG photo under 7 MB.","error");return;}
-    const reader=new FileReader();
-    reader.onload=()=>{imageDataUrl=String(reader.result||"");photoPreview.src=imageDataUrl;photoPreview.classList.remove("hidden");draftButton.classList.remove("hidden");draftCard.classList.add("hidden");feedbackCard.classList.add("hidden");anotherButton.classList.add("hidden");reviewed.checked=false;publishButton.disabled=true;track("instagram_photo_selected");};
-    reader.readAsDataURL(file);
-  });
-
-  draftButton.addEventListener("click",async()=>{
-    if(!imageDataUrl)return;draftButton.disabled=true;show(draftStatus,"GrowthWise is studying the photo and writing your caption…");
-    try{
-      const r=await fetch("/.netlify/functions/dexter-instagram-photo-draft",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify({image_data_url:imageDataUrl})});
-      const b=await r.json().catch(()=>({}));if(!r.ok)throw new Error(b.error||"GrowthWise could not create the draft.");
-      productLabel.textContent=b.product_label||"Your Instagram draft";caption.value=b.caption||"";uncertainty.textContent=b.uncertainty_note||"";uncertainty.classList.toggle("hidden",!b.uncertainty_note);
-      draftCard.classList.remove("hidden");draftCard.scrollIntoView({behavior:"smooth",block:"start"});show(draftStatus,"✓ Draft ready. Review it below.","ok");track("instagram_draft_created");
-    }catch(e){show(draftStatus,e.message||"GrowthWise could not create the draft.","error");}finally{draftButton.disabled=false;}
-  });
-
-  function refreshPublish(){publishButton.disabled=!reviewed.checked||!caption.value.trim();}reviewed.addEventListener("change",refreshPublish);caption.addEventListener("input",refreshPublish);
-
-  publishButton.addEventListener("click",async()=>{
-    if(!reviewed.checked||!caption.value.trim()||!imageDataUrl)return;publishButton.disabled=true;show(publishStatus,"Posting to Instagram…");
-    try{
-      const r=await fetch("/.netlify/functions/dexter-instagram-publish",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify({business_id:BUSINESS_ID,reviewed:true,caption:caption.value.trim(),image_data_url:imageDataUrl})});
-      const b=await r.json().catch(()=>({}));
-      if(!r.ok){
-        if(b.code==="INSTAGRAM_RECONNECT_REQUIRED"||b.code==="PUBLISHING_PERMISSION_REQUIRED")throw new Error("Instagram needs to be reconnected before posting. Your draft is safe—message Paul and he can send a fresh connection link.");
-        throw new Error(b.error||"Instagram did not confirm the post.");
-      }
-      show(publishStatus,b.account?.username?"✓ Posted to @"+b.account.username+".":"✓ Posted to Instagram.","ok");feedbackCard.classList.remove("hidden");anotherButton.classList.remove("hidden");track("instagram_publish_succeeded");
-    }catch(e){show(publishStatus,e.message||"Instagram did not confirm the post.","error");feedbackCard.classList.remove("hidden");track("instagram_publish_failed");}
-  });
-
-  document.querySelectorAll("[data-result]").forEach(button=>button.addEventListener("click",()=>{feedbackResult=button.dataset.result;document.querySelectorAll("[data-result]").forEach(item=>item.classList.toggle("active",item===button));}));
-
-  feedbackButton.addEventListener("click",async()=>{
-    if(!feedbackResult){show(feedbackStatus,"Choose Worked or Needs improvement.","error");return;}feedbackButton.disabled=true;
-    try{
-      const r=await fetch("/.netlify/functions/dexter-pilot-feedback",{method:"POST",credentials:"same-origin",cache:"no-store",headers:{"Content-Type":"application/json"},body:JSON.stringify({feature:"instagram-post",result:feedbackResult,note:feedbackNote.value.trim()})});
-      const b=await r.json().catch(()=>({}));if(!r.ok)throw new Error(b.error||"Feedback could not be saved.");
-      show(feedbackStatus,"✓ Thanks. Feedback saved.","ok");track("feedback_submitted");
-    }catch(e){show(feedbackStatus,e.message||"Feedback could not be saved.","error");}finally{feedbackButton.disabled=false;}
-  });
-
-  anotherButton.addEventListener("click",()=>location.reload());
-
-  (async()=>{
-    if(!await session()){show(sessionStatus,"This secure pilot session is invalid or expired. Ask Paul for a fresh Dexter pilot link.","error");return;}
-    show(sessionStatus,"✓ Secure Dexter pilot active.","ok");app.classList.remove("hidden");track("pilot_opened");checkInstagram();
-  })();
-})();
-</script>
+<script type="module" src="./assets/dexter-pilot.mjs"></script>
 </body>
 </html>

@@ -9,7 +9,7 @@ import { instagramDatabase } from "./_instagram-store.mjs";
 const PATH = "/.netlify/functions/instagram-oauth-callback";
 const MAX_QUERY_BYTES = 8192;
 const CONNECTOR_DESTINATION = "connector-customer-integration";
-const DESTINATIONS = new Set(["growthwise-dev-integration", "dexter-integration", CONNECTOR_DESTINATION]);
+const DESTINATIONS = new Set(["growthwise-dev-integration", "dexter-integration", "dexter-pilot-integration", CONNECTOR_DESTINATION]);
 
 function env(name) { return globalThis.Netlify?.env?.get(name); }
 function versions(name) { return { current: { id: "v1", key: env(name) } }; }

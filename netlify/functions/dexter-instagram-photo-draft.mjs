@@ -1,5 +1,5 @@
-import { authorizeConnectorRequest } from "./_connector-auth.mjs";
-import { createConnectorStore } from "./_connector-store.mjs";
+import { authorizePilotRequest } from "./_pilot-auth.mjs";
+import { createPilotStore } from "./_pilot-store.mjs";
 
 const OPENAI_URL = "https://api.openai.com/v1/responses";
 const BUSINESS_ID = "dexters-hats";
@@ -22,18 +22,17 @@ function extractOutputText(data) {
 }
 
 export function createDexterInstagramPhotoDraftHandler({
-  connectorStore = createConnectorStore(),
-  connectorAuthorize = authorizeConnectorRequest,
+  pilotStore = createPilotStore(),
+  pilotAuthorize = authorizePilotRequest,
   fetchImpl = fetch,
   env = (name) => globalThis.Netlify?.env?.get(name),
 } = {}) {
   return async function dexterInstagramPhotoDraft(request) {
     if (request.method !== "POST") return json(405, { error: "Method not allowed." });
 
-    const auth = await connectorAuthorize(request, {
-      store: connectorStore,
+    const auth = await pilotAuthorize(request, {
+      store: pilotStore,
       businessId: BUSINESS_ID,
-      connector: "instagram",
       now: new Date(),
     });
     if (!auth?.ok || auth.businessId !== BUSINESS_ID) {
