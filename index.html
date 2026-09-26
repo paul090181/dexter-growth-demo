@@ -451,6 +451,19 @@
           <div class="create-status hidden" id="emailAcceptanceOperatorStatus"></div>
         </div>
 
+        <div class="operator-card hidden" id="dexterPilotOperator">
+          <div class="tag">ADMIN · DEXTER PILOT</div>
+          <h3>Create Dexter's self-serve pilot link</h3>
+          <p>This creates a secure, one-time Instagram-only connector invitation for Dexter's Hats. Dexter never receives the GrowthWise admin key.</p>
+          <span class="operator-target">dexters-hats · Instagram only · 24-hour invite</span>
+          <button type="button" class="primary" id="createDexterPilotInvitationBtn">Create Dexter pilot link</button>
+          <div class="create-status hidden" id="dexterPilotOperatorStatus"></div>
+          <input id="dexterPilotInvitationUrl" class="hidden" type="text" readonly style="width:100%;margin-top:9px;border:1px solid #d7dfe4;border-radius:11px;padding:11px" aria-label="Dexter pilot invitation URL" />
+          <button type="button" class="ghost hidden" id="copyDexterPilotInvitationBtn" style="width:100%;margin-top:8px">Copy Dexter link</button>
+          <button type="button" class="ghost" id="loadDexterPilotActivityBtn" style="width:100%;margin-top:8px">Check Dexter pilot activity</button>
+          <div class="create-status hidden" id="dexterPilotActivityStatus"></div>
+        </div>
+
         <div class="founding-plan-card" id="foundingPlanCard">
           <div class="founding-plan-head">
             <div>

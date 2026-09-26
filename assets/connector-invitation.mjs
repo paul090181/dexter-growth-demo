@@ -413,6 +413,8 @@ export function mountCustomerConnectorPage({ documentImpl = globalThis.document 
   const emailUnavailable = documentImpl.getElementById("email-unavailable");
   const emailDisconnect = documentImpl.getElementById("email-disconnect");
   const emailChoices = [...documentImpl.querySelectorAll('input[name="email-mailbox-context"]')];
+  const dexterPilotContinue = documentImpl.getElementById("dexter-pilot-continue");
+  const dexterPilotBreak = documentImpl.getElementById("dexter-pilot-break");
   const render = (view) => {
     businessName.textContent = view.businessName;
     error.textContent = view.error;
@@ -439,6 +441,9 @@ export function mountCustomerConnectorPage({ documentImpl = globalThis.document 
       choice.checked = choice.value === view.email.mailboxContext;
       choice.disabled = view.loading || !view.email.allowed || view.email.state === "Connected";
     }
+    const dexterReady = view.businessId === "dexters-hats" && view.instagram.state === "Connected";
+    if (dexterPilotContinue) dexterPilotContinue.hidden = !dexterReady;
+    if (dexterPilotBreak) dexterPilotBreak.hidden = !dexterReady;
   };
   const controller = createCustomerConnectorController({ onChange: render });
   instagramButton.addEventListener("click", () => controller.connectInstagram());
