@@ -15,19 +15,29 @@
   <section class="hero">
     <div class="eyebrow">Business workspace</div>
     <h1>Your account, one business at a time.</h1>
-    <p>Use your Workspace ID and private tenant access key. Your access key stays in this browser session and is never placed in the URL.</p>
+    <p>Sign in securely by email. Preview workspace credentials remain available below only as a fallback while passwordless access is being verified.</p>
   </section>
 
   <section id="workspace-signed-out" class="card">
-    <div class="eyebrow">Sign in</div>
-    <h2>Open your workspace</h2>
-    <p>This preview uses the Workspace ID and one-time access key created during signup.</p>
-    <form id="workspace-signin-form">
-      <label class="field">Workspace ID<input name="business_id" autocomplete="off" required /></label>
-      <label class="field">Tenant access key<input name="tenant_key" type="password" autocomplete="off" required /></label>
-      <button class="button" type="submit">Open workspace</button>
+    <div class="eyebrow">Secure sign in</div>
+    <h2>Open your workspace by email</h2>
+    <p>Enter the email used when this business was created. If it matches a workspace, GrowthWise will send a one-time sign-in link.</p>
+    <form id="workspace-email-signin-form">
+      <label class="field">Business email<input name="email" type="email" autocomplete="email" required /></label>
+      <button class="button" id="workspace-email-signin-submit" type="submit">Email me a sign-in link</button>
     </form>
+    <div id="workspace-email-signin-status" class="plan-banner" hidden></div>
     <div id="workspace-error" class="status" hidden></div>
+
+    <details style="margin-top:18px">
+      <summary style="cursor:pointer;font-weight:850;color:#53606c">Use preview credentials instead</summary>
+      <p style="margin-top:10px">Use the Workspace ID and tenant access key created during signup.</p>
+      <form id="workspace-signin-form">
+        <label class="field">Workspace ID<input name="business_id" autocomplete="off" required /></label>
+        <label class="field">Tenant access key<input name="tenant_key" type="password" autocomplete="off" required /></label>
+        <button class="button secondary" type="submit">Open with preview credentials</button>
+      </form>
+    </details>
     <p style="margin-top:14px">New business? <a href="./signup.html">Create a workspace</a>.</p>
   </section>
 
