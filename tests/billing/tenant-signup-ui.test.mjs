@@ -96,3 +96,9 @@ test("returning businesses can find passwordless sign in directly from signup", 
   assert.doesNotMatch(page, /Password recovery is not part of this preview yet/i);
   assert.match(page, /use email sign-in from the business workspace/i);
 });
+
+
+test("signup gives prospective customers direct access to the privacy policy", () => {
+  assert.match(page, /href="\.\/privacy-policy\.html"/);
+  assert.match(page, /Privacy Policy/);
+});
