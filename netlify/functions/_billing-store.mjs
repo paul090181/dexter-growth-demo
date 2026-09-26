@@ -74,6 +74,22 @@ const UPSERT_SUBSCRIPTION = `
             stripe_subscription_id, stripe_price_id, current_period_end,
             plan_started_at, last_event_created_at, created_at, updated_at`;
 
+const UPSERT_PILOT_SUBSCRIPTION = `
+  INSERT INTO growthwise_subscriptions
+    (business_id, access_source, plan_key, status, plan_started_at)
+  SELECT business_id, 'pilot', $2, 'pilot', $3
+    FROM growthwise_tenants
+   WHERE business_id = $1
+  ON CONFLICT (business_id) DO UPDATE SET
+    plan_key = EXCLUDED.plan_key,
+    status = 'pilot',
+    plan_started_at = COALESCE(growthwise_subscriptions.plan_started_at, EXCLUDED.plan_started_at),
+    updated_at = CURRENT_TIMESTAMP
+  WHERE growthwise_subscriptions.access_source = 'pilot'
+  RETURNING business_id, access_source, plan_key, status, stripe_customer_id,
+            stripe_subscription_id, stripe_price_id, current_period_end,
+            plan_started_at, last_event_created_at, created_at, updated_at`;
+
 async function netlifyPool() {
   const { getDatabase } = await import("@netlify/database");
   return getDatabase().pool;
@@ -138,6 +154,23 @@ export function createBillingStore({ getPool = netlifyPool } = {}) {
     } catch (error) {
       if (error?.message === "INVALID_BUSINESS_ID") throw error;
       throw safeStoreError("SUBSCRIPTION_READ_FAILED", error);
+    }
+  }
+
+  async function grantPilotAccess({ businessId, planKey = "founding_monthly", startedAt = new Date() } = {}) {
+    const id = requiredString(businessId, "INVALID_BUSINESS_ID");
+    const plan = requiredString(planKey, "INVALID_PLAN_KEY");
+    if (!new Set(["founding_monthly", "starter_monthly", "growth_monthly", "pro_monthly"]).has(plan)) {
+      throw safeStoreError("INVALID_PLAN_KEY");
+    }
+    const start = validDate(startedAt, "INVALID_PLAN_STARTED_AT");
+    try {
+      const result = await (await getPool()).query(UPSERT_PILOT_SUBSCRIPTION, [id, plan, start]);
+      if (!result.rows[0]) throw safeStoreError("PILOT_ACCESS_NOT_GRANTED");
+      return result.rows[0];
+    } catch (error) {
+      if (["INVALID_BUSINESS_ID", "INVALID_PLAN_KEY", "INVALID_PLAN_STARTED_AT", "PILOT_ACCESS_NOT_GRANTED"].includes(error?.message)) throw error;
+      throw safeStoreError("PILOT_ACCESS_GRANT_FAILED", error);
     }
   }
 
@@ -225,5 +258,5 @@ export function createBillingStore({ getPool = netlifyPool } = {}) {
     }
   }
 
-  return { readSubscription, findSubscriptionByStripeIds, applyEvent };
+  return { readSubscription, findSubscriptionByStripeIds, grantPilotAccess, applyEvent };
 }
