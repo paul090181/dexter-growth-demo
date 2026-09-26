@@ -38,7 +38,7 @@ test("the page grants access only from server-confirmed subscription status", ()
   assert.match(page, /billingResult\s*===\s*['"]success['"][\s\S]{0,300}refreshStatus\(\)/);
   assert.doesNotMatch(page, /billingResult\s*===\s*['"]success['"][\s\S]{0,300}accessGranted\s*=\s*true/);
   assert.match(page, /const stripeLinked = data\.access_source === ['"]stripe['"]/);
-  assert.match(page, /checkoutButton\.disabled\s*=\s*stripeLinked/);
+  assert.match(page, /checkoutButton\.disabled\s*=\s*stripeLinked\s*\|\|\s*data\.access_source\s*===\s*['"]pilot['"]/);
 });
 
 test("the standalone tenant page does not load Dexter integrations or data", () => {
