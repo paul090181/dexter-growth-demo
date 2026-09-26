@@ -17,6 +17,7 @@ function cleanBusinessId(value) {
   return clean && clean.length <= 80 ? clean : "";
 }
 
+// Intentionally opt-in by deploy context; Production stays disabled unless explicitly configured.
 function previewPilotAccessEnabled() {
   return Netlify.env.get("GROWTHWISE_PILOT_ACCESS_ENABLED") === "true";
 }
