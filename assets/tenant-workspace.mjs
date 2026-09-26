@@ -157,6 +157,20 @@ export function buildSquareBusinessPulse(inventory = {}, sales = {}) {
   };
 }
 
+export function buildOnboardingSteps({ accessGranted = false, squareEligible = false, squareConnected = false, pulseReady = false } = {}) {
+  const steps = [
+    ["Workspace ready", true, "Done"],
+    ["Plan active", accessGranted, accessGranted ? "Done" : "Next"],
+  ];
+  if (squareEligible) {
+    steps.push(
+      ["Square connected", squareConnected, squareConnected ? "Done" : "Next"],
+      ["Business pulse ready", pulseReady, pulseReady ? "Done" : "Next"],
+    );
+  }
+  return steps;
+}
+
 function statusLabel(status) {
   return ({
     active: "Active",
@@ -823,16 +837,12 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     const squareEligible = featureAccess.inventory_connection === true;
     const squareConnected = view.square?.status?.state === "Connected";
     const pulseReady = Boolean(view.insights?.pulse);
-    const setupSteps = [
-      ["Workspace ready", true, "Done"],
-      ["Plan active", accessGranted, accessGranted ? "Done" : "Next"],
-      ...(squareEligible
-        ? [
-            ["Square connected", squareConnected, squareConnected ? "Done" : "Next"],
-            ["Business pulse ready", pulseReady, pulseReady ? "Done" : "Next"],
-          ]
-        : [["Square connection", false, "Growth+"]]),
-    ];
+    const setupSteps = buildOnboardingSteps({
+      accessGranted,
+      squareEligible,
+      squareConnected,
+      pulseReady,
+    });
     const completedSteps = setupSteps.filter(([, done]) => done).length;
     onboardingSummary.textContent = `${completedSteps} of ${setupSteps.length} setup steps complete. ${pulseReady ? "Your workspace is already turning connected data into decisions." : "Finish the next step to unlock more value."}`;
     onboardingList.replaceChildren();
@@ -850,9 +860,12 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
 
     const query = new URLSearchParams(globalThis.location?.search || "");
     const returnedFromSquare = query.get("square") === "connected";
+    const returnedFromSignin = query.get("signin") === "success";
     const firstRun = query.get("onboarding") === "1";
-    journeyBanner.hidden = true;
-    journeyBanner.textContent = "";
+    journeyBanner.hidden = !returnedFromSignin;
+    journeyBanner.textContent = returnedFromSignin
+      ? "You're signed in securely. Continue where you left off."
+      : "";
 
     nextStep.hidden = false;
     nextStep.disabled = view.loading || view.square?.loading === true || view.insights?.loading === true;
