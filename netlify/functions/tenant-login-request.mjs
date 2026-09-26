@@ -12,8 +12,8 @@ import {
 
 const TOKEN_TTL_MS = 15 * 60 * 1000;
 
-function configuredOrigin() {
-  return resolveGrowthWisePublicOrigin();
+function configuredOrigin(requestUrl = "") {
+  return resolveGrowthWisePublicOrigin(undefined, requestUrl);
 }
 
 function normalizedEmail(value) {
@@ -42,7 +42,7 @@ export function createTenantLoginRequestHandler(options = {}) {
     let origin;
     let requestUrl;
     try {
-      origin = canonicalOrigin(publicOrigin());
+      origin = canonicalOrigin(publicOrigin(request.url));
       requestUrl = new URL(request.url);
     } catch {
       return connectorJson(503, { error: "Email sign-in is unavailable." });
