@@ -11,8 +11,8 @@ import { createTenantStore } from "./_tenant-store.mjs";
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
-function configuredOrigin() {
-  return resolveGrowthWisePublicOrigin();
+function configuredOrigin(requestUrl = "") {
+  return resolveGrowthWisePublicOrigin(undefined, requestUrl);
 }
 
 const CLEAR_COOKIE = `${TENANT_SESSION_COOKIE}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax`;
@@ -30,7 +30,7 @@ export function createTenantLoginExchangeHandler(options = {}) {
     let origin;
     let requestUrl;
     try {
-      origin = canonicalOrigin(publicOrigin());
+      origin = canonicalOrigin(publicOrigin(request.url));
       requestUrl = new URL(request.url);
     } catch {
       return connectorJson(503, { error: "Email sign-in is unavailable." }, {
