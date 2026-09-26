@@ -201,6 +201,105 @@ test("analytics failures do not block the tenant workspace", async () => {
   }), false);
 });
 
+
+test("passwordless tenant session restores the workspace without a JavaScript tenant key", async () => {
+  const s = storage();
+  const calls = [];
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    fetchImpl: async (url, init = {}) => {
+      calls.push({ url, init });
+      if (url === "/.netlify/functions/tenant-session") {
+        assert.equal(init.credentials, "same-origin");
+        return response({
+          ok: true,
+          business_id: BUSINESS_ID,
+          expires_at: "2026-10-26T01:30:00.000Z",
+        });
+      }
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) {
+        assert.equal(init.headers["X-GrowthWise-Tenant-Key"], undefined);
+        assert.equal(init.credentials, "same-origin");
+        return response({
+          business_id: BUSINESS_ID,
+          business_name: "North Star Books",
+          contact_name: "Jamie",
+          contact_email: "jamie@example.com",
+        });
+      }
+      if (url.startsWith("/.netlify/functions/subscription-status?")) {
+        assert.equal(init.headers["X-GrowthWise-Tenant-Key"], undefined);
+        return response({
+          business_id: BUSINESS_ID,
+          access_source: "stripe",
+          plan_key: "starter_monthly",
+          status: "active",
+          access_granted: true,
+          feature_access: { inventory_connection: false, unified_inbox: false },
+        });
+      }
+      if (url === "/.netlify/functions/onboarding-event") {
+        return response({ ok: true, event_name: JSON.parse(init.body).event_name, recorded: true });
+      }
+      throw new Error(`unexpected URL ${url}`);
+    },
+    trackEvent: async () => true,
+  });
+
+  const state = await controller.restore();
+  assert.equal(state.signedIn, true);
+  assert.equal(state.profile.business_name, "North Star Books");
+  assert.deepEqual(readWorkspaceCredentials(s), {
+    businessId: BUSINESS_ID,
+    tenantKey: "",
+  });
+  assert.equal(calls.some((call) => call.url.includes(TENANT_KEY)), false);
+});
+
+test("workspace requests a passwordless sign-in link without revealing account existence", async () => {
+  const s = storage();
+  const calls = [];
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    fetchImpl: async (url, init = {}) => {
+      calls.push({ url, init });
+      assert.equal(url, "/.netlify/functions/tenant-login-request");
+      assert.equal(init.credentials, "same-origin");
+      assert.deepEqual(JSON.parse(init.body), { email: "jamie@example.com" });
+      return response({
+        ok: true,
+        message: "If that email belongs to a GrowthWise workspace, a secure sign-in link will arrive shortly.",
+      });
+    },
+  });
+
+  assert.equal(await controller.requestEmailSignIn("Jamie@Example.com"), true);
+  assert.match(controller.getState().emailLogin.message, /If that email belongs/i);
+  assert.equal(calls.length, 1);
+});
+
+test("sign out revokes the browser session and clears preview credentials", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  const calls = [];
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    fetchImpl: async (url, init = {}) => {
+      calls.push({ url, init });
+      if (url === "/.netlify/functions/tenant-session-logout") {
+        assert.equal(init.method, "POST");
+        assert.equal(init.credentials, "same-origin");
+        return response({ ok: true });
+      }
+      return response({ error: "unused" }, 500);
+    },
+  });
+
+  await controller.signOut();
+  assert.deepEqual(readWorkspaceCredentials(s), { businessId: "", tenantKey: "" });
+  assert.equal(calls.length, 1);
+});
+
 test("workspace sign-in validates tenant profile and subscription before persisting", async () => {
   const s = storage();
   const calls = [];
@@ -609,6 +708,8 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
 
   assert.match(html, /Business workspace/);
   assert.match(html, /Workspace ID/);
+  assert.match(html, /id="workspace-email-signin-form"/);
+  assert.match(html, /Email me a sign-in link/);
   assert.match(html, /id="workspace-feature-grid"/);
   assert.match(html, /id="workspace-pro-trial"/);
   assert.match(html, /id="workspace-square-card"/);
@@ -637,6 +738,8 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /refresh-insights/);
   assert.match(js, /tenant-connector-session-start/);
   assert.match(js, /openConnectorSetup/);
+  assert.match(js, /tenant-login-request/);
+  assert.match(js, /tenant-session-logout/);
   assert.match(js, /feature_access/);
   assert.match(js, /Pro Experience active/);
   assert.doesNotMatch(html + js, /dexters-hats|Dexter's Hats|Dexter|growthwise_admin_key|X-GrowthWise-Key/);
