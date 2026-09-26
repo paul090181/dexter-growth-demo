@@ -88,3 +88,11 @@ test("signup records only milestone names through the tenant-authenticated onboa
   assert.match(page, /growthwise_onboarding_event/);
   assert.doesNotMatch(page, /onboarding-event\?[^'"]*tenant/);
 });
+
+test("returning businesses can find passwordless sign in directly from signup", () => {
+  assert.match(page, /Already have a workspace\? Sign in/);
+  assert.match(page, /Sign in by email/);
+  assert.match(page, /href="\.\/app\.html"/);
+  assert.doesNotMatch(page, /Password recovery is not part of this preview yet/i);
+  assert.match(page, /use email sign-in from the business workspace/i);
+});
