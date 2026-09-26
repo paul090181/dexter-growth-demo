@@ -16,8 +16,8 @@ import { createTenantStore } from "./_tenant-store.mjs";
 
 const CONNECTORS = Object.freeze(["email", "instagram"]);
 
-function configuredOrigin() {
-  return resolveGrowthWisePublicOrigin();
+function configuredOrigin(requestUrl = "") {
+  return resolveGrowthWisePublicOrigin(undefined, requestUrl);
 }
 
 export function createTenantConnectorSessionStartHandler(options = {}) {
@@ -36,7 +36,7 @@ export function createTenantConnectorSessionStartHandler(options = {}) {
     let origin;
     let requestUrl;
     try {
-      origin = canonicalOrigin(publicOrigin());
+      origin = canonicalOrigin(publicOrigin(request.url));
       requestUrl = new URL(request.url);
     } catch {
       return connectorJson(503, { error: "Connection setup is unavailable." });
