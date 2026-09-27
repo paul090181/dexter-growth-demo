@@ -1748,6 +1748,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const pulsePrimary = documentImpl.getElementById("workspace-pulse-primary");
   const pulseRecommendations = documentImpl.getElementById("workspace-pulse-recommendations");
   const pulsePromote = documentImpl.getElementById("workspace-pulse-promote");
+  const pulseAsk = documentImpl.getElementById("workspace-pulse-ask");
   const leadCard = documentImpl.getElementById("workspace-lead-card");
   const leadForm = documentImpl.getElementById("workspace-lead-form");
   const leadSource = documentImpl.getElementById("workspace-lead-source");
@@ -2252,6 +2253,19 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
           ? "Create a post for " + promotionSuggestion.itemName
           : "Create a post from this insight";
         pulsePromote.dataset.prompt = canPromote ? promotionSuggestion.prompt : "";
+
+        const canAsk = featureAccess.ai_business_assistant === true;
+        pulseAsk.hidden = !canAsk;
+        pulseAsk.dataset.prompt = canAsk
+          ? [
+              "My current Square Business Pulse says:",
+              pulse.headline,
+              pulse.primary,
+              ...(pulse.recommendations || []).map((item) => "- " + item),
+              "",
+              "What should I do next, and what additional business data would make your recommendation more specific?",
+            ].join("\n")
+          : "";
       }
     }
 
@@ -2301,6 +2315,14 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     firstWinPrompt.value = prompt;
     firstWinCard?.scrollIntoView?.({ behavior: "smooth", block: "start" });
     firstWinPrompt?.focus?.();
+  });
+
+  pulseAsk?.addEventListener("click", () => {
+    const prompt = String(pulseAsk.dataset.prompt || "").trim();
+    if (!prompt) return;
+    assistantQuestion.value = prompt;
+    assistantCard?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    assistantQuestion?.focus?.();
   });
 
   squareConnect?.addEventListener("click", () => controller.connectSquare());

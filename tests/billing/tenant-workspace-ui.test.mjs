@@ -1386,7 +1386,15 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /buildSquareBusinessPulse/);
   assert.match(js, /promotionSuggestion/);
   assert.match(js, /pulsePromote\.dataset\.prompt/);
+  assert.match(js, /pulseAsk\.dataset\.prompt/);
+  assert.match(js, /current Square Business Pulse says/);
   assert.match(js, /Create a post for/);
+  const pulseAskStart = js.indexOf("pulseAsk?.addEventListener");
+  const pulseAskEnd = js.indexOf("squareConnect?.addEventListener", pulseAskStart);
+  assert.equal(pulseAskStart >= 0 && pulseAskEnd > pulseAskStart, true);
+  const pulseAskBridge = js.slice(pulseAskStart, pulseAskEnd);
+  assert.match(pulseAskBridge, /assistantQuestion\.value = prompt/);
+  assert.doesNotMatch(pulseAskBridge, /askNarleo\(/);
   assert.match(js, /openActivation/);
   assert.match(js, /nextAction/);
   assert.match(js, /connect-square/);
