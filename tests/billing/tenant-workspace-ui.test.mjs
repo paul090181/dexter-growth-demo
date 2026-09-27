@@ -921,7 +921,7 @@ test("locked tenant cannot call Narleo business assistant", async () => {
   assert.equal(assistantCalls, 0);
 });
 
-test("publishing-enabled tenant loads only its own Facebook Page and publishes only after review", async () => {
+test("publishing-enabled tenant loads only its own social accounts and publishes only after review", async () => {
   const s = storage();
   saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
   const calls = [];
@@ -959,6 +959,16 @@ test("publishing-enabled tenant loads only its own Facebook Page and publishes o
           action: "",
         });
       }
+      if (url.startsWith("/.netlify/functions/tenant-instagram-connection?")) {
+        assert.equal(init.headers["X-GrowthWise-Tenant-Key"], TENANT_KEY);
+        assert.equal(url.includes(TENANT_KEY), false);
+        return response({
+          business_id: BUSINESS_ID,
+          state: "Connected",
+          account: { username: "northstarbooks", name: "North Star Books" },
+          action: "",
+        });
+      }
       if (url === "/.netlify/functions/tenant-facebook-publish") {
         assert.equal(init.headers["X-GrowthWise-Tenant-Key"], TENANT_KEY);
         assert.equal(Object.hasOwn(init.headers, "X-GrowthWise-Key"), false);
@@ -978,6 +988,24 @@ test("publishing-enabled tenant loads only its own Facebook Page and publishes o
           photo_count: 1,
         });
       }
+      if (url === "/.netlify/functions/tenant-instagram-publish") {
+        assert.equal(init.headers["X-GrowthWise-Tenant-Key"], TENANT_KEY);
+        assert.equal(Object.hasOwn(init.headers, "X-GrowthWise-Key"), false);
+        assert.deepEqual(JSON.parse(init.body), {
+          business_id: BUSINESS_ID,
+          reviewed: true,
+          caption: "Mystery readers, take a look.",
+          image_data_url: "data:image/jpeg;base64,AA==",
+        });
+        return response({
+          ok: true,
+          business_id: BUSINESS_ID,
+          published: true,
+          live_sent: true,
+          media_id: "ig-media-123",
+          account: { username: "northstarbooks" },
+        });
+      }
       throw new Error(`unexpected URL ${url}`);
     },
   });
@@ -986,6 +1014,9 @@ test("publishing-enabled tenant loads only its own Facebook Page and publishes o
   assert.equal(restored.facebook.enabled, true);
   assert.equal(restored.facebook.status.state, "Connected");
   assert.equal(restored.facebook.status.account.page_name, "North Star Books");
+  assert.equal(restored.instagram.enabled, true);
+  assert.equal(restored.instagram.status.state, "Connected");
+  assert.equal(restored.instagram.status.account.username, "northstarbooks");
 
   assert.equal(await controller.publishFacebook({
     message: "New arrivals are here.",
@@ -1001,6 +1032,21 @@ test("publishing-enabled tenant loads only its own Facebook Page and publishes o
     reviewed: true,
   }), true);
   assert.equal(controller.getState().facebook.result.page_name, "North Star Books");
+
+  assert.equal(await controller.publishInstagram({
+    caption: "Mystery readers, take a look.",
+    imageDataUrl: "data:image/jpeg;base64,AA==",
+    reviewed: false,
+  }), false);
+  assert.match(controller.getState().instagram.publishError, /confirm/i);
+  assert.equal(calls.some((call) => call.url === "/.netlify/functions/tenant-instagram-publish"), false);
+
+  assert.equal(await controller.publishInstagram({
+    caption: "Mystery readers, take a look.",
+    imageDataUrl: "data:image/jpeg;base64,AA==",
+    reviewed: true,
+  }), true);
+  assert.equal(controller.getState().instagram.result.account.username, "northstarbooks");
   assert.equal(calls.every((call) => !call.url.includes(TENANT_KEY)), true);
 });
 
@@ -1139,7 +1185,9 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /id="workspace-first-win-copy"/);
   assert.match(html, /id="workspace-first-win-copy-secondary"/);
   assert.match(html, /id="workspace-first-win-use-facebook"/);
+  assert.match(html, /id="workspace-first-win-use-instagram"/);
   assert.match(html, /id="workspace-facebook-message"/);
+  assert.match(html, /id="workspace-instagram-caption"/);
   assert.match(html, /id="workspace-assistant-card"/);
   assert.match(html, /id="workspace-assistant-form"/);
   assert.match(html, /id="workspace-assistant-thread"/);
@@ -1149,6 +1197,10 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /id="workspace-facebook-form"/);
   assert.match(html, /id="workspace-facebook-reviewed"/);
   assert.match(html, /id="workspace-facebook-publish"/);
+  assert.match(html, /id="workspace-instagram-card"/);
+  assert.match(html, /id="workspace-instagram-form"/);
+  assert.match(html, /id="workspace-instagram-reviewed"/);
+  assert.match(html, /id="workspace-instagram-publish"/);
   assert.match(html, /id="workspace-pulse-card"/);
   assert.match(html, /id="workspace-pulse-sales"/);
   assert.match(html, /id="workspace-pulse-inventory-value"/);
@@ -1182,11 +1234,22 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.equal(firstWinFacebookStart >= 0 && firstWinFacebookEnd > firstWinFacebookStart, true);
   const firstWinFacebookBridge = js.slice(firstWinFacebookStart, firstWinFacebookEnd);
   assert.doesNotMatch(firstWinFacebookBridge, /publishFacebook\(/);
+  const firstWinInstagramStart = js.indexOf("firstWinUseInstagram?.addEventListener");
+  const firstWinInstagramEnd = js.indexOf("firstWinForm?.addEventListener", firstWinInstagramStart);
+  assert.equal(firstWinInstagramStart >= 0 && firstWinInstagramEnd > firstWinInstagramStart, true);
+  const firstWinInstagramBridge = js.slice(firstWinInstagramStart, firstWinInstagramEnd);
+  assert.match(firstWinInstagramBridge, /instagramCaption\.value = result\.secondary_text/);
+  assert.match(firstWinInstagramBridge, /instagramReviewed\.checked = false/);
+  assert.doesNotMatch(firstWinInstagramBridge, /publishInstagram\(/);
   assert.match(js, /openConnectorSetup/);
   assert.match(js, /tenant-facebook-connection/);
   assert.match(js, /tenant-facebook-publish/);
   assert.match(js, /publishFacebook/);
   assert.match(js, /refreshFacebookStatus/);
+  assert.match(js, /tenant-instagram-connection/);
+  assert.match(js, /tenant-instagram-publish/);
+  assert.match(js, /publishInstagram/);
+  assert.match(js, /refreshInstagramStatus/);
   assert.match(js, /tenant-login-request/);
   assert.match(js, /tenant-session-logout/);
   assert.match(js, /You're signed in securely/);

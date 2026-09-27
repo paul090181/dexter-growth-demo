@@ -14,6 +14,8 @@ const TENANT_SESSION_ENDPOINT = "/.netlify/functions/tenant-session";
 const TENANT_SESSION_LOGOUT_ENDPOINT = "/.netlify/functions/tenant-session-logout";
 const FACEBOOK_CONNECTION_ENDPOINT = "/.netlify/functions/tenant-facebook-connection";
 const FACEBOOK_PUBLISH_ENDPOINT = "/.netlify/functions/tenant-facebook-publish";
+const INSTAGRAM_CONNECTION_ENDPOINT = "/.netlify/functions/tenant-instagram-connection";
+const INSTAGRAM_PUBLISH_ENDPOINT = "/.netlify/functions/tenant-instagram-publish";
 const FIRST_WIN_ENDPOINT = "/.netlify/functions/tenant-first-win";
 const BUSINESS_ASSISTANT_ENDPOINT = "/.netlify/functions/tenant-business-assistant";
 
@@ -257,6 +259,15 @@ export function createTenantWorkspaceController({
       publishError: "",
       result: null,
     },
+    instagram: {
+      enabled: false,
+      loading: false,
+      error: "",
+      status: null,
+      publishing: false,
+      publishError: "",
+      result: null,
+    },
     firstWin: {
       completed: false,
       loading: false,
@@ -341,6 +352,54 @@ export function createTenantWorkspaceController({
         enabled: true,
         loading: false,
         error: error?.message || "Facebook connection status is temporarily unavailable.",
+        status: null,
+        publishing: false,
+        publishError: "",
+        result: null,
+      };
+    }
+  }
+
+  async function readInstagramStatus({ businessId, tenantKey, subscription }) {
+    if (subscription?.feature_access?.automated_publishing !== true) {
+      return {
+        enabled: false,
+        loading: false,
+        error: "",
+        status: null,
+        publishing: false,
+        publishError: "",
+        result: null,
+      };
+    }
+    try {
+      const response = await fetchImpl(
+        `${INSTAGRAM_CONNECTION_ENDPOINT}?business_id=${encodeURIComponent(businessId)}`,
+        {
+          method: "GET",
+          headers: authHeaders(tenantKey),
+          cache: "no-store",
+          credentials: "same-origin",
+        },
+      );
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || body.business_id !== businessId || typeof body.state !== "string") {
+        throw new Error(body.error || "Instagram connection status is temporarily unavailable.");
+      }
+      return {
+        enabled: true,
+        loading: false,
+        error: "",
+        status: body,
+        publishing: false,
+        publishError: "",
+        result: null,
+      };
+    } catch (error) {
+      return {
+        enabled: true,
+        loading: false,
+        error: error?.message || "Instagram connection status is temporarily unavailable.",
         status: null,
         publishing: false,
         publishError: "",
@@ -454,6 +513,12 @@ export function createTenantWorkspaceController({
         subscription,
       });
 
+      const instagram = await readInstagramStatus({
+        businessId: id,
+        tenantKey: key,
+        subscription,
+      });
+
       await trackEvent("workspace_opened", { businessId: id, tenantKey: key });
       if (subscription?.access_source === "stripe" && subscription?.access_granted === true) {
         await trackEvent("checkout_completed", { businessId: id, tenantKey: key });
@@ -477,6 +542,7 @@ export function createTenantWorkspaceController({
         square,
         insights,
         facebook,
+        instagram,
         firstWin: {
           completed: firstWinCompleted,
           loading: false,
@@ -501,6 +567,15 @@ export function createTenantWorkspaceController({
         square: { enabled: false, loading: false, error: "", status: null, skipped: false },
         insights: { enabled: false, loading: false, error: "", inventory: null, sales: null, pulse: null },
         facebook: {
+          enabled: false,
+          loading: false,
+          error: "",
+          status: null,
+          publishing: false,
+          publishError: "",
+          result: null,
+        },
+        instagram: {
           enabled: false,
           loading: false,
           error: "",
@@ -1090,6 +1165,134 @@ export function createTenantWorkspaceController({
     }
   }
 
+  async function refreshInstagramStatus() {
+    const { businessId, tenantKey } = readWorkspaceCredentials(storage);
+    if (!state.signedIn
+      || state.subscription?.feature_access?.automated_publishing !== true
+      || !businessId) {
+      return false;
+    }
+    publish({
+      instagram: {
+        ...state.instagram,
+        enabled: true,
+        loading: true,
+        error: "",
+      },
+    });
+    const instagram = await readInstagramStatus({
+      businessId,
+      tenantKey,
+      subscription: state.subscription,
+    });
+    publish({ instagram: { ...instagram, result: state.instagram?.result || null } });
+    return instagram.status?.state === "Connected";
+  }
+
+  async function publishInstagram({ caption, imageDataUrl = "", reviewed = false } = {}) {
+    const { businessId, tenantKey } = readWorkspaceCredentials(storage);
+    const text = String(caption || "").trim();
+    if (!state.signedIn
+      || state.subscription?.feature_access?.automated_publishing !== true
+      || !businessId) {
+      publish({
+        instagram: {
+          ...state.instagram,
+          publishError: "Instagram publishing is not available for this workspace.",
+          result: null,
+        },
+      });
+      return false;
+    }
+    if (state.instagram?.status?.state !== "Connected") {
+      publish({
+        instagram: {
+          ...state.instagram,
+          publishError: "Connect this business's Instagram account before publishing.",
+          result: null,
+        },
+      });
+      return false;
+    }
+    if (!reviewed || !text || !imageDataUrl) {
+      publish({
+        instagram: {
+          ...state.instagram,
+          publishError: "Review the caption and photo and confirm them before publishing.",
+          result: null,
+        },
+      });
+      return false;
+    }
+
+    publish({
+      instagram: {
+        ...state.instagram,
+        publishing: true,
+        publishError: "",
+        result: null,
+      },
+    });
+
+    try {
+      const response = await fetchImpl(INSTAGRAM_PUBLISH_ENDPOINT, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          ...authHeaders(tenantKey),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          business_id: businessId,
+          reviewed: true,
+          caption: text.slice(0, 2200),
+          image_data_url: String(imageDataUrl),
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result?.ok !== true || result.business_id !== businessId
+        || result?.published !== true || result?.live_sent !== true) {
+        throw Object.assign(
+          new Error(result?.error || "Instagram could not publish the reviewed post."),
+          { code: result?.code || "", retrySafe: result?.retry_safe },
+        );
+      }
+      publish({
+        instagram: {
+          ...state.instagram,
+          publishing: false,
+          publishError: "",
+          result,
+        },
+      });
+      return true;
+    } catch (error) {
+      const needsAttention = [
+        "INSTAGRAM_RECONNECT_REQUIRED",
+        "PUBLISHING_PERMISSION_REQUIRED",
+      ].includes(error?.code);
+      const ambiguous = error?.code === "INSTAGRAM_PUBLISH_AMBIGUOUS";
+      publish({
+        instagram: {
+          ...state.instagram,
+          publishing: false,
+          publishError: ambiguous
+            ? "Instagram did not confirm whether the final post completed. Check Instagram before trying again."
+            : error?.message || "Instagram could not publish the reviewed post.",
+          result: null,
+          status: needsAttention
+            ? {
+                ...(state.instagram?.status || {}),
+                state: "Needs Attention",
+                action: "Reconnect Instagram before publishing again.",
+              }
+            : state.instagram?.status,
+        },
+      });
+      return false;
+    }
+  }
+
   async function draftLead({ source, customerName, message }) {
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
     const text = String(message || "").trim();
@@ -1163,6 +1366,15 @@ export function createTenantWorkspaceController({
         publishError: "",
         result: null,
       },
+      instagram: {
+        enabled: false,
+        loading: false,
+        error: "",
+        status: null,
+        publishing: false,
+        publishError: "",
+        result: null,
+      },
       firstWin: {
         completed: false,
         loading: false,
@@ -1193,6 +1405,8 @@ export function createTenantWorkspaceController({
     createFirstWin,
     refreshFacebookStatus,
     publishFacebook,
+    refreshInstagramStatus,
+    publishInstagram,
     draftLead,
     signOut,
     getState: () => structuredClone(state),
@@ -1252,6 +1466,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const firstWinCopy = documentImpl.getElementById("workspace-first-win-copy");
   const firstWinCopySecondary = documentImpl.getElementById("workspace-first-win-copy-secondary");
   const firstWinUseFacebook = documentImpl.getElementById("workspace-first-win-use-facebook");
+  const firstWinUseInstagram = documentImpl.getElementById("workspace-first-win-use-instagram");
   const firstWinNote = documentImpl.getElementById("workspace-first-win-note");
   const firstWinNext = documentImpl.getElementById("workspace-first-win-next");
   const assistantCard = documentImpl.getElementById("workspace-assistant-card");
@@ -1277,6 +1492,20 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const facebookPublish = documentImpl.getElementById("workspace-facebook-publish");
   const facebookPublishStatus = documentImpl.getElementById("workspace-facebook-publish-status");
   const facebookResult = documentImpl.getElementById("workspace-facebook-result");
+  const instagramCard = documentImpl.getElementById("workspace-instagram-card");
+  const instagramState = documentImpl.getElementById("workspace-instagram-state");
+  const instagramDetail = documentImpl.getElementById("workspace-instagram-detail");
+  const instagramError = documentImpl.getElementById("workspace-instagram-error");
+  const instagramConnect = documentImpl.getElementById("workspace-instagram-connect");
+  const instagramRefresh = documentImpl.getElementById("workspace-instagram-refresh");
+  const instagramForm = documentImpl.getElementById("workspace-instagram-form");
+  const instagramCaption = documentImpl.getElementById("workspace-instagram-caption");
+  const instagramImage = documentImpl.getElementById("workspace-instagram-image");
+  const instagramPreview = documentImpl.getElementById("workspace-instagram-preview");
+  const instagramReviewed = documentImpl.getElementById("workspace-instagram-reviewed");
+  const instagramPublish = documentImpl.getElementById("workspace-instagram-publish");
+  const instagramPublishStatus = documentImpl.getElementById("workspace-instagram-publish-status");
+  const instagramResult = documentImpl.getElementById("workspace-instagram-result");
   const pulseCard = documentImpl.getElementById("workspace-pulse-card");
   const pulseError = documentImpl.getElementById("workspace-pulse-error");
   const pulseLoading = documentImpl.getElementById("workspace-pulse-loading");
@@ -1298,6 +1527,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const leadFollowUp = documentImpl.getElementById("workspace-lead-followup");
 
   let facebookImageDataUrl = "";
+  let instagramImageDataUrl = "";
   let firstWinImageDataUrl = "";
 
   const render = (view) => {
@@ -1508,6 +1738,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
         firstWinCopy.textContent = socialResult ? "Copy Facebook draft" : "Copy reply";
         firstWinCopySecondary.hidden = !secondary;
         firstWinUseFacebook.hidden = !(socialResult && featureAccess.automated_publishing === true);
+        firstWinUseInstagram.hidden = !(socialResult && featureAccess.automated_publishing === true && secondary);
         firstWinNote.textContent = view.firstWin.result.note || "";
         firstWinNext.textContent = view.firstWin.result.next_step || "";
       }
@@ -1617,6 +1848,43 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
           + (view.facebook.result.page_name || "Facebook")
           + " · "
           + type
+          + ".";
+      }
+    }
+
+    const instagramEligible = featureAccess.automated_publishing === true;
+    instagramCard.hidden = !instagramEligible;
+    if (instagramEligible) {
+      const connectionState = view.instagram?.status?.state
+        || (view.instagram?.loading ? "Checking…" : "Not Connected");
+      const connected = connectionState === "Connected";
+      instagramState.textContent = connectionState;
+      instagramDetail.textContent = view.instagram?.status?.account?.username
+        ? "@" + view.instagram.status.account.username
+        : view.instagram?.status?.action
+          || "Connect this business's Instagram professional account before publishing.";
+      instagramError.hidden = !view.instagram?.error;
+      instagramError.textContent = view.instagram?.error || "";
+      instagramConnect.hidden = connected;
+      instagramConnect.disabled = view.instagram?.loading === true || view.channels?.loading === true;
+      instagramConnect.textContent = connectionState === "Needs Attention"
+        ? "Reconnect Instagram"
+        : "Connect Instagram";
+      instagramRefresh.disabled = view.instagram?.loading === true || view.instagram?.publishing === true;
+      instagramRefresh.textContent = view.instagram?.loading === true ? "Checking…" : "Refresh connection";
+      instagramForm.hidden = !connected;
+      instagramPublish.disabled = view.instagram?.publishing === true;
+      instagramPublish.textContent = view.instagram?.publishing === true
+        ? "Publishing…"
+        : "Publish reviewed post";
+      instagramPublishStatus.hidden = !view.instagram?.publishError;
+      instagramPublishStatus.textContent = view.instagram?.publishError || "";
+      instagramResult.hidden = !view.instagram?.result;
+      if (view.instagram?.result) {
+        instagramResult.textContent = "Published to "
+          + (view.instagram.result.account?.username
+            ? "@" + view.instagram.result.account.username
+            : "Instagram")
           + ".";
       }
     }
@@ -1811,6 +2079,33 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     }
   });
 
+  firstWinUseInstagram?.addEventListener("click", () => {
+    const result = controller.getState().firstWin?.result;
+    if (result?.task !== "social_post" || !result.secondary_text) return;
+    if (instagramCaption) instagramCaption.value = result.secondary_text;
+    if (firstWinImageDataUrl) {
+      instagramImageDataUrl = firstWinImageDataUrl;
+      if (instagramPreview) {
+        instagramPreview.src = firstWinImageDataUrl;
+        instagramPreview.hidden = false;
+      }
+    }
+    if (instagramReviewed) instagramReviewed.checked = false;
+    instagramCard?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    if (controller.getState().instagram?.status?.state !== "Connected") {
+      instagramPublishStatus.hidden = false;
+      instagramPublishStatus.textContent = "Your caption is ready here. Connect Instagram before publishing.";
+    } else if (!firstWinImageDataUrl) {
+      instagramPublishStatus.hidden = false;
+      instagramPublishStatus.textContent = "Your caption is ready. Choose the photo you want to publish with it.";
+      instagramCaption?.focus?.();
+    } else {
+      instagramPublishStatus.hidden = true;
+      instagramPublishStatus.textContent = "";
+      instagramCaption?.focus?.();
+    }
+  });
+
   firstWinForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = new FormData(firstWinForm);
@@ -1823,6 +2118,31 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
 
   facebookConnect?.addEventListener("click", () => controller.openConnectorSetup());
   facebookRefresh?.addEventListener("click", () => controller.refreshFacebookStatus());
+  instagramConnect?.addEventListener("click", () => controller.openConnectorSetup());
+  instagramRefresh?.addEventListener("click", () => controller.refreshInstagramStatus());
+
+  instagramImage?.addEventListener("change", () => {
+    const file = instagramImage.files?.[0];
+    instagramImageDataUrl = "";
+    instagramPreview.src = "";
+    instagramPreview.hidden = true;
+    if (!file) return;
+    if (!["image/jpeg", "image/png"].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      instagramPublishStatus.hidden = false;
+      instagramPublishStatus.textContent = "Choose a JPG or PNG photo under 5 MB.";
+      instagramImage.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      instagramImageDataUrl = String(reader.result || "");
+      instagramPreview.src = instagramImageDataUrl;
+      instagramPreview.hidden = !instagramImageDataUrl;
+      instagramPublishStatus.hidden = true;
+      instagramPublishStatus.textContent = "";
+    };
+    reader.readAsDataURL(file);
+  });
 
   facebookImage?.addEventListener("change", () => {
     const file = facebookImage.files?.[0];
@@ -1845,6 +2165,27 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
       facebookPublishStatus.textContent = "";
     };
     reader.readAsDataURL(file);
+  });
+
+  instagramForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const data = new FormData(instagramForm);
+    if (instagramReviewed?.checked !== true) {
+      instagramPublishStatus.hidden = false;
+      instagramPublishStatus.textContent = "Review the caption and photo, then confirm before publishing.";
+      return;
+    }
+    if (!instagramImageDataUrl) {
+      instagramPublishStatus.hidden = false;
+      instagramPublishStatus.textContent = "Choose the photo you want to publish.";
+      return;
+    }
+    const ok = await controller.publishInstagram({
+      caption: data.get("caption"),
+      imageDataUrl: instagramImageDataUrl,
+      reviewed: true,
+    });
+    if (ok && instagramReviewed) instagramReviewed.checked = false;
   });
 
   facebookForm?.addEventListener("submit", async (event) => {

@@ -113,7 +113,10 @@
           <button class="button secondary" id="workspace-first-win-copy" type="button">Copy result</button>
           <button class="button secondary" id="workspace-first-win-copy-secondary" type="button" hidden>Copy Instagram draft</button>
         </div>
-        <button class="button" id="workspace-first-win-use-facebook" type="button" style="margin-top:9px" hidden>Prepare Facebook post</button>
+        <div class="actions" style="margin-top:9px">
+          <button class="button" id="workspace-first-win-use-facebook" type="button" hidden>Prepare Facebook post</button>
+          <button class="button" id="workspace-first-win-use-instagram" type="button" hidden>Prepare Instagram post</button>
+        </div>
         <div class="followup">
           <strong>Why / what to do next</strong>
           <div id="workspace-first-win-note" style="margin-top:5px"></div>
@@ -209,6 +212,37 @@
       </form>
       <div id="workspace-facebook-publish-status" class="status" hidden></div>
       <div id="workspace-facebook-result" class="journey-banner" hidden></div>
+    </section>
+
+    <section class="card" id="workspace-instagram-card" hidden>
+      <div class="eyebrow">Instagram publishing</div>
+      <h2>Review the photo and caption before anything goes live.</h2>
+      <p>Narleo uses only the Instagram professional account connected to this workspace. Nothing publishes automatically.</p>
+      <div class="plan-banner">
+        <strong id="workspace-instagram-state">Checking…</strong>
+        <div id="workspace-instagram-detail" style="margin-top:5px"></div>
+      </div>
+      <div id="workspace-instagram-error" class="status" hidden></div>
+      <div class="actions" style="margin-top:10px">
+        <button class="button" id="workspace-instagram-connect" type="button">Connect Instagram</button>
+        <button class="button secondary" id="workspace-instagram-refresh" type="button">Refresh connection</button>
+      </div>
+      <form id="workspace-instagram-form" hidden style="margin-top:14px">
+        <label class="field">Caption
+          <textarea id="workspace-instagram-caption" name="caption" maxlength="2200" placeholder="Write or paste the Instagram caption you want to publish." required></textarea>
+        </label>
+        <label class="field">Photo
+          <input id="workspace-instagram-image" type="file" accept="image/jpeg,image/png" required />
+        </label>
+        <img id="workspace-instagram-preview" alt="Selected Instagram post preview" hidden style="display:block;width:100%;max-height:360px;object-fit:contain;border-radius:14px;background:#f4f6f8;margin:10px 0" />
+        <label style="display:flex;gap:9px;align-items:flex-start;margin:13px 0;font-size:13px;font-weight:750;color:#45515d">
+          <input id="workspace-instagram-reviewed" type="checkbox" style="margin-top:3px" />
+          <span>I reviewed this caption and photo and want to publish them to the Instagram account shown above.</span>
+        </label>
+        <button class="button" id="workspace-instagram-publish" type="submit">Publish reviewed post</button>
+      </form>
+      <div id="workspace-instagram-publish-status" class="status" hidden></div>
+      <div id="workspace-instagram-result" class="journey-banner" hidden></div>
     </section>
 
     <section class="card" id="workspace-pulse-card" hidden>
