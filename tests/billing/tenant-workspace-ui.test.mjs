@@ -620,6 +620,15 @@ test("inventory-enabled tenant can defer Square for the current onboarding sessi
           action: "Connect Square.",
         });
       }
+      if (url.startsWith("/.netlify/functions/tenant-inbox?")) {
+        return response({
+          ok: true,
+          business_id: BUSINESS_ID,
+          count: 0,
+          unread_count: 0,
+          leads: [],
+        });
+      }
       throw new Error(`unexpected URL ${url}`);
     },
   });
@@ -698,6 +707,15 @@ test("eligible tenant launches self-service customer channel setup without an ad
           status: "active",
           access_granted: true,
           feature_access: { inventory_connection: false, unified_inbox: true },
+        });
+      }
+      if (url.startsWith("/.netlify/functions/tenant-inbox?")) {
+        return response({
+          ok: true,
+          business_id: BUSINESS_ID,
+          count: 0,
+          unread_count: 0,
+          leads: [],
         });
       }
       assert.equal(url, "/.netlify/functions/tenant-connector-session-start");
@@ -925,6 +943,86 @@ test("locked tenant cannot call Narleo business assistant", async () => {
   assert.equal(assistantCalls, 0);
 });
 
+test("unified-inbox tenant loads recent messages and refreshes without exposing admin credentials", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  const calls = [];
+  let inboxReads = 0;
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    fetchImpl: async (url, init = {}) => {
+      calls.push({ url, init });
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          business_name: "North Star Books",
+          business_type: "retail",
+        });
+      }
+      if (url.startsWith("/.netlify/functions/subscription-status?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          access_source: "stripe",
+          plan_key: "growth_monthly",
+          status: "active",
+          access_granted: true,
+          feature_access: {
+            inventory_connection: false,
+            unified_inbox: true,
+            automated_publishing: false,
+            lead_reply_drafting: true,
+          },
+        });
+      }
+      if (url.startsWith("/.netlify/functions/tenant-inbox?")) {
+        inboxReads += 1;
+        assert.equal(init.headers["X-GrowthWise-Tenant-Key"], TENANT_KEY);
+        assert.equal(url.includes(TENANT_KEY), false);
+        return response({
+          ok: true,
+          business_id: BUSINESS_ID,
+          count: 2,
+          unread_count: 1,
+          leads: [{
+            id: "ig-1",
+            source: "Instagram",
+            source_type: "instagram",
+            customer_name: "Alex",
+            customer_contact: "@alex",
+            message: "Do you have this in another size?",
+            direction: "inbound",
+            unread: true,
+            reply_supported: true,
+            status: "new",
+          }, {
+            id: "email-1",
+            source: "Email",
+            source_type: "email",
+            customer_name: null,
+            customer_contact: "customer@example.com",
+            message: "Are you open Sunday?",
+            direction: "inbound",
+            unread: false,
+            reply_supported: false,
+            status: "new",
+          }],
+        });
+      }
+      throw new Error(`unexpected URL ${url}`);
+    },
+  });
+
+  const restored = await controller.restore();
+  assert.equal(restored.inbox.enabled, true);
+  assert.equal(restored.inbox.count, 2);
+  assert.equal(restored.inbox.unreadCount, 1);
+  assert.equal(restored.inbox.leads[0].source_type, "instagram");
+  assert.equal(await controller.refreshInbox(), true);
+  assert.equal(inboxReads, 2);
+  assert.equal(calls.every((call) => !call.url.includes(TENANT_KEY)), true);
+  assert.equal(calls.every((call) => !Object.hasOwn(call.init?.headers || {}, "X-GrowthWise-Key")), true);
+});
+
 test("publishing-enabled tenant loads only its own social accounts and publishes only after review", async () => {
   const s = storage();
   saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
@@ -951,6 +1049,15 @@ test("publishing-enabled tenant loads only its own social accounts and publishes
             unified_inbox: true,
             automated_publishing: true,
           },
+        });
+      }
+      if (url.startsWith("/.netlify/functions/tenant-inbox?")) {
+        return response({
+          ok: true,
+          business_id: BUSINESS_ID,
+          count: 0,
+          unread_count: 0,
+          leads: [],
         });
       }
       if (url.startsWith("/.netlify/functions/tenant-facebook-connection?")) {
@@ -1181,6 +1288,12 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /id="workspace-next-step"/);
   assert.match(html, /id="workspace-channels-card"/);
   assert.match(html, /id="workspace-channels-open"/);
+  assert.match(html, /id="workspace-inbox-card"/);
+  assert.match(html, /id="workspace-inbox-refresh"/);
+  assert.match(html, /id="workspace-inbox-list"/);
+  assert.match(html, /id="workspace-lead-source"/);
+  assert.match(html, /id="workspace-lead-customer"/);
+  assert.match(html, /id="workspace-lead-message"/);
   assert.match(html, /id="workspace-starter-kit"/);
   assert.match(html, /What would help right now/);
   assert.match(html, /id="workspace-first-win-card"/);
@@ -1256,6 +1369,9 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(firstWinInstagramBridge, /instagramReviewed\.checked = false/);
   assert.doesNotMatch(firstWinInstagramBridge, /publishInstagram\(/);
   assert.match(js, /openConnectorSetup/);
+  assert.match(js, /tenant-inbox/);
+  assert.match(js, /refreshInbox/);
+  assert.match(js, /Draft reply with Narleo/);
   assert.match(js, /tenant-facebook-connection/);
   assert.match(js, /tenant-facebook-publish/);
   assert.match(js, /publishFacebook/);

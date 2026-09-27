@@ -18,6 +18,7 @@ const INSTAGRAM_CONNECTION_ENDPOINT = "/.netlify/functions/tenant-instagram-conn
 const INSTAGRAM_PUBLISH_ENDPOINT = "/.netlify/functions/tenant-instagram-publish";
 const FIRST_WIN_ENDPOINT = "/.netlify/functions/tenant-first-win";
 const BUSINESS_ASSISTANT_ENDPOINT = "/.netlify/functions/tenant-business-assistant";
+const TENANT_INBOX_ENDPOINT = "/.netlify/functions/tenant-inbox";
 
 export function businessStarterKit(businessType = "other") {
   const kits = {
@@ -250,6 +251,14 @@ export function createTenantWorkspaceController({
     channels: { loading: false, error: "" },
     emailLogin: { loading: false, error: "", message: "" },
     lead: { loading: false, error: "", result: null },
+    inbox: {
+      enabled: false,
+      loading: false,
+      error: "",
+      leads: [],
+      count: 0,
+      unreadCount: 0,
+    },
     facebook: {
       enabled: false,
       loading: false,
@@ -288,6 +297,52 @@ export function createTenantWorkspaceController({
     onChange(structuredClone(state));
     return structuredClone(state);
   };
+
+  async function readInbox({ businessId, tenantKey, subscription }) {
+    if (subscription?.feature_access?.unified_inbox !== true) {
+      return {
+        enabled: false,
+        loading: false,
+        error: "",
+        leads: [],
+        count: 0,
+        unreadCount: 0,
+      };
+    }
+    try {
+      const response = await fetchImpl(
+        `${TENANT_INBOX_ENDPOINT}?business_id=${encodeURIComponent(businessId)}`,
+        {
+          method: "GET",
+          headers: authHeaders(tenantKey),
+          cache: "no-store",
+          credentials: "same-origin",
+        },
+      );
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || body?.ok !== true || body.business_id !== businessId
+        || !Array.isArray(body.leads)) {
+        throw new Error(body.error || "Inbox is temporarily unavailable.");
+      }
+      return {
+        enabled: true,
+        loading: false,
+        error: "",
+        leads: body.leads,
+        count: Number(body.count || body.leads.length || 0),
+        unreadCount: Number(body.unread_count || 0),
+      };
+    } catch (error) {
+      return {
+        enabled: true,
+        loading: false,
+        error: error?.message || "Inbox is temporarily unavailable.",
+        leads: [],
+        count: 0,
+        unreadCount: 0,
+      };
+    }
+  }
 
   async function readSquareStatus({ businessId, tenantKey, subscription }) {
     if (subscription?.feature_access?.inventory_connection !== true) {
@@ -520,6 +575,12 @@ export function createTenantWorkspaceController({
         subscription,
       });
 
+      const inbox = await readInbox({
+        businessId: id,
+        tenantKey: key,
+        subscription,
+      });
+
       await trackEvent("workspace_opened", { businessId: id, tenantKey: key });
       if (subscription?.access_source === "stripe" && subscription?.access_granted === true) {
         await trackEvent("checkout_completed", { businessId: id, tenantKey: key });
@@ -543,6 +604,7 @@ export function createTenantWorkspaceController({
         subscription,
         square,
         insights,
+        inbox,
         facebook,
         instagram,
         firstWin: {
@@ -569,6 +631,14 @@ export function createTenantWorkspaceController({
         subscription: null,
         square: { enabled: false, loading: false, error: "", status: null, skipped: false },
         insights: { enabled: false, loading: false, error: "", inventory: null, sales: null, pulse: null },
+        inbox: {
+          enabled: false,
+          loading: false,
+          error: "",
+          leads: [],
+          count: 0,
+          unreadCount: 0,
+        },
         facebook: {
           enabled: false,
           loading: false,
@@ -866,6 +936,30 @@ export function createTenantWorkspaceController({
       await trackEvent("business_pulse_loaded", { businessId, tenantKey });
     }
     return Boolean(insights.pulse);
+  }
+
+  async function refreshInbox() {
+    const { businessId, tenantKey } = readWorkspaceCredentials(storage);
+    if (!state.signedIn
+      || state.subscription?.feature_access?.unified_inbox !== true
+      || !businessId) {
+      return false;
+    }
+    publish({
+      inbox: {
+        ...state.inbox,
+        enabled: true,
+        loading: true,
+        error: "",
+      },
+    });
+    const inbox = await readInbox({
+      businessId,
+      tenantKey,
+      subscription: state.subscription,
+    });
+    publish({ inbox });
+    return inbox.error === "";
   }
 
   async function askNarleo(question) {
@@ -1395,6 +1489,14 @@ export function createTenantWorkspaceController({
       channels: { loading: false, error: "" },
       emailLogin: { loading: false, error: "", message: "" },
       lead: { loading: false, error: "", result: null },
+      inbox: {
+        enabled: false,
+        loading: false,
+        error: "",
+        leads: [],
+        count: 0,
+        unreadCount: 0,
+      },
       facebook: {
         enabled: false,
         loading: false,
@@ -1439,6 +1541,7 @@ export function createTenantWorkspaceController({
     skipSquare,
     refreshSquareInsights,
     openConnectorSetup,
+    refreshInbox,
     askNarleo,
     createFirstWin,
     rateFirstWin,
@@ -1486,6 +1589,12 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const channelsCard = documentImpl.getElementById("workspace-channels-card");
   const channelsError = documentImpl.getElementById("workspace-channels-error");
   const channelsOpen = documentImpl.getElementById("workspace-channels-open");
+  const inboxCard = documentImpl.getElementById("workspace-inbox-card");
+  const inboxRefresh = documentImpl.getElementById("workspace-inbox-refresh");
+  const inboxSummary = documentImpl.getElementById("workspace-inbox-summary");
+  const inboxError = documentImpl.getElementById("workspace-inbox-error");
+  const inboxEmpty = documentImpl.getElementById("workspace-inbox-empty");
+  const inboxList = documentImpl.getElementById("workspace-inbox-list");
   const starterKit = documentImpl.getElementById("workspace-starter-kit");
   const firstWinCard = documentImpl.getElementById("workspace-first-win-card");
   const firstWinForm = documentImpl.getElementById("workspace-first-win-form");
@@ -1562,6 +1671,9 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const pulseRecommendations = documentImpl.getElementById("workspace-pulse-recommendations");
   const leadCard = documentImpl.getElementById("workspace-lead-card");
   const leadForm = documentImpl.getElementById("workspace-lead-form");
+  const leadSource = documentImpl.getElementById("workspace-lead-source");
+  const leadCustomer = documentImpl.getElementById("workspace-lead-customer");
+  const leadMessage = documentImpl.getElementById("workspace-lead-message");
   const leadButton = documentImpl.getElementById("workspace-lead-submit");
   const leadStatus = documentImpl.getElementById("workspace-lead-status");
   const leadResult = documentImpl.getElementById("workspace-lead-result");
@@ -1864,6 +1976,76 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
       channelsError.textContent = view.channels?.error || "";
     }
 
+    inboxCard.hidden = !channelEligible;
+    if (channelEligible) {
+      inboxRefresh.disabled = view.inbox?.loading === true;
+      inboxRefresh.textContent = view.inbox?.loading === true ? "Refreshing…" : "Refresh messages";
+      inboxSummary.textContent = view.inbox?.unreadCount
+        ? `${view.inbox.unreadCount} unread · ${view.inbox.count} recent`
+        : `${view.inbox?.count || 0} recent`;
+      inboxError.hidden = !view.inbox?.error;
+      inboxError.textContent = view.inbox?.error || "";
+      const leads = Array.isArray(view.inbox?.leads) ? view.inbox.leads : [];
+      inboxEmpty.hidden = leads.length > 0 || view.inbox?.loading === true || Boolean(view.inbox?.error);
+      inboxList.replaceChildren();
+
+      const sourceLabels = {
+        instagram: "Instagram",
+        facebook: "Facebook",
+        email: "Email",
+        website: "Website",
+        sms: "SMS",
+        manual: "Other",
+      };
+
+      for (const lead of leads) {
+        const item = documentImpl.createElement("div");
+        item.className = "reply-box";
+
+        const heading = documentImpl.createElement("div");
+        heading.style.display = "flex";
+        heading.style.justifyContent = "space-between";
+        heading.style.gap = "10px";
+
+        const identity = documentImpl.createElement("strong");
+        const sourceLabel = sourceLabels[lead.source_type] || lead.source || "Customer";
+        const customer = lead.customer_name || lead.customer_contact || "Customer";
+        identity.textContent = `${sourceLabel} · ${customer}`;
+
+        const unread = documentImpl.createElement("span");
+        unread.style.fontSize = "12px";
+        unread.style.fontWeight = "850";
+        unread.textContent = lead.unread ? "Unread" : "";
+
+        heading.append(identity, unread);
+
+        const message = documentImpl.createElement("div");
+        message.style.marginTop = "7px";
+        message.style.whiteSpace = "pre-wrap";
+        message.textContent = lead.message || "";
+
+        item.append(heading, message);
+
+        if (featureAccess.lead_reply_drafting === true && lead.direction !== "outbound") {
+          const draft = documentImpl.createElement("button");
+          draft.type = "button";
+          draft.className = "button secondary";
+          draft.style.marginTop = "9px";
+          draft.textContent = "Draft reply with Narleo";
+          draft.addEventListener("click", () => {
+            if (leadSource) leadSource.value = sourceLabels[lead.source_type] || "Other";
+            if (leadCustomer) leadCustomer.value = lead.customer_name || "";
+            if (leadMessage) leadMessage.value = lead.message || "";
+            leadCard?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+            leadMessage?.focus?.();
+          });
+          item.append(draft);
+        }
+
+        inboxList.append(item);
+      }
+    }
+
     const facebookEligible = featureAccess.automated_publishing === true;
     facebookCard.hidden = !facebookEligible;
     if (facebookEligible) {
@@ -2006,6 +2188,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   squareConnect?.addEventListener("click", () => controller.connectSquare());
   squareSkip?.addEventListener("click", () => controller.skipSquare());
   channelsOpen?.addEventListener("click", () => controller.openConnectorSetup());
+  inboxRefresh?.addEventListener("click", () => controller.refreshInbox());
   function updateFirstWinTaskUI() {
     const social = firstWinTask?.value !== "customer_reply";
     const businessType = controller.getState().profile?.business_type || "other";

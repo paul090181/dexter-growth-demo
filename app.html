@@ -274,13 +274,26 @@
       </div>
     </section>
 
+    <section class="card" id="workspace-inbox-card" hidden>
+      <div class="eyebrow">Unified inbox</div>
+      <h2>Recent customer messages, in one place.</h2>
+      <p>Messages from connected channels stay tied to this business. Use Narleo to turn an inbound message into a draft reply.</p>
+      <div class="actions">
+        <button class="button secondary" id="workspace-inbox-refresh" type="button">Refresh messages</button>
+        <span id="workspace-inbox-summary" style="align-self:center;font-size:13px;font-weight:800;color:#53606c"></span>
+      </div>
+      <div id="workspace-inbox-error" class="status" hidden></div>
+      <div id="workspace-inbox-empty" class="plan-banner" hidden>No inbound messages yet. Connect customer channels when you're ready.</div>
+      <div id="workspace-inbox-list" style="display:grid;gap:10px;margin-top:12px"></div>
+    </section>
+
     <section class="card" id="workspace-lead-card" hidden>
       <div class="eyebrow">AI Lead Reply</div>
       <h2>Turn a customer message into a safe draft.</h2>
       <p>GrowthWise drafts from this workspace's own business context. Product-specific price or inventory answers stay conservative until this business has connected inventory data.</p>
       <form id="workspace-lead-form">
         <label class="field">Source
-          <select name="source">
+          <select id="workspace-lead-source" name="source">
             <option>Email</option>
             <option>Instagram</option>
             <option>Facebook</option>
@@ -289,8 +302,8 @@
             <option>Other</option>
           </select>
         </label>
-        <label class="field">Customer name (optional)<input name="customer_name" maxlength="120" autocomplete="off" /></label>
-        <label class="field">Customer message<textarea name="message" maxlength="4000" required></textarea></label>
+        <label class="field">Customer name (optional)<input id="workspace-lead-customer" name="customer_name" maxlength="120" autocomplete="off" /></label>
+        <label class="field">Customer message<textarea id="workspace-lead-message" name="message" maxlength="4000" required></textarea></label>
         <button class="button" id="workspace-lead-submit" type="submit">Draft safe reply</button>
       </form>
       <div id="workspace-lead-status" class="status" hidden></div>
