@@ -239,13 +239,39 @@ export function buildOnboardingSteps({
   return steps;
 }
 
+export function prioritizeInboxLeads(leads = []) {
+  const rows = Array.isArray(leads) ? leads : [];
+  return [...rows].sort((a, b) => {
+    const rank = (lead) => {
+      if (String(lead?.status || "") === "follow-up") return 3;
+      if (lead?.unread === true) return 2;
+      return 1;
+    };
+    const difference = rank(b) - rank(a);
+    if (difference) return difference;
+
+    const timestamp = (lead) => {
+      const value = lead?.received_at || lead?.created_at;
+      const parsed = value ? new Date(value).getTime() : Number.NaN;
+      return Number.isFinite(parsed) ? parsed : Number.MAX_SAFE_INTEGER;
+    };
+    return timestamp(a) - timestamp(b);
+  });
+}
+
 export function filterInboxLeads(leads = [], filter = "all") {
   const rows = Array.isArray(leads) ? leads : [];
   const mode = String(filter || "all");
   if (mode === "all") return [...rows];
-  if (mode === "open") return rows.filter((lead) => String(lead?.status || "new") !== "closed");
-  if (mode === "follow_up") return rows.filter((lead) => String(lead?.status || "") === "follow-up");
-  if (mode === "unread") return rows.filter((lead) => lead?.unread === true);
+  if (mode === "open") return prioritizeInboxLeads(
+    rows.filter((lead) => String(lead?.status || "new") !== "closed"),
+  );
+  if (mode === "follow_up") return prioritizeInboxLeads(
+    rows.filter((lead) => String(lead?.status || "") === "follow-up"),
+  );
+  if (mode === "unread") return prioritizeInboxLeads(
+    rows.filter((lead) => lead?.unread === true),
+  );
   if (mode === "sms_phone") {
     return rows.filter((lead) => ["sms", "phone"].includes(String(lead?.source_type || "")));
   }
@@ -1774,6 +1800,10 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const inboxRefresh = documentImpl.getElementById("workspace-inbox-refresh");
   const inboxFilter = documentImpl.getElementById("workspace-inbox-filter");
   const inboxSummary = documentImpl.getElementById("workspace-inbox-summary");
+  const inboxAttention = documentImpl.getElementById("workspace-inbox-attention");
+  const inboxAttentionTitle = documentImpl.getElementById("workspace-inbox-attention-title");
+  const inboxAttentionDetail = documentImpl.getElementById("workspace-inbox-attention-detail");
+  const inboxNext = documentImpl.getElementById("workspace-inbox-next");
   const inboxError = documentImpl.getElementById("workspace-inbox-error");
   const inboxEmpty = documentImpl.getElementById("workspace-inbox-empty");
   const inboxList = documentImpl.getElementById("workspace-inbox-list");
@@ -2174,6 +2204,34 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
         view.inbox?.unreadCount ? `${view.inbox.unreadCount} unread` : "",
         `${view.inbox?.count || 0} recent`,
       ].filter(Boolean).join(" · ");
+
+      const priorityLeads = prioritizeInboxLeads(
+        leads.filter((lead) => !["replied", "closed"].includes(String(lead?.status || "new"))),
+      );
+      const nextLead = priorityLeads[0] || null;
+      inboxAttention.hidden = priorityLeads.length === 0;
+      if (nextLead) {
+        const sourceLabels = {
+          instagram: "Instagram",
+          facebook: "Facebook",
+          email: "Email",
+          website: "Website",
+          sms: "SMS",
+          phone: "Phone",
+          manual: "Other",
+          other: "Other",
+        };
+        const nextCustomer = nextLead.customer_name || nextLead.customer_contact || "Customer";
+        const nextSource = sourceLabels[nextLead.source_type] || nextLead.source || "Customer";
+        inboxAttentionTitle.textContent = priorityLeads.length === 1
+          ? "1 lead needs attention"
+          : `${priorityLeads.length} leads need attention`;
+        inboxAttentionDetail.textContent = nextLead.status === "follow-up"
+          ? `Start with ${nextCustomer} from ${nextSource} — this lead is already marked for follow-up.`
+          : nextLead.unread
+            ? `Start with ${nextCustomer} from ${nextSource} — this message is unread.`
+            : `Start with ${nextCustomer} from ${nextSource}.`;
+      }
       inboxError.hidden = !view.inbox?.error;
       inboxError.textContent = view.inbox?.error || "";
       inboxEmpty.hidden = visibleLeads.length > 0 || view.inbox?.loading === true || Boolean(view.inbox?.error);
@@ -2490,6 +2548,11 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   squareSkip?.addEventListener("click", () => controller.skipSquare());
   channelsOpen?.addEventListener("click", () => controller.openConnectorSetup());
   inboxRefresh?.addEventListener("click", () => controller.refreshInbox());
+  inboxNext?.addEventListener("click", () => {
+    if (inboxFilter) inboxFilter.value = "open";
+    render(controller.getState());
+    inboxList?.firstElementChild?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+  });
   inboxFilter?.addEventListener("change", () => render(controller.getState()));
   function updateFirstWinTaskUI() {
     const social = firstWinTask?.value !== "customer_reply";

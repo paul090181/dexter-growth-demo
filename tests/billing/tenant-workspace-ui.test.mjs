@@ -10,6 +10,7 @@ import {
   createOnboardingTracker,
   createTenantWorkspaceController,
   filterInboxLeads,
+  prioritizeInboxLeads,
   readWorkspaceCredentials,
   saveWorkspaceCredentials,
 } from "../../assets/tenant-workspace.mjs";
@@ -109,14 +110,14 @@ test("business starter kits adapt quick workflows by vertical without inventing 
 
 test("unified inbox filters stay client-side and preserve original rows", () => {
   const leads = [
-    { id: "ig-1", source_type: "instagram", unread: true, status: "new" },
-    { id: "fb-1", source_type: "facebook", unread: false, status: "follow-up" },
-    { id: "sms-1", source_type: "sms", unread: true, status: "closed" },
-    { id: "phone-1", source_type: "phone", unread: false, status: "new" },
-    { id: "manual-1", source_type: "manual", unread: false, status: "replied" },
+    { id: "ig-1", source_type: "instagram", unread: true, status: "new", created_at: "2026-09-27T14:00:00.000Z" },
+    { id: "fb-1", source_type: "facebook", unread: false, status: "follow-up", created_at: "2026-09-27T15:00:00.000Z" },
+    { id: "sms-1", source_type: "sms", unread: true, status: "closed", created_at: "2026-09-27T13:00:00.000Z" },
+    { id: "phone-1", source_type: "phone", unread: false, status: "new", created_at: "2026-09-27T12:00:00.000Z" },
+    { id: "manual-1", source_type: "manual", unread: false, status: "replied", created_at: "2026-09-27T11:00:00.000Z" },
   ];
 
-  assert.deepEqual(filterInboxLeads(leads, "open").map((lead) => lead.id), ["ig-1", "fb-1", "phone-1", "manual-1"]);
+  assert.deepEqual(filterInboxLeads(leads, "open").map((lead) => lead.id), ["fb-1", "ig-1", "phone-1", "manual-1"]);
   assert.deepEqual(filterInboxLeads(leads, "follow_up").map((lead) => lead.id), ["fb-1"]);
   assert.deepEqual(filterInboxLeads(leads, "unread").map((lead) => lead.id), ["ig-1", "sms-1"]);
   assert.deepEqual(filterInboxLeads(leads, "instagram").map((lead) => lead.id), ["ig-1"]);
@@ -124,6 +125,31 @@ test("unified inbox filters stay client-side and preserve original rows", () => 
   assert.deepEqual(filterInboxLeads(leads, "other").map((lead) => lead.id), ["manual-1"]);
   assert.deepEqual(filterInboxLeads(leads, "unknown").map((lead) => lead.id), leads.map((lead) => lead.id));
   assert.equal(leads.length, 5);
+});
+
+test("unified inbox priority puts follow-up first, then unread, then older open leads", () => {
+  const leads = [
+    { id: "newer-read", unread: false, status: "new", created_at: "2026-09-27T15:00:00.000Z" },
+    { id: "unread-new", unread: true, status: "new", created_at: "2026-09-27T16:00:00.000Z" },
+    { id: "follow-newer", unread: false, status: "follow-up", created_at: "2026-09-27T14:00:00.000Z" },
+    { id: "follow-older", unread: false, status: "follow-up", created_at: "2026-09-27T13:00:00.000Z" },
+    { id: "replied", unread: false, status: "replied", created_at: "2026-09-27T12:00:00.000Z" },
+  ];
+
+  assert.deepEqual(prioritizeInboxLeads(leads).map((lead) => lead.id), [
+    "follow-older",
+    "follow-newer",
+    "unread-new",
+    "newer-read",
+    "replied",
+  ]);
+  assert.deepEqual(leads.map((lead) => lead.id), [
+    "newer-read",
+    "unread-new",
+    "follow-newer",
+    "follow-older",
+    "replied",
+  ]);
 });
 
 test("business pulse turns Square summaries into useful metrics and actions", () => {
@@ -1464,6 +1490,11 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /id="workspace-inbox-card"/);
   assert.match(html, /id="workspace-inbox-refresh"/);
   assert.match(html, /id="workspace-inbox-filter"/);
+  assert.match(html, /id="workspace-inbox-attention"/);
+  assert.match(html, /id="workspace-inbox-attention-title"/);
+  assert.match(html, /id="workspace-inbox-attention-detail"/);
+  assert.match(html, /id="workspace-inbox-next"/);
+  assert.match(html, /Work next lead/);
   assert.match(html, /value="unread"/);
   assert.match(html, /value="sms_phone"/);
   assert.match(html, /id="workspace-inbox-list"/);
@@ -1564,6 +1595,9 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /tenant-inbox/);
   assert.match(js, /tenant-inbox-action/);
   assert.match(js, /refreshInbox/);
+  assert.match(js, /prioritizeInboxLeads/);
+  assert.match(js, /leads need attention/);
+  assert.match(js, /inboxNext/);
   assert.match(js, /filterInboxLeads/);
   assert.match(js, /No messages match this filter/);
   assert.match(js, /markInboxRead/);
