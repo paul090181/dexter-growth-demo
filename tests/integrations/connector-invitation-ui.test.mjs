@@ -169,11 +169,16 @@ test("available Facebook connector loads Page health and starts tenant-bound Met
 
 test("the static page is no-store, self-contained, credential-free, and contains safe account slots", async () => {
   const html = await readFile(new URL("../../connect-accounts.html", import.meta.url), "utf8");
+  const script = await readFile(new URL("../../assets/connector-invitation.mjs", import.meta.url), "utf8");
   const headers = await readFile(new URL("../../_headers", import.meta.url), "utf8");
   assert.match(html, /Connect your accounts/);
   assert.match(html, /id="business-name"/);
+  assert.match(html, /id="instagram-card"[^>]*hidden/);
   assert.match(html, /id="instagram-status"/);
+  assert.match(html, /id="email-card"[^>]*hidden/);
+  assert.match(html, /id="facebook-card"[^>]*hidden/);
   assert.match(html, /id="facebook-status"/);
+  assert.match(html, /id="website-card"[^>]*hidden/);
   assert.match(html, /Connect Facebook/);
   assert.match(html, /Facebook Page/);
   assert.match(html, /id="facebook-page-picker"/);
@@ -182,6 +187,12 @@ test("the static page is no-store, self-contained, credential-free, and contains
   assert.match(html, /id="website-create"/);
   assert.match(html, /id="website-form-link"/);
   assert.match(html, /Website inquiries/);
+  assert.match(html, /private to the current business/i);
+  assert.doesNotMatch(html, /Coming later|Setup unavailable/);
+  assert.match(script, /emailCard\.hidden = !view\.loading && !view\.email\.available/);
+  assert.match(script, /facebookCard\.hidden = !view\.loading && !view\.facebook\.available/);
+  assert.match(script, /instagramCard\.hidden = !view\.loading && !view\.instagram\.allowed/);
+  assert.match(script, /websiteCard\.hidden = !view\.loading && !view\.website\.available/);
   assert.match(html, /Referrer-Policy/i);
   assert.match(html, /Cache-Control/i);
   assert.match(html, /Content-Security-Policy/i);

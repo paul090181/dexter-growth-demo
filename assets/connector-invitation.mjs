@@ -782,15 +782,18 @@ export function mountCustomerConnectorPage({
 } = {}) {
   const businessName = documentImpl.getElementById("business-name");
   const error = documentImpl.getElementById("connection-error");
+  const instagramCard = documentImpl.getElementById("instagram-card");
   const instagramStatus = documentImpl.getElementById("instagram-status");
   const instagramDetail = documentImpl.getElementById("instagram-detail");
   const instagramButton = documentImpl.getElementById("instagram-connect");
+  const emailCard = documentImpl.getElementById("email-card");
   const emailStatus = documentImpl.getElementById("email-status");
   const emailDetail = documentImpl.getElementById("email-detail");
   const emailButton = documentImpl.getElementById("email-connect");
   const emailUnavailable = documentImpl.getElementById("email-unavailable");
   const emailDisconnect = documentImpl.getElementById("email-disconnect");
   const emailChoices = [...documentImpl.querySelectorAll('input[name="email-mailbox-context"]')];
+  const facebookCard = documentImpl.getElementById("facebook-card");
   const facebookStatus = documentImpl.getElementById("facebook-status");
   const facebookDetail = documentImpl.getElementById("facebook-detail");
   const facebookButton = documentImpl.getElementById("facebook-connect");
@@ -799,6 +802,7 @@ export function mountCustomerConnectorPage({
   const facebookPicker = documentImpl.getElementById("facebook-page-picker");
   const facebookChoice = documentImpl.getElementById("facebook-page-choice");
   const facebookConfirm = documentImpl.getElementById("facebook-page-confirm");
+  const websiteCard = documentImpl.getElementById("website-card");
   const websiteStatus = documentImpl.getElementById("website-status");
   const websiteDetail = documentImpl.getElementById("website-detail");
   const websiteCreate = documentImpl.getElementById("website-create");
@@ -811,6 +815,7 @@ export function mountCustomerConnectorPage({
   const render = (view) => {
     businessName.textContent = view.businessName;
     error.textContent = view.error;
+    instagramCard.hidden = !view.loading && !view.instagram.allowed;
     instagramStatus.textContent = view.loading ? "Checking…" : view.instagram.state;
     instagramDetail.textContent = view.instagram.account
       ? `Connected to @${view.instagram.account.username}` : view.instagram.action;
@@ -818,6 +823,7 @@ export function mountCustomerConnectorPage({
     instagramButton.disabled = view.loading || view.instagram.connecting;
     instagramButton.textContent = view.instagram.connecting ? "Connecting…"
       : view.instagram.state === "Not Connected" ? "Connect Instagram" : "Reconnect Instagram";
+    emailCard.hidden = !view.loading && !view.email.available;
     emailStatus.textContent = view.loading ? "Checking…" : view.email.state;
     emailDetail.textContent = view.email.account
       ? `Connected to ${view.email.account.address}`
@@ -834,6 +840,7 @@ export function mountCustomerConnectorPage({
       choice.checked = choice.value === view.email.mailboxContext;
       choice.disabled = view.loading || !view.email.allowed || view.email.state === "Connected";
     }
+    facebookCard.hidden = !view.loading && !view.facebook.available;
     facebookStatus.textContent = view.loading ? "Checking…" : view.facebook.state;
     facebookDetail.textContent = view.facebook.account
       ? `Connected to ${view.facebook.account.pageName}`
@@ -863,6 +870,7 @@ export function mountCustomerConnectorPage({
       facebookConfirm.textContent = view.facebook.selecting ? "Connecting…" : "Use this Page";
     }
 
+    websiteCard.hidden = !view.loading && !view.website.available;
     websiteStatus.textContent = view.loading ? "Checking…" : view.website.state;
     websiteDetail.textContent = view.website.action;
     websiteCreate.hidden = !view.website.available || view.website.state === "Connected";

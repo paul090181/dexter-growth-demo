@@ -48,7 +48,7 @@
     <p class="intro">Set up supported business accounts for <strong id="business-name">Your business</strong>. Sign in directly with each provider; Narleo never needs those provider passwords.</p>
     <p id="connection-error" role="alert"></p>
 
-    <section class="card" aria-labelledby="instagram-title">
+    <section class="card" id="instagram-card" aria-labelledby="instagram-title" hidden>
       <div class="row">
         <div>
           <h2 id="instagram-title">Instagram</h2>
@@ -59,14 +59,14 @@
       </div>
     </section>
 
-    <section class="card" aria-labelledby="email-title">
+    <section class="card" id="email-card" aria-labelledby="email-title" hidden>
       <div class="row">
         <div>
           <h2 id="email-title">Email</h2>
-          <p id="email-status" class="status">Setup unavailable</p>
-          <p id="email-detail" class="detail">Microsoft email connection is not available yet.</p>
+          <p id="email-status" class="status">Checking…</p>
+          <p id="email-detail" class="detail">Checking secure availability.</p>
         </div>
-        <span id="email-unavailable" class="unavailable">Coming later</span>
+        <span id="email-unavailable" class="unavailable" hidden>Unavailable</span>
         <div>
           <button id="email-connect" type="button" hidden disabled>Connect Microsoft Email</button>
           <button id="email-disconnect" class="secondary" type="button" hidden>Disconnect</button>
@@ -81,14 +81,14 @@
       </div>
     </section>
 
-    <section class="card" aria-labelledby="facebook-title">
+    <section class="card" id="facebook-card" aria-labelledby="facebook-title" hidden>
       <div class="row">
         <div>
           <h2 id="facebook-title">Facebook Page</h2>
           <p id="facebook-status" class="status">Checking…</p>
           <p id="facebook-detail" class="detail">Checking your secure Facebook Page connection.</p>
         </div>
-        <span id="facebook-unavailable" class="unavailable">Setup unavailable</span>
+        <span id="facebook-unavailable" class="unavailable" hidden>Unavailable</span>
         <div>
           <button id="facebook-connect" type="button" hidden>Connect Facebook</button>
           <button id="facebook-disconnect" class="secondary" type="button" hidden>Disconnect</button>
@@ -106,7 +106,7 @@
       </div>
     </section>
 
-    <section class="card" aria-labelledby="website-title">
+    <section class="card" id="website-card" aria-labelledby="website-title" hidden>
       <div class="row">
         <div>
           <h2 id="website-title">Website inquiries</h2>
@@ -136,7 +136,7 @@
       <div>
         <h2 id="connector-inbox-title">Recent inbound messages</h2>
         <p id="connector-inbox-status" class="detail">Checking secure inbox…</p>
-        <p class="detail">This read-only view is bound to the current secure business session. The browser cannot choose or override the tenant.</p>
+        <p class="detail">This read-only view is private to the current business and cannot be switched to another business from this page.</p>
       </div>
       <div id="connector-inbox-list" aria-live="polite"></div>
     </section>
