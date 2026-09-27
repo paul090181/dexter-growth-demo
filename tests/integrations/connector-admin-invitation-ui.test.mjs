@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 import {
   createGrowthWiseDevEmailInvitationController,
   createGrowthWiseDevFacebookInvitationController,
+  createDexterPilotInvitationController,
   mountGrowthWiseDevFacebookInvitation,
 } from "../../assets/admin-connector-invitation.mjs";
 
@@ -150,6 +151,77 @@ test("Facebook acceptance card mounts behind the admin unlock and opens its secu
   assert.deepEqual(navigated, [INVITE]);
 });
 
+test("Dexter pilot activity controller reads only the admin-gated summary endpoint", async () => {
+  const calls = [];
+  const states = [];
+  const controller = createDexterPilotInvitationController({
+    origin: ORIGIN,
+    storage: storageWith(),
+    onActivity: (state) => states.push(state),
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      return new Response(JSON.stringify({
+        ok: true,
+        business_id: "dexters-hats",
+        stage: "draft_ready",
+        stage_label: "Dexter created an Instagram draft",
+        invitation: { state: "opened" },
+        session: { state: "active" },
+        activity: {
+          counts: {
+            pilot_opened: 1,
+            instagram_photo_selected: 1,
+            instagram_draft_created: 1,
+            instagram_publish_succeeded: 0,
+            instagram_publish_failed: 0,
+            feedback_submitted: 0,
+          },
+          first_opened_at: "2026-09-27T14:16:00.000Z",
+          last_activity_at: "2026-09-27T14:22:00.000Z",
+          last_event: "instagram_draft_created",
+          total_events: 3,
+        },
+        feedback: {
+          total: 0,
+          worked: 0,
+          needs_improvement: 0,
+          last_result: null,
+          last_at: null,
+        },
+      }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    },
+  });
+
+  const body = await controller.loadStatus();
+  assert.equal(body.stage, "draft_ready");
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "/.netlify/functions/dexter-pilot-status");
+  assert.equal(calls[0].init.method, "GET");
+  assert.equal(calls[0].init.headers["X-GrowthWise-Key"], "saved-admin-key");
+  assert.equal(states.at(-1).data.business_id, "dexters-hats");
+});
+
+test("Dexter pilot activity controller clears a stale admin key on 401", async () => {
+  const storage = storageWith();
+  const states = [];
+  const controller = createDexterPilotInvitationController({
+    origin: ORIGIN,
+    storage,
+    onActivity: (state) => states.push(state),
+    fetchImpl: async () => new Response(JSON.stringify({ error: "Unauthorized." }), {
+      status: 401,
+      headers: { "content-type": "application/json" },
+    }),
+  });
+
+  assert.equal(await controller.loadStatus(), null);
+  assert.equal(storage.getItem("growthwise_admin_key"), null);
+  assert.equal(states.at(-1).status, "locked");
+});
+
 test("admin invitation control refuses mismatched tenant or connector response", async () => {
   for (const body of [
     { business_id: "dexters-hats", connectors: ["email"], invitation_url: INVITE },
@@ -222,6 +294,12 @@ test("operator UI is admin-gated and keeps acceptance controls fixed to growthwi
   assert.match(html, /id="facebookAcceptanceOperator"[^>]*class="operator-card hidden"|class="operator-card hidden" id="facebookAcceptanceOperator"/);
   assert.match(html, /growthwise-dev · facebook only/);
   assert.match(html, /cannot target Dexter’s Hats/);
+  assert.match(html, /id="dexterPilotOperator"/);
+  assert.match(html, /id="loadDexterPilotActivityBtn"/);
+  assert.match(html, /id="dexterPilotActivityDetails"/);
+  assert.match(html, /id="dexterPilotActivityStage"/);
+  assert.match(html, /id="dexterPilotActivityTimeline"/);
+  assert.match(html, /id="dexterPilotActivityFeedback"/);
   assert.match(html, /assets\/admin-connector-invitation\.mjs/);
   assert.doesNotMatch(html, /id="emailAcceptanceInvitationUrl"/);
   assert.doesNotMatch(html, /id="facebookAcceptanceInvitationUrl"/);

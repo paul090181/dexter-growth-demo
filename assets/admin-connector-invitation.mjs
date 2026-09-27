@@ -275,6 +275,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
 
 const DEXTER_BUSINESS_ID = "dexters-hats";
 const DEXTER_PILOT_ENDPOINT = "/.netlify/functions/dexter-pilot-invitation-create";
+const DEXTER_STATUS_ENDPOINT = "/.netlify/functions/dexter-pilot-status";
 const DEXTER_INVITE_FRAGMENT = /^#invite=gw_pilot_inv_[A-Za-z0-9_-]{43}$/;
 
 function sameOriginDexterPilotInvitation(value, origin) {
@@ -295,6 +296,7 @@ export function createDexterPilotInvitationController({
   storage = globalThis.sessionStorage,
   origin = globalThis.location?.origin,
   onState = () => {},
+  onActivity = () => {},
 } = {}) {
   if (typeof fetchImpl !== "function" || !storage || typeof origin !== "string" || !origin) {
     throw new TypeError("Invalid Dexter pilot invitation configuration.");
@@ -347,7 +349,55 @@ export function createDexterPilotInvitationController({
     return target.toString();
   }
 
-  return { hasAdminKey, createInvitation };
+  async function loadStatus() {
+    const adminKey = (storage.getItem(STORAGE_KEY) || "").trim();
+    if (!adminKey) {
+      onActivity({ status: "locked", message: "Unlock GrowthWise first." });
+      return null;
+    }
+
+    onActivity({ status: "loading", message: "Checking Dexter's pilot activity…" });
+    let response;
+    try {
+      response = await fetchImpl(DEXTER_STATUS_ENDPOINT, {
+        method: "GET",
+        cache: "no-store",
+        headers: { "X-GrowthWise-Key": adminKey },
+      });
+    } catch {
+      onActivity({ status: "error", message: "Dexter pilot status could not be reached." });
+      return null;
+    }
+
+    const body = await response.json().catch(() => ({}));
+    if (response.status === 401) {
+      storage.removeItem(STORAGE_KEY);
+      onActivity({ status: "locked", message: "GrowthWise admin session expired. Unlock again." });
+      return null;
+    }
+
+    if (!response.ok
+      || body?.ok !== true
+      || body?.business_id !== DEXTER_BUSINESS_ID
+      || typeof body?.stage !== "string"
+      || typeof body?.stage_label !== "string"
+      || typeof body?.invitation?.state !== "string"
+      || typeof body?.session?.state !== "string"
+      || !body?.activity
+      || !body?.feedback) {
+      onActivity({ status: "error", message: "Dexter pilot status could not be loaded." });
+      return null;
+    }
+
+    onActivity({
+      status: "ready",
+      message: body.stage_label,
+      data: body,
+    });
+    return body;
+  }
+
+  return { hasAdminKey, createInvitation, loadStatus };
 }
 
 export function mountDexterPilotInvitation({
@@ -361,7 +411,13 @@ export function mountDexterPilotInvitation({
   const status = documentImpl?.getElementById("dexterPilotOperatorStatus");
   const activityButton = documentImpl?.getElementById("loadDexterPilotActivityBtn");
   const activityStatus = documentImpl?.getElementById("dexterPilotActivityStatus");
-  if (!card || !createButton || !copyButton || !linkInput || !status || !activityButton || !activityStatus) return null;
+  const activityDetails = documentImpl?.getElementById("dexterPilotActivityDetails");
+  const activityStage = documentImpl?.getElementById("dexterPilotActivityStage");
+  const activityTimeline = documentImpl?.getElementById("dexterPilotActivityTimeline");
+  const activityFeedback = documentImpl?.getElementById("dexterPilotActivityFeedback");
+  if (!card || !createButton || !copyButton || !linkInput || !status
+    || !activityButton || !activityStatus || !activityDetails
+    || !activityStage || !activityTimeline || !activityFeedback) return null;
 
   const controller = createDexterPilotInvitationController({
     fetchImpl: windowImpl.fetch.bind(windowImpl),
@@ -379,6 +435,44 @@ export function mountDexterPilotInvitation({
         copyButton.classList.remove("hidden");
       }
     },
+    onActivity(state) {
+      activityStatus.className = "create-status";
+      if (state.status === "error" || state.status === "locked") activityStatus.classList.add("error");
+      else if (state.status === "loading") activityStatus.classList.add("loading");
+      else activityStatus.classList.add("ok");
+      activityStatus.textContent = state.message;
+
+      const data = state.data;
+      if (!data) {
+        activityDetails.classList.add("hidden");
+        return;
+      }
+
+      activityDetails.classList.remove("hidden");
+      activityStage.textContent = data.stage_label;
+
+      const formatTime = (value) => {
+        if (!value) return "—";
+        const parsed = new Date(value);
+        return Number.isFinite(parsed.getTime()) ? parsed.toLocaleString() : "—";
+      };
+
+      const eventCounts = data.activity?.counts || {};
+      activityTimeline.textContent = [
+        `Invite: ${String(data.invitation?.state || "unknown").replaceAll("_", " ")}`,
+        `Session: ${String(data.session?.state || "unknown").replaceAll("_", " ")}`,
+        `Opened: ${formatTime(data.activity?.first_opened_at)}`,
+        `Last activity: ${formatTime(data.activity?.last_activity_at)}`,
+        `Photo selected: ${Number(eventCounts.instagram_photo_selected || 0)}`,
+        `Drafts created: ${Number(eventCounts.instagram_draft_created || 0)}`,
+        `Posts completed: ${Number(eventCounts.instagram_publish_succeeded || 0)}`,
+        `Publish errors: ${Number(eventCounts.instagram_publish_failed || 0)}`,
+      ].join(" · ");
+
+      activityFeedback.textContent = data.feedback?.total
+        ? `Feedback: ${Number(data.feedback.worked || 0)} worked · ${Number(data.feedback.needs_improvement || 0)} needs improvement`
+        : "Feedback: none yet";
+    },
   });
 
   function refreshVisibility() {
@@ -390,6 +484,10 @@ export function mountDexterPilotInvitation({
       copyButton.classList.add("hidden");
       status.className = "create-status hidden";
       activityStatus.className = "create-status hidden";
+      activityDetails.classList.add("hidden");
+      activityStage.textContent = "";
+      activityTimeline.textContent = "";
+      activityFeedback.textContent = "";
     }
   }
 
@@ -406,37 +504,11 @@ export function mountDexterPilotInvitation({
   });
 
   activityButton.addEventListener("click", async () => {
-    const adminKey = (windowImpl.sessionStorage.getItem(STORAGE_KEY) || "").trim();
-    if (!adminKey) {
-      activityStatus.className = "create-status error";
-      activityStatus.textContent = "Unlock GrowthWise first.";
-      return;
-    }
     activityButton.disabled = true;
-    activityStatus.className = "create-status loading";
-    activityStatus.textContent = "Checking Dexter's pilot activity…";
-    try {
-      const [eventsResponse, feedbackResponse] = await Promise.all([
-        windowImpl.fetch("/.netlify/functions/dexter-pilot-event?business_id=dexters-hats", {
-          cache: "no-store", headers: { "X-GrowthWise-Key": adminKey },
-        }),
-        windowImpl.fetch("/.netlify/functions/pilot-feedback?business_id=dexters-hats", {
-          cache: "no-store", headers: { "X-GrowthWise-Key": adminKey },
-        }),
-      ]);
-      const events = await eventsResponse.json().catch(() => ({}));
-      const feedback = await feedbackResponse.json().catch(() => ({}));
-      if (!eventsResponse.ok || !feedbackResponse.ok) throw new Error("Dexter activity could not be loaded.");
-      const latest = Array.isArray(events.events) && events.events[0]
-        ? String(events.events[0].event_name || "").replaceAll("_", " ")
-        : "no activity yet";
-      activityStatus.className = "create-status ok";
-      activityStatus.textContent = `${events.events?.length || 0} activity events · ${feedback.feedback?.length || 0} feedback entries · latest: ${latest}`;
-    } catch (error) {
-      activityStatus.className = "create-status error";
-      activityStatus.textContent = error.message || "Dexter activity could not be loaded.";
-    } finally {
+    try { await controller.loadStatus(); }
+    finally {
       activityButton.disabled = false;
+      refreshVisibility();
     }
   });
 

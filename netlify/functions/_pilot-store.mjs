@@ -99,6 +99,67 @@ export function createPilotStore({ getPool = netlifyPool } = {}) {
       }
     },
 
+    async readBusinessStatus({ businessId, now = new Date() } = {}) {
+      const id = cleanBusinessId(businessId);
+      const checkedAt = cleanDate(now, "INVALID_STATUS_TIME");
+      const pool = await getPool();
+
+      try {
+        const [invitationResult, sessionResult, eventResult, feedbackResult] = await Promise.all([
+          pool.query(
+            `SELECT created_at, expires_at, consumed_at, revoked_at
+               FROM growthwise_pilot_invitations
+              WHERE business_id = $1
+              ORDER BY created_at DESC
+              LIMIT 1`,
+            [id],
+          ),
+          pool.query(
+            `SELECT created_at, expires_at, revoked_at
+               FROM growthwise_pilot_sessions
+              WHERE business_id = $1
+              ORDER BY created_at DESC
+              LIMIT 1`,
+            [id],
+          ),
+          pool.query(
+            `SELECT event_name, COUNT(*)::int AS event_count,
+                    MIN(created_at) AS first_at, MAX(created_at) AS last_at
+               FROM growthwise_pilot_events
+              WHERE business_id = $1
+              GROUP BY event_name
+              ORDER BY event_name ASC`,
+            [id],
+          ),
+          pool.query(
+            `SELECT result, COUNT(*)::int AS feedback_count,
+                    MAX(created_at) AS last_at
+               FROM growthwise_pilot_feedback
+              WHERE business_id = $1
+              GROUP BY result
+              ORDER BY result ASC`,
+            [id],
+          ),
+        ]);
+
+        const invitation = invitationResult.rows[0] ?? null;
+        const session = sessionResult.rows[0] ?? null;
+        const events = eventResult.rows ?? [];
+        const feedback = feedbackResult.rows ?? [];
+
+        return {
+          business_id: id,
+          checked_at: checkedAt,
+          invitation,
+          session,
+          events,
+          feedback,
+        };
+      } catch (error) {
+        throw failure("PILOT_STATUS_READ_FAILED", error);
+      }
+    },
+
     async authorizeSession({ sessionHash, businessId, now } = {}) {
       const hash = cleanHash(sessionHash, "INVALID_SESSION_HASH");
       const id = cleanBusinessId(businessId);
