@@ -71,6 +71,42 @@
       <button class="button" id="workspace-next-step" type="button" style="margin-top:12px" hidden>Continue setup</button>
     </section>
 
+    <section class="card" id="workspace-first-win-card" hidden>
+      <div class="eyebrow">Try Narleo now</div>
+      <h2>Get a useful result before connecting anything.</h2>
+      <p>Start with one real task. No Square, Facebook, Instagram, or email connection is required.</p>
+      <form id="workspace-first-win-form">
+        <label class="field">What do you want help with?
+          <select name="task" id="workspace-first-win-task">
+            <option value="social_post">Create a social post</option>
+            <option value="customer_reply">Answer a customer</option>
+          </select>
+        </label>
+        <label class="field"><span id="workspace-first-win-prompt-label">What are you promoting?</span>
+          <textarea name="prompt" id="workspace-first-win-prompt" maxlength="4000" placeholder="Example: Fall royal icing cookies are available for seasonal orders." required></textarea>
+        </label>
+        <label class="field" id="workspace-first-win-image-field">Photo (optional)
+          <input id="workspace-first-win-image" type="file" accept="image/jpeg,image/png" />
+        </label>
+        <img id="workspace-first-win-preview" alt="Selected first-task preview" hidden style="display:block;width:100%;max-height:360px;object-fit:contain;border-radius:14px;background:#f4f6f8;margin:10px 0" />
+        <button class="button" id="workspace-first-win-submit" type="submit">Create my first result</button>
+      </form>
+      <div id="workspace-first-win-status" class="status" hidden></div>
+      <div id="workspace-first-win-result" class="reply-box" hidden>
+        <strong id="workspace-first-win-title"></strong>
+        <div id="workspace-first-win-primary" style="margin-top:8px;white-space:pre-wrap"></div>
+        <div id="workspace-first-win-secondary-wrap" class="followup" hidden>
+          <strong>Instagram version</strong>
+          <div id="workspace-first-win-secondary" style="margin-top:5px;white-space:pre-wrap"></div>
+        </div>
+        <div class="followup">
+          <strong>Why / what to do next</strong>
+          <div id="workspace-first-win-note" style="margin-top:5px"></div>
+          <div id="workspace-first-win-next" style="margin-top:5px"></div>
+        </div>
+      </div>
+    </section>
+
     <section class="card" id="workspace-plan-controls" hidden>
       <div class="eyebrow">Plan options</div>
       <h2>Change your subscription</h2>

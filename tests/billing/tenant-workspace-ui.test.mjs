@@ -36,25 +36,29 @@ test("workspace credentials stay in session storage only", () => {
   assert.deepEqual(readWorkspaceCredentials(s), { businessId: "", tenantKey: "" });
 });
 
-test("Starter onboarding does not count unavailable Square features as unfinished setup", () => {
+test("Starter onboarding puts the first useful result before optional integrations", () => {
   assert.deepEqual(buildOnboardingSteps({
     accessGranted: true,
+    firstWinReady: false,
     squareEligible: false,
   }), [
     ["Workspace ready", true, "Done"],
     ["Plan active", true, "Done"],
+    ["First useful result", false, "Next"],
   ]);
 });
 
 test("Growth onboarding includes Square and Business Pulse only when entitled", () => {
   assert.deepEqual(buildOnboardingSteps({
     accessGranted: true,
+    firstWinReady: true,
     squareEligible: true,
     squareConnected: true,
     pulseReady: false,
   }), [
     ["Workspace ready", true, "Done"],
     ["Plan active", true, "Done"],
+    ["First useful result", true, "Done"],
     ["Square connected", true, "Done"],
     ["Business pulse ready", false, "Next"],
   ]);
@@ -655,6 +659,80 @@ test("Starter tenant cannot launch customer channel setup", async () => {
   assert.equal(connectorCalls, 0);
 });
 
+test("active tenant can get a first useful Narleo result before connecting any provider", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  const calls = [];
+  const tracked = [];
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    trackEvent: async (eventName) => { tracked.push(eventName); return true; },
+    fetchImpl: async (url, init = {}) => {
+      calls.push({ url, init });
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          business_name: "North Star Books",
+          business_type: "retail",
+        });
+      }
+      if (url.startsWith("/.netlify/functions/subscription-status?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          access_source: "stripe",
+          plan_key: "starter_monthly",
+          status: "active",
+          access_granted: true,
+          feature_access: {
+            inventory_connection: false,
+            unified_inbox: false,
+            automated_publishing: false,
+            promotion_content: true,
+            lead_reply_drafting: true,
+          },
+        });
+      }
+      if (url === "/.netlify/functions/tenant-first-win") {
+        assert.equal(init.headers["X-GrowthWise-Tenant-Key"], TENANT_KEY);
+        assert.equal(Object.hasOwn(init.headers, "X-GrowthWise-Key"), false);
+        assert.deepEqual(JSON.parse(init.body), {
+          business_id: BUSINESS_ID,
+          task: "social_post",
+          prompt: "Feature a new mystery novel display.",
+          image_data_url: "data:image/png;base64,AA==",
+        });
+        return response({
+          ok: true,
+          business_id: BUSINESS_ID,
+          business_type: "retail",
+          task: "social_post",
+          title: "Mystery shelf spotlight",
+          primary_text: "A fresh mystery display is ready to browse.",
+          secondary_text: "Mystery readers, take a look.",
+          note: "Grounded in the supplied display context.",
+          risk_level: "low",
+          next_step: "Review and post when ready.",
+        });
+      }
+      throw new Error(`unexpected URL ${url}`);
+    },
+  });
+
+  const restored = await controller.restore();
+  assert.equal(restored.firstWin.completed, false);
+  assert.equal(await controller.createFirstWin({
+    task: "social_post",
+    prompt: "Feature a new mystery novel display.",
+    imageDataUrl: "data:image/png;base64,AA==",
+  }), true);
+  const state = controller.getState();
+  assert.equal(state.firstWin.completed, true);
+  assert.equal(state.firstWin.result.title, "Mystery shelf spotlight");
+  assert.equal(s.getItem(`growthwise_first_win:${BUSINESS_ID}`), "1");
+  assert.equal(tracked.includes("ai_workflow_used"), true);
+  assert.equal(calls.every((call) => !call.url.includes(TENANT_KEY)), true);
+});
+
 test("publishing-enabled tenant loads only its own Facebook Page and publishes only after review", async () => {
   const s = storage();
   saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
@@ -864,6 +942,10 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /id="workspace-next-step"/);
   assert.match(html, /id="workspace-channels-card"/);
   assert.match(html, /id="workspace-channels-open"/);
+  assert.match(html, /id="workspace-first-win-card"/);
+  assert.match(html, /id="workspace-first-win-form"/);
+  assert.match(html, /id="workspace-first-win-task"/);
+  assert.match(html, /Create my first result/);
   assert.match(html, /id="workspace-facebook-card"/);
   assert.match(html, /id="workspace-facebook-form"/);
   assert.match(html, /id="workspace-facebook-reviewed"/);
@@ -885,6 +967,9 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /connect-square/);
   assert.match(js, /refresh-insights/);
   assert.match(js, /tenant-connector-session-start/);
+  assert.match(js, /tenant-first-win/);
+  assert.match(js, /createFirstWin/);
+  assert.match(js, /growthwise_first_win/);
   assert.match(js, /openConnectorSetup/);
   assert.match(js, /tenant-facebook-connection/);
   assert.match(js, /tenant-facebook-publish/);

@@ -29,6 +29,7 @@ function memoryStore() {
       const row = {
         business_id: input.businessId,
         business_name: input.businessName,
+        business_type: input.businessType,
         contact_name: input.contactName,
         contact_email: input.email,
         access_key_hash: input.accessKeyHash,
@@ -60,6 +61,7 @@ test("signup stores only the key hash and returns the raw key once", async () =>
   const handler = createTenantSignupHandler({ store });
   const response = await handler(signupRequest({
     business_name: "North Star Books",
+    business_type: "retail",
     contact_name: "Jamie Rivera",
     email: "jamie@example.com",
   }));
@@ -74,22 +76,25 @@ test("signup stores only the key hash and returns the raw key once", async () =>
 
   const stored = store.tenants.get(body.business_id);
   assert.equal(stored.business_name, "North Star Books");
+  assert.equal(stored.business_type, "retail");
   assert.equal(stored.contact_name, "Jamie Rivera");
   assert.equal(stored.contact_email, "jamie@example.com");
   assert.equal(stored.access_key_hash, hashTenantAccessKey(body.tenant_key));
   assert.equal(JSON.stringify(stored).includes(body.tenant_key), false);
 });
 
-test("signup requires only valid business, contact, and email fields", async () => {
+test("signup requires valid business type plus basic contact fields", async () => {
   const store = memoryStore();
   const handler = createTenantSignupHandler({ store });
   const invalidBodies = [
-    { business_name: "", contact_name: "Jamie", email: "jamie@example.com" },
-    { business_name: "Books", contact_name: "", email: "jamie@example.com" },
-    { business_name: "Books", contact_name: "Jamie", email: "not-an-email" },
-    { business_name: "B".repeat(161), contact_name: "Jamie", email: "jamie@example.com" },
-    { business_name: "Books", contact_name: "J".repeat(161), email: "jamie@example.com" },
-    { business_name: "Books", contact_name: "Jamie", email: `${"a".repeat(245)}@example.com` },
+    { business_name: "", business_type: "retail", contact_name: "Jamie", email: "jamie@example.com" },
+    { business_name: "Books", business_type: "", contact_name: "Jamie", email: "jamie@example.com" },
+    { business_name: "Books", business_type: "casino", contact_name: "Jamie", email: "jamie@example.com" },
+    { business_name: "Books", business_type: "retail", contact_name: "", email: "jamie@example.com" },
+    { business_name: "Books", business_type: "retail", contact_name: "Jamie", email: "not-an-email" },
+    { business_name: "B".repeat(161), business_type: "retail", contact_name: "Jamie", email: "jamie@example.com" },
+    { business_name: "Books", business_type: "retail", contact_name: "J".repeat(161), email: "jamie@example.com" },
+    { business_name: "Books", business_type: "retail", contact_name: "Jamie", email: `${"a".repeat(245)}@example.com` },
   ];
 
   for (const body of invalidBodies) {
@@ -118,6 +123,7 @@ test("tenant authorization requires the exact key for the exact business ID", as
     businessId: credentials.businessId,
     accessKeyHash: credentials.accessKeyHash,
     businessName: "Tenant One",
+    businessType: "service",
     contactName: "Taylor",
     email: "taylor@example.com",
   });
@@ -149,8 +155,8 @@ test("tenant store persists the hash and never sends a raw key to SQL", async ()
       calls.push({ text, values });
       if (text.includes("INSERT INTO growthwise_tenants")) {
         return { rows: [{
-          business_id: values[0], business_name: values[1], contact_name: values[2],
-          contact_email: values[3], access_key_hash: values[4],
+          business_id: values[0], business_name: values[1], business_type: values[2], contact_name: values[3],
+          contact_email: values[4], access_key_hash: values[5],
         }] };
       }
       if (text.includes("FROM growthwise_tenants")) {
@@ -166,12 +172,14 @@ test("tenant store persists the hash and never sends a raw key to SQL", async ()
   await store.createTenant({
     businessId: "tenant-one-abcdef123456",
     businessName: "Tenant One",
+    businessType: "service",
     contactName: "Taylor",
     email: "taylor@example.com",
     accessKeyHash,
   });
   await store.readTenantAuth({ businessId: "tenant-one-abcdef123456" });
 
-  assert.equal(calls[0].values[4], accessKeyHash);
+  assert.equal(calls[0].values[2], "service");
+  assert.equal(calls[0].values[5], accessKeyHash);
   assert.equal(calls.some((call) => JSON.stringify(call.values).includes(tenantKey)), false);
 });

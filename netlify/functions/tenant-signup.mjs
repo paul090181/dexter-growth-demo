@@ -4,6 +4,7 @@ import { createTenantStore } from "./_tenant-store.mjs";
 
 const MAX_BODY_BYTES = 8_192;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const BUSINESS_TYPES = new Set(["retail","bakery_food","auto_dealer","service","other"]);
 
 async function readJson(request) {
   const declared = Number(request.headers.get("content-length") || 0);
@@ -36,10 +37,11 @@ export function createTenantSignupHandler({ store } = {}) {
     }
 
     const businessName = field(body?.business_name, 160);
+    const businessType = field(body?.business_type, 40);
     const contactName = field(body?.contact_name, 160);
     const email = field(body?.email, 254).toLowerCase();
-    if (!businessName || !contactName || !EMAIL_PATTERN.test(email)) {
-      return json(400, { error: "Business name, contact name, and a valid email are required." });
+    if (!businessName || !BUSINESS_TYPES.has(businessType) || !contactName || !EMAIL_PATTERN.test(email)) {
+      return json(400, { error: "Business name, business type, contact name, and a valid email are required." });
     }
 
     const credentials = generateTenantCredentials({ businessName });
@@ -47,12 +49,14 @@ export function createTenantSignupHandler({ store } = {}) {
       await store.createTenant({
         businessId: credentials.businessId,
         businessName,
+        businessType,
         contactName,
         email,
         accessKeyHash: credentials.accessKeyHash,
       });
       return json(201, {
         business_id: credentials.businessId,
+        business_type: businessType,
         tenant_key: credentials.tenantKey,
         plan_key: "founding_monthly",
         status: "not_subscribed",

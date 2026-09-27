@@ -1,8 +1,8 @@
 const INSERT_TENANT = `
   INSERT INTO growthwise_tenants
-    (business_id, business_name, contact_name, contact_email, access_key_hash)
-  VALUES ($1, $2, $3, $4, $5)
-  RETURNING business_id, business_name, contact_name, contact_email, access_key_hash,
+    (business_id, business_name, business_type, contact_name, contact_email, access_key_hash)
+  VALUES ($1, $2, $3, $4, $5, $6)
+  RETURNING business_id, business_name, business_type, contact_name, contact_email, access_key_hash,
             created_at, updated_at`;
 
 const READ_TENANT_AUTH = `
@@ -11,12 +11,12 @@ const READ_TENANT_AUTH = `
    WHERE business_id = $1`;
 
 const READ_TENANT_PROFILE = `
-  SELECT business_id, business_name, contact_name, contact_email, created_at, updated_at
+  SELECT business_id, business_name, business_type, contact_name, contact_email, created_at, updated_at
     FROM growthwise_tenants
    WHERE business_id = $1`;
 
 const READ_TENANTS_BY_EMAIL = `
-  SELECT business_id, business_name, contact_name, contact_email
+  SELECT business_id, business_name, business_type, contact_name, contact_email
     FROM growthwise_tenants
    WHERE contact_email = $1
    ORDER BY created_at ASC, business_id ASC`;
@@ -74,16 +74,25 @@ function requiredString(value, code, max) {
   return clean;
 }
 
+function businessType(value) {
+  const clean = requiredString(value, "INVALID_BUSINESS_TYPE", 40);
+  if (!new Set(["retail", "bakery_food", "auto_dealer", "service", "other"]).has(clean)) {
+    throw safeError("INVALID_BUSINESS_TYPE");
+  }
+  return clean;
+}
+
 export function createTenantStore({ getPool = netlifyPool } = {}) {
   async function createTenant(input = {}) {
     const values = [
       requiredString(input.businessId, "INVALID_BUSINESS_ID", 80),
       requiredString(input.businessName, "INVALID_BUSINESS_NAME", 160),
+      businessType(input.businessType),
       requiredString(input.contactName, "INVALID_CONTACT_NAME", 160),
       requiredString(input.email, "INVALID_CONTACT_EMAIL", 254).toLowerCase(),
       requiredString(input.accessKeyHash, "INVALID_ACCESS_KEY_HASH", 64),
     ];
-    if (!/^[a-f0-9]{64}$/.test(values[4])) throw safeError("INVALID_ACCESS_KEY_HASH");
+    if (!/^[a-f0-9]{64}$/.test(values[5])) throw safeError("INVALID_ACCESS_KEY_HASH");
     try {
       const result = await (await getPool()).query(INSERT_TENANT, values);
       return result.rows[0];

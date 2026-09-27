@@ -4,13 +4,18 @@ import test from "node:test";
 
 const page = await readFile(new URL("../../signup.html", import.meta.url), "utf8");
 
-test("signup page collects only the minimum business and contact fields", () => {
+test("signup page collects only basic business, type, and contact fields", () => {
   assert.match(page, /name="business_name"/);
+  assert.match(page, /name="business_type"/);
+  assert.match(page, /value="retail"/);
+  assert.match(page, /value="bakery_food"/);
+  assert.match(page, /value="auto_dealer"/);
+  assert.match(page, /value="service"/);
   assert.match(page, /name="contact_name"/);
   assert.match(page, /name="email"/);
   assert.doesNotMatch(page, /name="(?:password|phone|address|company|plan|price)"/);
   assert.match(page, /fetch\(['"]\/\.netlify\/functions\/tenant-signup['"]/);
-  assert.match(page, /JSON\.stringify\(\{\s*business_name:\s*form\.business_name\.value,\s*contact_name:\s*form\.contact_name\.value,\s*email:\s*form\.email\.value\s*\}\)/);
+  assert.match(page, /JSON\.stringify\(\{\s*business_name:\s*form\.business_name\.value,\s*business_type:\s*form\.business_type\.value,\s*contact_name:\s*form\.contact_name\.value,\s*email:\s*form\.email\.value\s*\}\)/);
 });
 
 test("raw tenant key is kept in session storage and shown only in the one-time key panel", () => {

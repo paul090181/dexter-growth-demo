@@ -25,6 +25,7 @@ function store() {
       return businessId === BUSINESS_ID ? {
         business_id: BUSINESS_ID,
         business_name: "North Star Books",
+        business_type: "retail",
         contact_name: "Jamie Rivera",
         contact_email: "jamie@example.com",
         access_key_hash: "must-not-leak",
@@ -49,6 +50,7 @@ test("tenant profile returns only safe authenticated profile fields", async () =
   assert.deepEqual(body, {
     business_id: BUSINESS_ID,
     business_name: "North Star Books",
+    business_type: "retail",
     contact_name: "Jamie Rivera",
     contact_email: "jamie@example.com",
     created_at: "2026-09-24T12:00:00.000Z",

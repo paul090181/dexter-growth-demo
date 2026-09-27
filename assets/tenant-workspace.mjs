@@ -14,6 +14,7 @@ const TENANT_SESSION_ENDPOINT = "/.netlify/functions/tenant-session";
 const TENANT_SESSION_LOGOUT_ENDPOINT = "/.netlify/functions/tenant-session-logout";
 const FACEBOOK_CONNECTION_ENDPOINT = "/.netlify/functions/tenant-facebook-connection";
 const FACEBOOK_PUBLISH_ENDPOINT = "/.netlify/functions/tenant-facebook-publish";
+const FIRST_WIN_ENDPOINT = "/.netlify/functions/tenant-first-win";
 
 const FEATURE_LABELS = Object.freeze([
   ["ai_business_assistant", "AI business assistant"],
@@ -159,11 +160,20 @@ export function buildSquareBusinessPulse(inventory = {}, sales = {}) {
   };
 }
 
-export function buildOnboardingSteps({ accessGranted = false, squareEligible = false, squareConnected = false, pulseReady = false } = {}) {
+export function buildOnboardingSteps({
+  accessGranted = false,
+  firstWinReady = false,
+  squareEligible = false,
+  squareConnected = false,
+  pulseReady = false,
+} = {}) {
   const steps = [
     ["Workspace ready", true, "Done"],
     ["Plan active", accessGranted, accessGranted ? "Done" : "Next"],
   ];
+  if (accessGranted) {
+    steps.push(["First useful result", firstWinReady, firstWinReady ? "Done" : "Next"]);
+  }
   if (squareEligible) {
     steps.push(
       ["Square connected", squareConnected, squareConnected ? "Done" : "Next"],
@@ -211,6 +221,12 @@ export function createTenantWorkspaceController({
       status: null,
       publishing: false,
       publishError: "",
+      result: null,
+    },
+    firstWin: {
+      completed: false,
+      loading: false,
+      error: "",
       result: null,
     },
   };
@@ -410,6 +426,7 @@ export function createTenantWorkspaceController({
 
       if (persist) saveWorkspaceCredentials({ businessId: id, tenantKey: key }, storage);
       else if (sessionAuth) saveWorkspaceCredentials({ businessId: id, tenantKey: "" }, storage);
+      const firstWinCompleted = storage?.getItem(`growthwise_first_win:${id}`) === "1";
       return publish({
         loading: false,
         signedIn: true,
@@ -419,6 +436,12 @@ export function createTenantWorkspaceController({
         square,
         insights,
         facebook,
+        firstWin: {
+          completed: firstWinCompleted,
+          loading: false,
+          error: "",
+          result: null,
+        },
       });
     } catch (error) {
       clearWorkspaceCredentials(storage);
@@ -437,6 +460,12 @@ export function createTenantWorkspaceController({
           status: null,
           publishing: false,
           publishError: "",
+          result: null,
+        },
+        firstWin: {
+          completed: false,
+          loading: false,
+          error: "",
           result: null,
         },
       });
@@ -689,6 +718,92 @@ export function createTenantWorkspaceController({
     return Boolean(insights.pulse);
   }
 
+  async function createFirstWin({
+    task,
+    prompt,
+    imageDataUrl = "",
+  } = {}) {
+    const { businessId, tenantKey } = readWorkspaceCredentials(storage);
+    const kind = String(task || "").trim();
+    const context = String(prompt || "").trim();
+    if (!state.signedIn || !businessId || state.subscription?.access_granted !== true) {
+      publish({
+        firstWin: {
+          ...state.firstWin,
+          loading: false,
+          error: "An active workspace is required.",
+          result: null,
+        },
+      });
+      return false;
+    }
+    if (!["social_post", "customer_reply"].includes(kind) || !context) {
+      publish({
+        firstWin: {
+          ...state.firstWin,
+          loading: false,
+          error: "Choose a task and add a little context.",
+          result: null,
+        },
+      });
+      return false;
+    }
+
+    publish({
+      firstWin: {
+        ...state.firstWin,
+        loading: true,
+        error: "",
+        result: null,
+      },
+    });
+
+    try {
+      const body = {
+        business_id: businessId,
+        task: kind,
+        prompt: context.slice(0, 4000),
+      };
+      if (kind === "social_post" && imageDataUrl) {
+        body.image_data_url = String(imageDataUrl);
+      }
+      const response = await fetchImpl(FIRST_WIN_ENDPOINT, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          ...authHeaders(tenantKey),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result?.ok !== true || result.business_id !== businessId) {
+        throw new Error(result?.error || "Narleo could not create the first result.");
+      }
+      storage?.setItem(`growthwise_first_win:${businessId}`, "1");
+      publish({
+        firstWin: {
+          completed: true,
+          loading: false,
+          error: "",
+          result,
+        },
+      });
+      await trackEvent("ai_workflow_used", { businessId, tenantKey });
+      return true;
+    } catch (error) {
+      publish({
+        firstWin: {
+          ...state.firstWin,
+          loading: false,
+          error: error?.message || "Narleo could not create the first result.",
+          result: null,
+        },
+      });
+      return false;
+    }
+  }
+
   async function refreshFacebookStatus() {
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
     if (!state.signedIn
@@ -889,6 +1004,12 @@ export function createTenantWorkspaceController({
         publishError: "",
         result: null,
       },
+      firstWin: {
+        completed: false,
+        loading: false,
+        error: "",
+        result: null,
+      },
     });
   }
 
@@ -902,6 +1023,7 @@ export function createTenantWorkspaceController({
     connectSquare,
     refreshSquareInsights,
     openConnectorSetup,
+    createFirstWin,
     refreshFacebookStatus,
     publishFacebook,
     draftLead,
@@ -943,6 +1065,23 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const channelsCard = documentImpl.getElementById("workspace-channels-card");
   const channelsError = documentImpl.getElementById("workspace-channels-error");
   const channelsOpen = documentImpl.getElementById("workspace-channels-open");
+  const firstWinCard = documentImpl.getElementById("workspace-first-win-card");
+  const firstWinForm = documentImpl.getElementById("workspace-first-win-form");
+  const firstWinTask = documentImpl.getElementById("workspace-first-win-task");
+  const firstWinPromptLabel = documentImpl.getElementById("workspace-first-win-prompt-label");
+  const firstWinPrompt = documentImpl.getElementById("workspace-first-win-prompt");
+  const firstWinImageField = documentImpl.getElementById("workspace-first-win-image-field");
+  const firstWinImage = documentImpl.getElementById("workspace-first-win-image");
+  const firstWinPreview = documentImpl.getElementById("workspace-first-win-preview");
+  const firstWinSubmit = documentImpl.getElementById("workspace-first-win-submit");
+  const firstWinStatus = documentImpl.getElementById("workspace-first-win-status");
+  const firstWinResult = documentImpl.getElementById("workspace-first-win-result");
+  const firstWinTitle = documentImpl.getElementById("workspace-first-win-title");
+  const firstWinPrimary = documentImpl.getElementById("workspace-first-win-primary");
+  const firstWinSecondaryWrap = documentImpl.getElementById("workspace-first-win-secondary-wrap");
+  const firstWinSecondary = documentImpl.getElementById("workspace-first-win-secondary");
+  const firstWinNote = documentImpl.getElementById("workspace-first-win-note");
+  const firstWinNext = documentImpl.getElementById("workspace-first-win-next");
   const facebookCard = documentImpl.getElementById("workspace-facebook-card");
   const facebookState = documentImpl.getElementById("workspace-facebook-state");
   const facebookDetail = documentImpl.getElementById("workspace-facebook-detail");
@@ -977,6 +1116,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const leadFollowUp = documentImpl.getElementById("workspace-lead-followup");
 
   let facebookImageDataUrl = "";
+  let firstWinImageDataUrl = "";
 
   const render = (view) => {
     signedOut.hidden = view.signedIn;
@@ -1065,8 +1205,10 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     const squareEligible = featureAccess.inventory_connection === true;
     const squareConnected = view.square?.status?.state === "Connected";
     const pulseReady = Boolean(view.insights?.pulse);
+    const firstWinReady = view.firstWin?.completed === true;
     const setupSteps = buildOnboardingSteps({
       accessGranted,
+      firstWinReady,
       squareEligible,
       squareConnected,
       pulseReady,
@@ -1105,6 +1247,13 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
         journeyBanner.hidden = false;
         journeyBanner.textContent = "Your workspace is ready. Activate access to continue setup.";
       }
+    } else if (!firstWinReady) {
+      nextStep.dataset.nextAction = "first-win";
+      nextStep.textContent = "Try Narleo now";
+      if (firstRun) {
+        journeyBanner.hidden = false;
+        journeyBanner.textContent = "Your access is active. Get a useful result now—no integrations required.";
+      }
     } else if (squareEligible && !squareConnected) {
       nextStep.dataset.nextAction = "connect-square";
       nextStep.textContent = "Connect Square";
@@ -1125,6 +1274,28 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
       if (returnedFromSquare || firstRun) {
         journeyBanner.hidden = false;
         journeyBanner.textContent = "Setup is complete. Your Business Pulse is ready—now try a customer-facing workflow.";
+      }
+    }
+
+    firstWinCard.hidden = !accessGranted;
+    if (accessGranted) {
+      firstWinSubmit.disabled = view.firstWin?.loading === true;
+      firstWinSubmit.textContent = view.firstWin?.loading === true
+        ? "Creating…"
+        : view.firstWin?.completed === true
+          ? "Create another result"
+          : "Create my first result";
+      firstWinStatus.hidden = !view.firstWin?.error;
+      firstWinStatus.textContent = view.firstWin?.error || "";
+      firstWinResult.hidden = !view.firstWin?.result;
+      if (view.firstWin?.result) {
+        firstWinTitle.textContent = view.firstWin.result.title || "Your result";
+        firstWinPrimary.textContent = view.firstWin.result.primary_text || "";
+        const secondary = view.firstWin.result.secondary_text || "";
+        firstWinSecondaryWrap.hidden = !secondary;
+        firstWinSecondary.textContent = secondary;
+        firstWinNote.textContent = view.firstWin.result.note || "";
+        firstWinNext.textContent = view.firstWin.result.next_step || "";
       }
     }
 
@@ -1241,6 +1412,59 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   manage?.addEventListener("click", () => controller.openBilling());
   squareConnect?.addEventListener("click", () => controller.connectSquare());
   channelsOpen?.addEventListener("click", () => controller.openConnectorSetup());
+  function updateFirstWinTaskUI() {
+    const social = firstWinTask?.value !== "customer_reply";
+    firstWinImageField.hidden = !social;
+    firstWinPromptLabel.textContent = social ? "What are you promoting?" : "What did the customer ask?";
+    firstWinPrompt.placeholder = social
+      ? "Example: Fall royal icing cookies are available for seasonal orders."
+      : "Example: Can I order 30 cookies for Saturday and what will it cost?";
+    if (!social) {
+      firstWinImageDataUrl = "";
+      if (firstWinImage) firstWinImage.value = "";
+      if (firstWinPreview) {
+        firstWinPreview.src = "";
+        firstWinPreview.hidden = true;
+      }
+    }
+  }
+
+  firstWinTask?.addEventListener("change", updateFirstWinTaskUI);
+  updateFirstWinTaskUI();
+
+  firstWinImage?.addEventListener("change", () => {
+    const file = firstWinImage.files?.[0];
+    firstWinImageDataUrl = "";
+    firstWinPreview.src = "";
+    firstWinPreview.hidden = true;
+    if (!file) return;
+    if (!["image/jpeg", "image/png"].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      firstWinStatus.hidden = false;
+      firstWinStatus.textContent = "Choose a JPG or PNG photo under 5 MB.";
+      firstWinImage.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      firstWinImageDataUrl = String(reader.result || "");
+      firstWinPreview.src = firstWinImageDataUrl;
+      firstWinPreview.hidden = !firstWinImageDataUrl;
+      firstWinStatus.hidden = true;
+      firstWinStatus.textContent = "";
+    };
+    reader.readAsDataURL(file);
+  });
+
+  firstWinForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const data = new FormData(firstWinForm);
+    await controller.createFirstWin({
+      task: data.get("task"),
+      prompt: data.get("prompt"),
+      imageDataUrl: firstWinImageDataUrl,
+    });
+  });
+
   facebookConnect?.addEventListener("click", () => controller.openConnectorSetup());
   facebookRefresh?.addEventListener("click", () => controller.refreshFacebookStatus());
 
@@ -1294,6 +1518,11 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     }
     if (action === "refresh-insights") {
       await controller.refreshSquareInsights();
+      return;
+    }
+    if (action === "first-win") {
+      firstWinCard?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      firstWinPrompt?.focus?.();
       return;
     }
     if (action === "lead") {
