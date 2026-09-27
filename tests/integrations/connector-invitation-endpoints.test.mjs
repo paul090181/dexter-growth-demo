@@ -124,6 +124,50 @@ test("returned invitation is fragment-only and contains no admin or tenant crede
   assert.ok(fixture.store.invitations.has(hashOpaqueToken(raw)));
 });
 
+test("default invitation handlers use the exact Netlify deploy origin instead of stale preview config", async (t) => {
+  const deployOrigin = "https://deploy-preview-18--euphonious-beijinho-db4b4d.netlify.app";
+  const staleOrigin = "https://deploy-preview-14--euphonious-beijinho-db4b4d.netlify.app";
+  const previousNetlify = globalThis.Netlify;
+  globalThis.Netlify = { env: { get(name) {
+    return ({
+      DEPLOY_PRIME_URL: deployOrigin,
+      GROWTHWISE_PUBLIC_ORIGIN: staleOrigin,
+    })[name] || "";
+  } } };
+  t.after(() => { globalThis.Netlify = previousNetlify; });
+
+  const store = memoryStore();
+  const create = createConnectorInvitationCreateHandler({
+    authorized: () => ({ ok: true }),
+    store,
+    resolveTenant: async (businessId) => ({ business_id: businessId }),
+    now: () => NOW,
+  });
+  const exchange = createConnectorInvitationExchangeHandler({ store, now: () => NOW });
+  const createResponse = await create(new Request(
+    `${deployOrigin}/.netlify/functions/connector-invitation-create`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: deployOrigin },
+      body: JSON.stringify({ business_id: "growthwise-dev", connectors: ["facebook"] }),
+    },
+  ));
+  assert.equal(createResponse.status, 201);
+  const created = await createResponse.json();
+  const invitationUrl = new URL(created.invitation_url);
+  assert.equal(invitationUrl.origin, deployOrigin);
+
+  const exchangeResponse = await exchange(new Request(
+    `${deployOrigin}/.netlify/functions/connector-invitation-exchange`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: deployOrigin },
+      body: JSON.stringify({ invitation_token: invitationUrl.hash.slice("#invite=".length) }),
+    },
+  ));
+  assert.equal(exchangeResponse.status, 200);
+});
+
 test("exchange sets only a secure fixed-lifetime HttpOnly session cookie", async () => {
   const fixture = createFixture();
   const created = await (await fixture.create(createRequest({ business_id: "dexters-hats", connectors: ["instagram", "facebook", "email"] }))).json();
