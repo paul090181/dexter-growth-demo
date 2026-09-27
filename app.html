@@ -14,8 +14,8 @@
   <div class="brand">GrowthWise</div>
   <section class="hero">
     <div class="eyebrow">Business workspace</div>
-    <h1>Your account, one business at a time.</h1>
-    <p>Sign in securely by email. Preview workspace credentials remain available below only as a fallback while passwordless access is being verified.</p>
+    <h1>Your business, ready when you are.</h1>
+    <p>Sign in securely by email and pick up where you left off.</p>
   </section>
 
   <section id="workspace-signed-out" class="card">
@@ -30,12 +30,12 @@
     <div id="workspace-error" class="status" hidden></div>
 
     <details style="margin-top:18px">
-      <summary style="cursor:pointer;font-weight:850;color:#53606c">Use preview credentials instead</summary>
-      <p style="margin-top:10px">Use the Workspace ID and tenant access key created during signup.</p>
+      <summary style="cursor:pointer;font-weight:850;color:#53606c">Preview support sign-in</summary>
+      <p style="margin-top:10px">Use these temporary preview details only if email sign-in is unavailable during testing.</p>
       <form id="workspace-signin-form">
         <label class="field">Workspace ID<input name="business_id" autocomplete="off" required /></label>
-        <label class="field">Tenant access key<input name="tenant_key" type="password" autocomplete="off" required /></label>
-        <button class="button secondary" type="submit">Open with preview credentials</button>
+        <label class="field">Preview access key<input name="tenant_key" type="password" autocomplete="off" required /></label>
+        <button class="button secondary" type="submit">Open preview workspace</button>
       </form>
     </details>
     <p style="margin-top:14px">New business? <a href="./signup.html">Create a workspace</a>.</p>
@@ -48,11 +48,14 @@
       <p id="workspace-contact"></p>
       <div class="summary">
         <div class="metric"><span>Subscription</span><strong id="workspace-status">Checking…</strong></div>
-        <div class="metric"><span>Product access</span><strong id="workspace-access">Checking…</strong></div>
+        <div class="metric"><span>Access</span><strong id="workspace-access">Checking…</strong></div>
       </div>
       <p><strong>Plan</strong><br><span id="workspace-plan">Checking…</span></p>
       <div class="plan-banner" id="workspace-pro-trial" hidden></div>
-      <p><strong>Workspace ID</strong><br><span class="id" id="workspace-id"></span></p>
+      <details style="margin:12px 0">
+        <summary style="cursor:pointer;font-weight:850;color:#53606c">Support details</summary>
+        <p><strong>Workspace ID</strong><br><span class="id" id="workspace-id"></span></p>
+      </details>
       <div class="actions">
         <button class="button" id="workspace-manage-billing" type="button" hidden>Manage billing</button>
         <button class="button secondary" id="workspace-signout" type="button">Sign out</button>
@@ -244,8 +247,8 @@
 
     <section class="card note">
       <div class="eyebrow">Built for your business</div>
-      <h2>Your data stays tenant-bound.</h2>
-      <p>GrowthWise uses only the accounts connected to this workspace. Another business cannot see or use your Square connection, inventory, sales, or tenant credentials.</p>
+      <h2>Your business stays separate.</h2>
+      <p>GrowthWise uses only the accounts connected to this workspace. Another business cannot see or use your connected Square account, inventory, sales, or private workspace access.</p>
     </section>
   </section>
 </main>
