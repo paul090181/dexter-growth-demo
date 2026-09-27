@@ -138,6 +138,34 @@ test("business pulse turns Square summaries into useful metrics and actions", ()
   assert.match(pulse.primary, /top product/i);
   assert.equal(pulse.recommendations.some((item) => /2 units or fewer/i.test(item)), true);
   assert.equal(pulse.recommendations.some((item) => /Average completed order is \$90\.00/i.test(item)), true);
+  assert.equal(pulse.promotionSuggestion, null);
+});
+
+test("business pulse turns an in-stock top seller into a grounded Narleo promotion action", () => {
+  const pulse = buildSquareBusinessPulse({
+    summary: {
+      item_count: 2,
+      total_units_in_stock: 14,
+      inventory_value: "900.00",
+    },
+    products: [
+      { item_name: "Classic Hat", variation_name: "Black", track_inventory: true, quantity: 8 },
+      { item_name: "Fedora", variation_name: "Brown", track_inventory: true, quantity: 6 },
+    ],
+  }, {
+    summary: {
+      completed_order_count: 7,
+      total_collected: "720.00",
+      average_order: "102.86",
+    },
+    top_products: [
+      { item_name: "Classic Hat", total_collected: "420.00" },
+    ],
+  });
+
+  assert.equal(pulse.promotionSuggestion.itemName, "Classic Hat");
+  assert.match(pulse.promotionSuggestion.prompt, /top product by collected sales in the last 30 days/i);
+  assert.match(pulse.promotionSuggestion.prompt, /do not invent price, stock, discount, materials, sizes, or availability/i);
 });
 
 test("connected tenant loads only its own Square inventory and sales for the business pulse", async () => {
@@ -1356,6 +1384,9 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /tenant-square-inventory/);
   assert.match(js, /tenant-square-sales/);
   assert.match(js, /buildSquareBusinessPulse/);
+  assert.match(js, /promotionSuggestion/);
+  assert.match(js, /pulsePromote\.dataset\.prompt/);
+  assert.match(js, /Create a post for/);
   assert.match(js, /openActivation/);
   assert.match(js, /nextAction/);
   assert.match(js, /connect-square/);

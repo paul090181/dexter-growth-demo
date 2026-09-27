@@ -184,6 +184,23 @@ export function buildSquareBusinessPulse(inventory = {}, sales = {}) {
     recommendations.push(`Average completed order is ${money(averageOrder)}; use that as a baseline when evaluating promotions.`);
   }
 
+  let promotionSuggestion = null;
+  if (top?.item_name) {
+    const topName = String(top.item_name).trim();
+    const matchingProducts = products.filter((product) =>
+      String(product?.item_name || product?.name || "").trim().toLowerCase() === topName.toLowerCase()
+    );
+    const matchingTracked = matchingProducts.filter((product) => product?.track_inventory === true);
+    const matchingLowStock = matchingTracked.some((product) => Number(product?.quantity || 0) <= 2);
+    if (!matchingLowStock) {
+      promotionSuggestion = {
+        itemName: topName,
+        prompt:
+          `Square shows ${topName} is currently the top product by collected sales in the last 30 days. Create a social post featuring it. Use only this confirmed sales insight and do not invent price, stock, discount, materials, sizes, or availability.`,
+      };
+    }
+  }
+
   return {
     metrics: {
       sales: money(totalSales),
@@ -194,6 +211,7 @@ export function buildSquareBusinessPulse(inventory = {}, sales = {}) {
     headline,
     primary,
     recommendations: recommendations.slice(0, 3),
+    promotionSuggestion,
   };
 }
 
@@ -1729,6 +1747,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const pulseHeadline = documentImpl.getElementById("workspace-pulse-headline");
   const pulsePrimary = documentImpl.getElementById("workspace-pulse-primary");
   const pulseRecommendations = documentImpl.getElementById("workspace-pulse-recommendations");
+  const pulsePromote = documentImpl.getElementById("workspace-pulse-promote");
   const leadCard = documentImpl.getElementById("workspace-lead-card");
   const leadForm = documentImpl.getElementById("workspace-lead-form");
   const leadSource = documentImpl.getElementById("workspace-lead-source");
@@ -2223,6 +2242,16 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
           item.textContent = recommendation;
           pulseRecommendations.append(item);
         }
+        const promotionSuggestion = pulse.promotionSuggestion;
+        const canPromote = featureAccess.promotion_content === true
+          && promotionSuggestion
+          && typeof promotionSuggestion.prompt === "string"
+          && promotionSuggestion.prompt.trim();
+        pulsePromote.hidden = !canPromote;
+        pulsePromote.textContent = canPromote
+          ? "Create a post for " + promotionSuggestion.itemName
+          : "Create a post from this insight";
+        pulsePromote.dataset.prompt = canPromote ? promotionSuggestion.prompt : "";
       }
     }
 
@@ -2264,6 +2293,16 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     });
   });
   manage?.addEventListener("click", () => controller.openBilling());
+  pulsePromote?.addEventListener("click", () => {
+    const prompt = String(pulsePromote.dataset.prompt || "").trim();
+    if (!prompt) return;
+    firstWinTask.value = "social_post";
+    updateFirstWinTaskUI();
+    firstWinPrompt.value = prompt;
+    firstWinCard?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    firstWinPrompt?.focus?.();
+  });
+
   squareConnect?.addEventListener("click", () => controller.connectSquare());
   squareSkip?.addEventListener("click", () => controller.skipSquare());
   channelsOpen?.addEventListener("click", () => controller.openConnectorSetup());
