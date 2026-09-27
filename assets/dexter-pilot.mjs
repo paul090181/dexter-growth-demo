@@ -152,7 +152,7 @@ photoInput?.addEventListener("change",()=>{
 draftButton?.addEventListener("click",async()=>{
   if(!imageDataUrl)return;
   draftButton.disabled=true;
-  show(draftStatus,"GrowthWise is studying the photo and writing your caption…");
+  show(draftStatus,"Narleo is studying the photo and writing your caption…");
   try{
     const response=await fetch("/.netlify/functions/dexter-instagram-photo-draft",{
       method:"POST",credentials:"same-origin",cache:"no-store",
@@ -160,7 +160,7 @@ draftButton?.addEventListener("click",async()=>{
       body:JSON.stringify({image_data_url:imageDataUrl})
     });
     const body=await response.json().catch(()=>({}));
-    if(!response.ok)throw new Error(body.error||"GrowthWise could not create the draft.");
+    if(!response.ok)throw new Error(body.error||"Narleo could not create the draft.");
     productLabel.textContent=body.product_label||"Your Instagram draft";
     caption.value=body.caption||"";
     uncertainty.textContent=body.uncertainty_note||"";
@@ -170,7 +170,7 @@ draftButton?.addEventListener("click",async()=>{
     show(draftStatus,"✓ Draft ready. Review it below.","ok");
     track("instagram_draft_created");
   }catch(error){
-    show(draftStatus,error.message||"GrowthWise could not create the draft.","error");
+    show(draftStatus,error.message||"Narleo could not create the draft.","error");
   }finally{
     draftButton.disabled=false;
   }

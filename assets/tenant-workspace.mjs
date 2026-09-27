@@ -156,15 +156,15 @@ export function buildSquareBusinessPulse(inventory = {}, sales = {}) {
 
   const recommendations = [];
   let headline = "Your next opportunity";
-  let primary = "Square is connected. GrowthWise will keep this snapshot focused on what deserves attention.";
+  let primary = "Square is connected. Narleo will keep this snapshot focused on what deserves attention.";
 
   if (itemCount === 0) {
-    headline = "Give GrowthWise products to work with";
+    headline = "Give Narleo products to work with";
     primary = "Square is connected, but no active catalog items were found yet.";
-    recommendations.push("Add or import products in Square so GrowthWise can analyze inventory and merchandising.");
+    recommendations.push("Add or import products in Square so Narleo can analyze inventory and merchandising.");
   } else if (orders === 0) {
     headline = "Turn connected inventory into your first measured campaign";
-    primary = `GrowthWise found ${itemCount} catalog item${itemCount === 1 ? "" : "s"}, but no completed orders in the last 30 days.`;
+    primary = `Narleo found ${itemCount} catalog item${itemCount === 1 ? "" : "s"}, but no completed orders in the last 30 days.`;
     recommendations.push("Use one strong in-stock product in a promotion, then compare sales here after the campaign.");
   } else if (top?.item_name) {
     headline = `${top.item_name} is leading recent sales`;
@@ -1511,7 +1511,7 @@ export function createTenantWorkspaceController({
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || body?.ok !== true || typeof body?.reply !== "string") {
-        throw new Error(body?.error || "GrowthWise could not draft the reply.");
+        throw new Error(body?.error || "Narleo could not draft the reply.");
       }
       publish({ lead: { loading: false, error: "", result: body } });
       await trackEvent("ai_workflow_used", { businessId, tenantKey });
@@ -1520,7 +1520,7 @@ export function createTenantWorkspaceController({
       publish({
         lead: {
           loading: false,
-          error: error?.message || "GrowthWise could not draft the reply.",
+          error: error?.message || "Narleo could not draft the reply.",
           result: null,
         },
       });
@@ -1923,7 +1923,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
       nextStep.textContent = view.insights?.error ? "Retry Business Pulse" : "Load Business Pulse";
       if (returnedFromSquare) {
         journeyBanner.hidden = false;
-        journeyBanner.textContent = "Square is connected. GrowthWise is turning your business data into your first Business Pulse.";
+        journeyBanner.textContent = "Square is connected. Narleo is turning your business data into your first Business Pulse.";
       }
     } else {
       nextStep.dataset.nextAction = "lead";
