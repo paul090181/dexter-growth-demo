@@ -6,6 +6,8 @@ import { createFacebookOAuthStartHandler } from "../../netlify/functions/faceboo
 import { createFacebookOAuthCallbackHandler } from "../../netlify/functions/facebook-oauth-callback.mjs";
 import { createFacebookConnectionHandler } from "../../netlify/functions/facebook-connection.mjs";
 import { createFacebookDisconnectHandler } from "../../netlify/functions/facebook-disconnect.mjs";
+import { createFacebookPageOptionsHandler } from "../../netlify/functions/facebook-page-options.mjs";
+import { createFacebookPageSelectHandler } from "../../netlify/functions/facebook-page-select.mjs";
 
 const ORIGIN="https://deploy-preview-18--euphonious-beijinho-db4b4d.netlify.app";
 const BUSINESS_ID="tierney-town-treats";
@@ -113,7 +115,8 @@ test("Facebook callback connects exactly one manageable Page and stores no token
 });
 
 test("Facebook callback never guesses when an owner manages multiple Pages",async()=>{
-  let connected=false,finished=null;
+  let connected=false,saved=null;
+  const selectionToken=`gw_fbsel_${"S".repeat(43)}`;
   const handler=createFacebookOAuthCallbackHandler({
     now:()=>NOW,
     config:()=>({
@@ -124,8 +127,9 @@ test("Facebook callback never guesses when an owner manages multiple Pages",asyn
     store:{
       async claimTransaction(){return {business_id:BUSINESS_ID,status:"processing"};},
       async connectCredential(){connected=true;},
-      async finishTransaction(input){finished=input;return input;},
+      async savePageSelection(input){saved=input;return input;},
     },
+    selectionTokenFactory:()=>selectionToken,
     exchangeCode:async()=>({accessToken:"USER_TOKEN"}),
     listPages:async()=>[
       {id:"page-1",name:"One",accessToken:"TOKEN_1",tasks:[]},
@@ -137,9 +141,83 @@ test("Facebook callback never guesses when an owner manages multiple Pages",asyn
     ORIGIN+"/.netlify/functions/facebook-oauth-callback?state=v1.synthetic.state&code=provider-code",
   ));
   assert.equal(response.status,303);
-  assert.equal(response.headers.get("location"),ORIGIN+"/connect-accounts.html?facebook=multiple-pages");
+  const location=response.headers.get("location");
+  assert.match(location,/\/connect-accounts\.html\?facebook=select#facebook_selection=gw_fbsel_/);
+  assert.equal(location.includes("TOKEN_1"),false);
+  assert.equal(location.includes("TOKEN_2"),false);
   assert.equal(connected,false);
-  assert.equal(finished.status,"consumed_failed");
+  assert.equal(saved.businessId,BUSINESS_ID);
+  assert.equal(saved.pages.length,2);
+});
+
+test("Facebook Page options return only Page ids and names from the tenant-bound selection",async()=>{
+  const selectionToken=`gw_fbsel_${"T".repeat(43)}`;
+  const handler=createFacebookPageOptionsHandler({
+    connectorStore:{},
+    connectorAuthorize:connectorAllowed(),
+    now:()=>NOW,
+    crypto:{},
+    store:{
+      async readPageSelection(){
+        return {
+          business_id:BUSINESS_ID,
+          selection_expires_at:new Date(NOW.getTime()+600000),
+          pages:[
+            {id:"page-1",name:"One",accessToken:"SECRET_1",tasks:[]},
+            {id:"page-2",name:"Two",accessToken:"SECRET_2",tasks:[]},
+          ],
+        };
+      },
+    },
+  });
+  const response=await handler(new Request(ORIGIN+"/.netlify/functions/facebook-page-options",{
+    method:"POST",
+    headers:{"content-type":"application/json",origin:ORIGIN,"sec-fetch-site":"same-origin"},
+    body:JSON.stringify({selection_token:selectionToken}),
+  }));
+  assert.equal(response.status,200);
+  const body=await response.json();
+  assert.deepEqual(body.pages,[{id:"page-1",name:"One"},{id:"page-2",name:"Two"}]);
+  assert.equal(JSON.stringify(body).includes("SECRET_"),false);
+});
+
+test("Facebook Page selection verifies the chosen Page and consumes only that tenant selection",async()=>{
+  const selectionToken=`gw_fbsel_${"U".repeat(43)}`;
+  let connected=null;
+  const handler=createFacebookPageSelectHandler({
+    connectorStore:{},
+    connectorAuthorize:connectorAllowed(),
+    now:()=>NOW,
+    crypto:{},
+    store:{
+      async readPageSelection(){
+        return {
+          business_id:BUSINESS_ID,
+          selection_expires_at:new Date(NOW.getTime()+600000),
+          pages:[
+            {id:"page-1",name:"One",accessToken:"SECRET_1",tasks:[]},
+            {id:"page-2",name:"Two",accessToken:"SECRET_2",tasks:[]},
+          ],
+        };
+      },
+      async connectSelectedCredential(input){connected=input;return {business_id:BUSINESS_ID};},
+    },
+    verifyPage:async({pageId,pageAccessToken})=>{
+      assert.equal(pageId,"page-2");
+      assert.equal(pageAccessToken,"SECRET_2");
+      return {pageId:"page-2",pageName:"Two"};
+    },
+  });
+  const response=await handler(new Request(ORIGIN+"/.netlify/functions/facebook-page-select",{
+    method:"POST",
+    headers:{"content-type":"application/json",origin:ORIGIN,"sec-fetch-site":"same-origin"},
+    body:JSON.stringify({page_id:"page-2",selection_token:selectionToken}),
+  }));
+  assert.equal(response.status,200);
+  const body=await response.json();
+  assert.equal(body.account.page_name,"Two");
+  assert.equal(connected.businessId,BUSINESS_ID);
+  assert.equal(connected.pageId,"page-2");
 });
 
 test("Facebook health is connector-scoped and reports the stored Page identity",async()=>{

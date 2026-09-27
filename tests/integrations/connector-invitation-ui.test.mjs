@@ -175,6 +175,8 @@ test("the static page is no-store, self-contained, credential-free, and contains
   assert.match(html, /id="facebook-status"/);
   assert.match(html, /Connect Facebook/);
   assert.match(html, /Facebook Page/);
+  assert.match(html, /id="facebook-page-picker"/);
+  assert.match(html, /id="facebook-page-choice"/);
   assert.match(html, /Referrer-Policy/i);
   assert.match(html, /Cache-Control/i);
   assert.match(html, /Content-Security-Policy/i);
@@ -257,6 +259,65 @@ test("secure account page includes business-mailbox guidance and no external ema
   assert.doesNotMatch(html, /outlook\.com|microsoft\.com\/en-us\/microsoft-365/);
 });
 
+
+test("Facebook Page selection fragment is consumed locally before network use", async () => {
+  const module = await import("../../assets/connector-invitation.mjs");
+  const token = `gw_fbsel_${"V".repeat(43)}`;
+  const changes = [];
+  const result = module.consumeFacebookSelectionToken({
+    href: `${ORIGIN}/connect-accounts.html?facebook=select#facebook_selection=${token}`,
+    historyImpl: { replaceState(_a, _b, value) { changes.push(value); } },
+  });
+  assert.equal(result, token);
+  assert.deepEqual(changes, ["/connect-accounts.html?facebook=select"]);
+});
+
+test("Facebook Page picker returns only the selected Page through the tenant-bound controller", async () => {
+  const calls = [];
+  const token = `gw_fbsel_${"W".repeat(43)}`;
+  const controller = createCustomerConnectorController({
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      if (url.endsWith("/connector-session")) return response({
+        business_id: "tierney-town-treats",
+        business_name: "Tierney Town Treats",
+        connectors: {
+          facebook: { allowed: true, available: true, state: "Not Connected" },
+          instagram: { allowed: false, available: false },
+          email: { allowed: false, available: false, state: "Setup unavailable" },
+        },
+      });
+      if (url.includes("/facebook-connection?")) return response({
+        business_id: "tierney-town-treats",
+        state: "Not Connected",
+        checked_at: "now",
+        action: "Connect",
+      });
+      if (url.endsWith("/facebook-page-options")) return response({
+        business_id: "tierney-town-treats",
+        pages: [{ id: "page-1", name: "One" }, { id: "page-2", name: "Two" }],
+        expires_at: "2026-09-27T02:10:00.000Z",
+      });
+      if (url.endsWith("/facebook-page-select")) return response({
+        ok: true,
+        business_id: "tierney-town-treats",
+        account: { page_name: "Two" },
+      });
+      return response({});
+    },
+  });
+  await controller.load();
+  assert.equal(await controller.loadFacebookPageOptions(token), true);
+  assert.equal(controller.getState().facebook.state, "Choose Page");
+  assert.equal(await controller.selectFacebookPage("page-2"), true);
+  assert.equal(controller.getState().facebook.state, "Connected");
+  assert.equal(controller.getState().facebook.account.pageName, "Two");
+  const select = calls.find((call) => call.url.endsWith("/facebook-page-select"));
+  assert.deepEqual(JSON.parse(select.init.body), {
+    page_id: "page-2",
+    selection_token: token,
+  });
+});
 
 test("email return hint is removed locally before the connector page continues", async () => {
   const module = await import("../../assets/connector-invitation.mjs");

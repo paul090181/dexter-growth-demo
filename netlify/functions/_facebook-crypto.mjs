@@ -65,6 +65,15 @@ function aad(businessId,pageBindingKey){
   );
 }
 
+function selectionAad(businessId,selectionHash){
+  requireSegment(businessId,"INVALID_SELECTION_CONTEXT");
+  if(typeof selectionHash!=="string"||!/^[a-f0-9]{64}$/.test(selectionHash))fail("INVALID_SELECTION_CONTEXT");
+  return Buffer.from(
+    `growthwise-facebook-database\nselection-v1\n${businessId}\n${selectionHash}`,
+    "utf8",
+  );
+}
+
 export function createFacebookCrypto({
   stateSecrets,
   bindingSecrets,
@@ -139,6 +148,47 @@ export function createFacebookCrypto({
       }catch(error){
         if(error?.message==="UNKNOWN_CREDENTIAL_KEY")throw error;
         fail("CREDENTIAL_DECRYPT_FAILED");
+      }
+    },
+
+    encryptSelection({businessId,selectionHash,pages}){
+      if(!Array.isArray(pages)||pages.length<2||pages.length>100)fail("INVALID_SELECTION_PAYLOAD");
+      const iv=Buffer.from(randomBytesImpl(GCM_IV_BYTES));
+      if(iv.length!==GCM_IV_BYTES)fail("INVALID_RANDOM_SOURCE");
+      let plaintext;
+      try{plaintext=Buffer.from(JSON.stringify(pages),"utf8");}catch{fail("INVALID_SELECTION_PAYLOAD");}
+      const cipher=createCipheriv("aes-256-gcm",credentials[0].key,iv);
+      cipher.setAAD(selectionAad(businessId,selectionHash));
+      const encrypted=Buffer.concat([cipher.update(plaintext),cipher.final(),cipher.getAuthTag()]);
+      return {
+        algorithm:"A256GCM",key_version:credentials[0].id,
+        iv:iv.toString("base64url"),ciphertext:encrypted.toString("base64url"),
+      };
+    },
+
+    decryptSelection({businessId,selectionHash,encryptedSelection}){
+      if(!encryptedSelection||encryptedSelection.algorithm!=="A256GCM")fail("SELECTION_DECRYPT_FAILED");
+      const version=credentials.find(({id})=>id===encryptedSelection.key_version);
+      if(!version)fail("UNKNOWN_CREDENTIAL_KEY");
+      try{
+        const iv=decodeBase64url(encryptedSelection.iv,GCM_IV_BYTES,"SELECTION_DECRYPT_FAILED");
+        if(typeof encryptedSelection.ciphertext!=="string"||!/^[A-Za-z0-9_-]+$/.test(encryptedSelection.ciphertext)){
+          fail("SELECTION_DECRYPT_FAILED");
+        }
+        const combined=Buffer.from(encryptedSelection.ciphertext,"base64url");
+        if(combined.length<=GCM_TAG_BYTES||combined.toString("base64url")!==encryptedSelection.ciphertext){
+          fail("SELECTION_DECRYPT_FAILED");
+        }
+        const body=combined.subarray(0,-GCM_TAG_BYTES),tag=combined.subarray(-GCM_TAG_BYTES);
+        const decipher=createDecipheriv("aes-256-gcm",version.key,iv);
+        decipher.setAAD(selectionAad(businessId,selectionHash));
+        decipher.setAuthTag(tag);
+        const parsed=JSON.parse(Buffer.concat([decipher.update(body),decipher.final()]).toString("utf8"));
+        if(!Array.isArray(parsed))fail("SELECTION_DECRYPT_FAILED");
+        return parsed;
+      }catch(error){
+        if(error?.message==="UNKNOWN_CREDENTIAL_KEY")throw error;
+        fail("SELECTION_DECRYPT_FAILED");
       }
     },
   };

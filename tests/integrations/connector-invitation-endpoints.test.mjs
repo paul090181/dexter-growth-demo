@@ -53,7 +53,7 @@ function memoryStore() {
   };
 }
 
-function createFixture() {
+function createFixture({ facebookAvailable = () => false } = {}) {
   const store = memoryStore();
   const resolveTenant = createConnectorTenantResolver({
     pilotTenants: { "dexters-hats": { business_id: "dexters-hats", display_name: "Dexter's Hats" } },
@@ -69,7 +69,9 @@ function createFixture() {
   const exchange = createConnectorInvitationExchangeHandler({
     store, publicOrigin: () => ORIGIN, now: () => NOW,
   });
-  const session = createConnectorSessionHandler({ store, now: () => NOW, resolveTenant });
+  const session = createConnectorSessionHandler({
+    store, now: () => NOW, resolveTenant, facebookAvailable,
+  });
   return { store, create, exchange, session };
 }
 
@@ -180,6 +182,31 @@ test("session metadata comes only from the cookie-bound tenant and keeps Faceboo
       instagram: { allowed: true, available: true },
       email: { allowed: true, available: false, state: "Setup unavailable" },
     },
+  });
+});
+
+test("session metadata exposes Facebook only when server configuration is available", async () => {
+  const fixture = createFixture({ facebookAvailable: () => true });
+  const created = await (await fixture.create(createRequest({
+    business_id: "dexters-hats",
+    connectors: ["facebook"],
+  }))).json();
+  const token = new URL(created.invitation_url).hash.slice("#invite=".length);
+  const exchange = await fixture.exchange(createRequest(
+    { invitation_token: token },
+    { key: "", path: "connector-invitation-exchange" },
+  ));
+  const cookie = exchange.headers.get("set-cookie").split(";", 1)[0];
+  const response = await fixture.session(new Request(
+    `${ORIGIN}/.netlify/functions/connector-session`,
+    { headers: { cookie } },
+  ));
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.deepEqual(body.connectors.facebook, {
+    allowed: true,
+    available: true,
+    state: "Not Connected",
   });
 });
 

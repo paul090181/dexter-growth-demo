@@ -41,7 +41,7 @@ const FINALIZE_CONNECTED=`
      SET status='consumed_success',consumed_at=$3,updated_at=CURRENT_TIMESTAMP
    WHERE transaction_key=$1
      AND business_id=$2
-     AND status='processing'
+     AND status IN ('processing','awaiting_selection')
   RETURNING transaction_key
 `;
 const READ_CREDENTIAL=`
@@ -70,6 +70,36 @@ const FIND_BUSINESS_BY_BINDING=`
    LIMIT 2
 `;
 
+const SAVE_SELECTION=`
+  UPDATE facebook_oauth_transactions
+     SET status='awaiting_selection',
+         selection_hash=$3,
+         encrypted_selection=$4::jsonb,
+         selection_expires_at=$5,
+         updated_at=CURRENT_TIMESTAMP
+   WHERE transaction_key=$1
+     AND business_id=$2
+     AND status='processing'
+  RETURNING transaction_key,business_id,status,selection_hash,selection_expires_at
+`;
+
+const READ_SELECTION=`
+  SELECT transaction_key,business_id,status,selection_hash,encrypted_selection,selection_expires_at
+    FROM facebook_oauth_transactions
+   WHERE selection_hash=$1
+     AND business_id=$2
+     AND status='awaiting_selection'
+     AND selection_expires_at>$3
+`;
+
+const LOCK_SELECTION=`
+  SELECT transaction_key,business_id,status,selection_hash,encrypted_selection,selection_expires_at
+    FROM facebook_oauth_transactions
+   WHERE selection_hash=$1
+     AND business_id=$2
+   FOR UPDATE
+`;
+
 async function netlifyPool(){
   const {getDatabase}=await import("@netlify/database");
   return getDatabase().pool;
@@ -93,6 +123,25 @@ function date(value,code){
   const parsed=value instanceof Date?new Date(value):new Date(value);
   if(!Number.isFinite(parsed.getTime()))throw failure(code);
   return parsed;
+}
+
+function selectionHash(value){
+  const clean=typeof value==="string"?value.trim():"";
+  if(!/^[a-f0-9]{64}$/.test(clean))throw failure("INVALID_SELECTION");
+  return clean;
+}
+function pageList(value){
+  if(!Array.isArray(value)||value.length<2||value.length>100)throw failure("INVALID_SELECTION");
+  return value.map((page)=>{
+    const id=typeof page?.id==="string"?page.id.trim():"";
+    const name=typeof page?.name==="string"?page.name.trim():"";
+    const accessToken=typeof page?.accessToken==="string"?page.accessToken:"";
+    if(!id||!name||!accessToken)throw failure("INVALID_SELECTION");
+    return {
+      id,name,accessToken,
+      tasks:Array.isArray(page.tasks)?page.tasks.filter((item)=>typeof item==="string"):[],
+    };
+  });
 }
 
 export function createFacebookStore({getPool=netlifyPool,crypto}={}){
@@ -222,6 +271,126 @@ export function createFacebookStore({getPool=netlifyPool,crypto}={}){
     catch(error){throw failure("CREDENTIAL_DELETE_FAILED",error);}
   }
 
+  async function savePageSelection({
+    transactionKey:key,businessId:id,pages,selectionHash:hash,expiresAt,
+  }={}){
+    if(!crypto?.encryptSelection)throw failure("CREDENTIAL_CONFIGURATION_FAILED");
+    const cleanBusiness=businessId(id);
+    const cleanHash=selectionHash(hash);
+    const cleanPages=pageList(pages);
+    const expiry=date(expiresAt,"INVALID_SELECTION");
+    const encrypted=crypto.encryptSelection({
+      businessId:cleanBusiness,selectionHash:cleanHash,pages:cleanPages,
+    });
+    try{
+      const row=(await query(SAVE_SELECTION,[
+        transactionKey(key),cleanBusiness,cleanHash,JSON.stringify(encrypted),expiry,
+      ])).rows[0];
+      if(!row)throw failure("SELECTION_SAVE_FAILED");
+      return row;
+    }catch(error){
+      if(error?.message==="SELECTION_SAVE_FAILED")throw error;
+      throw failure("SELECTION_SAVE_FAILED",error);
+    }
+  }
+
+  async function readPageSelection({selectionHash:hash,businessId:id,now=new Date()}={}){
+    if(!crypto?.decryptSelection)throw failure("CREDENTIAL_CONFIGURATION_FAILED");
+    const cleanHash=selectionHash(hash);
+    const cleanBusiness=businessId(id);
+    const checked=date(now,"INVALID_SELECTION");
+    try{
+      const row=(await query(READ_SELECTION,[cleanHash,cleanBusiness,checked])).rows[0];
+      if(!row)return null;
+      const pages=crypto.decryptSelection({
+        businessId:cleanBusiness,
+        selectionHash:cleanHash,
+        encryptedSelection:row.encrypted_selection,
+      });
+      return {
+        transaction_key:row.transaction_key,
+        business_id:row.business_id,
+        selection_expires_at:new Date(row.selection_expires_at),
+        pages:pageList(pages),
+      };
+    }catch(error){
+      if(error?.message==="CREDENTIAL_CONFIGURATION_FAILED")throw error;
+      throw failure("SELECTION_READ_FAILED",error);
+    }
+  }
+
+  async function connectSelectedCredential({
+    selectionHash:hash,businessId:id,pageId,verifiedPageName,graphVersion,now=new Date(),
+  }={}){
+    if(!crypto?.decryptSelection||!crypto?.pageBindingKey||!crypto?.pageBindingKeys||!crypto?.encryptCredential){
+      throw failure("CREDENTIAL_CONFIGURATION_FAILED");
+    }
+    const cleanHash=selectionHash(hash);
+    const cleanBusiness=businessId(id);
+    const selectedId=typeof pageId==="string"?pageId.trim():"";
+    const pageName=typeof verifiedPageName==="string"?verifiedPageName.trim():"";
+    const checked=date(now,"INVALID_SELECTION");
+    if(!selectedId||!pageName)throw failure("INVALID_SELECTION");
+
+    const pool=await getPool();
+    const client=await pool.connect();
+    try{
+      await client.query("BEGIN");
+      const row=(await client.query(LOCK_SELECTION,[cleanHash,cleanBusiness])).rows[0];
+      const expiresAt=row?.selection_expires_at?new Date(row.selection_expires_at):null;
+      if(!row||row.status!=="awaiting_selection"||!expiresAt
+        ||!Number.isFinite(expiresAt.getTime())||expiresAt.getTime()<=checked.getTime()){
+        throw failure("SELECTION_INVALID");
+      }
+      const pages=pageList(crypto.decryptSelection({
+        businessId:cleanBusiness,
+        selectionHash:cleanHash,
+        encryptedSelection:row.encrypted_selection,
+      }));
+      const selected=pages.find((page)=>page.id===selectedId);
+      if(!selected)throw failure("SELECTION_INVALID");
+
+      const binding=crypto.pageBindingKey(selected.id);
+      const bindings=crypto.pageBindingKeys(selected.id);
+      const encrypted=crypto.encryptCredential({
+        businessId:cleanBusiness,
+        pageId:selected.id,
+        payload:{
+          page_id:selected.id,
+          page_access_token:selected.accessToken,
+          graph_version:graphVersion,
+          permissions:["pages_show_list","pages_read_engagement","pages_manage_posts"],
+        },
+      });
+      const credential=(await client.query(CONNECT_CREDENTIAL,[
+        cleanBusiness,binding,JSON.stringify(encrypted),encrypted.key_version,"active",
+        pageName,checked,bindings,
+      ])).rows[0];
+      if(!credential)throw failure("PAGE_REBIND_FORBIDDEN");
+
+      const finalized=(await client.query(FINALIZE_CONNECTED,[
+        row.transaction_key,cleanBusiness,checked,
+      ])).rows[0];
+      if(!finalized)throw failure("OAUTH_TRANSACTION_FINISH_FAILED");
+      await client.query(
+        `UPDATE facebook_oauth_transactions
+            SET selection_hash=NULL,encrypted_selection=NULL,selection_expires_at=NULL
+          WHERE transaction_key=$1`,
+        [row.transaction_key],
+      );
+      await client.query("COMMIT");
+      return credential;
+    }catch(error){
+      try{await client.query("ROLLBACK");}catch{}
+      if(["SELECTION_INVALID","PAGE_REBIND_FORBIDDEN","OAUTH_TRANSACTION_FINISH_FAILED"].includes(error?.message)){
+        throw error;
+      }
+      throw failure("SELECTION_CONNECT_FAILED",error);
+    }finally{
+      client.release();
+    }
+  }
+
   async function resolveBusinessByPageId({pageId}={}){
     if(!crypto?.pageBindingKeys)throw failure("CREDENTIAL_CONFIGURATION_FAILED");
     if(typeof pageId!=="string"||!pageId.trim())throw failure("INVALID_PAGE_CONTEXT");
@@ -237,7 +406,8 @@ export function createFacebookStore({getPool=netlifyPool,crypto}={}){
   return {
     createTransaction,createTransactionWithFreshState,claimTransaction,finishTransaction,
     connectCredential,readCredential,readDecryptedCredential,updateCredentialHealth,
-    disconnectCredential,resolveBusinessByPageId,
+    disconnectCredential,savePageSelection,readPageSelection,connectSelectedCredential,
+    resolveBusinessByPageId,
   };
 }
 

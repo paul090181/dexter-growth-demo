@@ -1,6 +1,10 @@
 import { createFacebookCrypto } from "./_facebook-crypto.mjs";
 import { createFacebookStore } from "./_facebook-store.mjs";
 import {
+  generateFacebookSelectionToken,
+  hashFacebookSelectionToken,
+} from "./_facebook-selection.mjs";
+import {
   configuredFacebookOAuth,
   exchangeFacebookAuthorizationCode,
   listFacebookPages,
@@ -10,6 +14,7 @@ import { resolveGrowthWisePublicOrigin } from "./_public-origin.mjs";
 
 const PATH="/.netlify/functions/facebook-oauth-callback";
 const MAX_QUERY_BYTES=8192;
+const PAGE_SELECTION_TTL_MS=10*60*1000;
 const SAFE_HEADERS={
   "cache-control":"no-store",
   pragma:"no-cache",
@@ -31,9 +36,10 @@ function plain(status){
     status,headers:{...SAFE_HEADERS,"content-type":"text/plain; charset=utf-8"},
   });
 }
-function redirect(origin,hint){
+function redirect(origin,hint,fragment=""){
   const target=new URL("/connect-accounts.html",origin);
   target.searchParams.set("facebook",hint);
+  if(fragment)target.hash=fragment;
   return new Response(null,{status:303,headers:{...SAFE_HEADERS,location:target.toString()}});
 }
 function parseCallback(request){
@@ -102,9 +108,25 @@ export function createFacebookOAuthCallbackHandler(options={}){
       const pages=await (options.listPages??listFacebookPages)({
         accessToken:userToken.accessToken,graphVersion:settings.graphVersion,
       });
-      if(pages.length!==1){
+      if(pages.length===0){
         await store.finishTransaction({transactionKey,status:"consumed_failed",now:now()});
-        return redirect(settings.publicOrigin,pages.length>1?"multiple-pages":"no-page");
+        return redirect(settings.publicOrigin,"no-page");
+      }
+      if(pages.length>1){
+        const selectionToken=(options.selectionTokenFactory??generateFacebookSelectionToken)();
+        const selectionHash=hashFacebookSelectionToken(selectionToken);
+        await store.savePageSelection({
+          transactionKey,
+          businessId:transaction.business_id,
+          pages,
+          selectionHash,
+          expiresAt:new Date(now().getTime()+PAGE_SELECTION_TTL_MS),
+        });
+        return redirect(
+          settings.publicOrigin,
+          "select",
+          `facebook_selection=${selectionToken}`,
+        );
       }
       const page=pages[0];
       stage="page_verify";

@@ -6,6 +6,7 @@ const INVITATION_PATTERN = /^gw_inv_[A-Za-z0-9_-]{43}$/;
 const INSTAGRAM_STATES = new Set(["Not Connected", "Connected", "Needs Attention"]);
 const EMAIL_STATES = new Set(["Not Connected", "Connected", "Needs Attention"]);
 const FACEBOOK_STATES = new Set(["Not Connected", "Connected", "Needs Attention"]);
+const FACEBOOK_SELECTION_PATTERN = /^gw_fbsel_[A-Za-z0-9_-]{43}$/;
 
 function safePath(url) { return `${url.pathname}${url.search}`; }
 
@@ -78,8 +79,24 @@ export function consumeFacebookReturnHint({ href = globalThis.location.href, his
     url.searchParams.delete("facebook");
     historyImpl.replaceState(null, "", safePath(url));
   }
-  return new Set(["connected", "cancelled", "attention", "multiple-pages", "no-page"]).has(hint)
+  return new Set(["connected", "cancelled", "attention", "select", "no-page"]).has(hint)
     ? hint : null;
+}
+
+export function consumeFacebookSelectionToken({
+  href = globalThis.location.href,
+  historyImpl = globalThis.history,
+} = {}) {
+  const url = new URL(href, globalThis.location?.origin);
+  if (!url.hash) return null;
+  const params = new URLSearchParams(url.hash.slice(1));
+  const values = params.getAll("facebook_selection");
+  if (params.size !== 1 || values.length !== 1 || !FACEBOOK_SELECTION_PATTERN.test(values[0])) {
+    return null;
+  }
+  url.hash = "";
+  historyImpl.replaceState(null, "", safePath(url));
+  return values[0];
 }
 
 export function createCustomerConnectorController({
@@ -111,6 +128,9 @@ export function createCustomerConnectorController({
       allowed: false,
       connecting: false,
       disconnecting: false,
+      selectionToken: "",
+      pageOptions: [],
+      selecting: false,
     },
   };
   let connectPromise = null;
@@ -196,6 +216,9 @@ export function createCustomerConnectorController({
         allowed: facebookAllowed,
         connecting: false,
         disconnecting: false,
+        selectionToken: "",
+        pageOptions: [],
+        selecting: false,
       };
       if (facebookAvailable) {
         const healthResponse = await fetchImpl(`${ENDPOINT}/facebook-connection?business_id=${encodeURIComponent(session.business_id)}`, {
@@ -371,6 +394,96 @@ export function createCustomerConnectorController({
     })();
   }
 
+  async function loadFacebookPageOptions(selectionToken) {
+    if (!state.businessId || !state.facebook.allowed || !state.facebook.available
+      || !FACEBOOK_SELECTION_PATTERN.test(String(selectionToken || ""))) return false;
+    try {
+      const response = await fetchImpl(`${ENDPOINT}/facebook-page-options`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selection_token: selectionToken }),
+      });
+      const body = await response.json();
+      if (!response.ok || body?.business_id !== state.businessId
+        || !Array.isArray(body?.pages) || body.pages.length < 2
+        || body.pages.some((page) => typeof page?.id !== "string" || typeof page?.name !== "string")) {
+        throw new Error("selection_failed");
+      }
+      publish({
+        facebook: {
+          ...state.facebook,
+          state: "Choose Page",
+          action: "Choose the Facebook Page that belongs to this business.",
+          selectionToken,
+          pageOptions: body.pages.map((page) => ({ id: page.id, name: page.name })),
+          selecting: false,
+        },
+      });
+      return true;
+    } catch {
+      publish({
+        facebook: {
+          ...state.facebook,
+          state: "Needs Attention",
+          action: "Facebook Page selection expired. Start the Facebook connection again.",
+          selectionToken: "",
+          pageOptions: [],
+          selecting: false,
+        },
+      });
+      return false;
+    }
+  }
+
+  async function selectFacebookPage(pageId) {
+    const selected = String(pageId || "");
+    if (!state.businessId || !state.facebook.selectionToken
+      || !state.facebook.pageOptions.some((page) => page.id === selected)
+      || state.facebook.selecting) return false;
+    publish({ facebook: { ...state.facebook, selecting: true } });
+    try {
+      const response = await fetchImpl(`${ENDPOINT}/facebook-page-select`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          page_id: selected,
+          selection_token: state.facebook.selectionToken,
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok || body?.ok !== true || body?.business_id !== state.businessId
+        || typeof body?.account?.page_name !== "string") {
+        throw new Error("selection_failed");
+      }
+      publish({
+        facebook: {
+          ...state.facebook,
+          state: "Connected",
+          action: "",
+          account: { pageName: body.account.page_name },
+          selectionToken: "",
+          pageOptions: [],
+          selecting: false,
+        },
+      });
+      return true;
+    } catch {
+      publish({
+        facebook: {
+          ...state.facebook,
+          state: "Needs Attention",
+          action: "That Facebook Page could not be connected. Start the Facebook connection again.",
+          selectionToken: "",
+          pageOptions: [],
+          selecting: false,
+        },
+      });
+      return false;
+    }
+  }
+
   async function disconnectFacebook() {
     if (!state.businessId || !state.facebook.allowed || !state.facebook.available
       || !["Connected", "Needs Attention"].includes(state.facebook.state)
@@ -380,7 +493,7 @@ export function createCustomerConnectorController({
       const response = await fetchImpl(`${ENDPOINT}/facebook-disconnect`, {
         method: "POST",
         credentials: "same-origin",
-        headers: { "Content-Type": "application/json", "Origin": globalThis.location.origin },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ business_id: state.businessId }),
       });
       const body = await response.json();
@@ -414,6 +527,8 @@ export function createCustomerConnectorController({
     disconnectEmail,
     connectFacebook,
     disconnectFacebook,
+    loadFacebookPageOptions,
+    selectFacebookPage,
     setEmailMailboxContext,
     getState: () => structuredClone(state),
   };
@@ -523,11 +638,16 @@ export function mountConnectorInbox({ documentImpl = globalThis.document, fetchI
 
   const controller = createConnectorInboxController({ fetchImpl, onChange: render });
   render(controller.getState());
-  controller.load();
+  controller.load().then(() => {
+    if (facebookSelectionToken) controller.loadFacebookPageOptions(facebookSelectionToken);
+  });
   return controller;
 }
 
-export function mountCustomerConnectorPage({ documentImpl = globalThis.document } = {}) {
+export function mountCustomerConnectorPage({
+  documentImpl = globalThis.document,
+  facebookSelectionToken = "",
+} = {}) {
   const businessName = documentImpl.getElementById("business-name");
   const error = documentImpl.getElementById("connection-error");
   const instagramStatus = documentImpl.getElementById("instagram-status");
@@ -544,6 +664,9 @@ export function mountCustomerConnectorPage({ documentImpl = globalThis.document 
   const facebookButton = documentImpl.getElementById("facebook-connect");
   const facebookUnavailable = documentImpl.getElementById("facebook-unavailable");
   const facebookDisconnect = documentImpl.getElementById("facebook-disconnect");
+  const facebookPicker = documentImpl.getElementById("facebook-page-picker");
+  const facebookChoice = documentImpl.getElementById("facebook-page-choice");
+  const facebookConfirm = documentImpl.getElementById("facebook-page-confirm");
   const render = (view) => {
     businessName.textContent = view.businessName;
     error.textContent = view.error;
@@ -583,6 +706,21 @@ export function mountCustomerConnectorPage({ documentImpl = globalThis.document 
       || !["Connected", "Needs Attention"].includes(view.facebook.state);
     facebookDisconnect.disabled = view.loading || view.facebook.disconnecting;
     facebookDisconnect.textContent = view.facebook.disconnecting ? "Disconnecting…" : "Disconnect";
+    const showPicker = view.facebook.state === "Choose Page" && view.facebook.pageOptions.length > 1;
+    facebookPicker.hidden = !showPicker;
+    if (showPicker) {
+      const current = facebookChoice.value;
+      facebookChoice.replaceChildren();
+      for (const page of view.facebook.pageOptions) {
+        const option = documentImpl.createElement("option");
+        option.value = page.id;
+        option.textContent = page.name;
+        facebookChoice.append(option);
+      }
+      if (view.facebook.pageOptions.some((page) => page.id === current)) facebookChoice.value = current;
+      facebookConfirm.disabled = view.facebook.selecting;
+      facebookConfirm.textContent = view.facebook.selecting ? "Connecting…" : "Use this Page";
+    }
   };
   const controller = createCustomerConnectorController({ onChange: render });
   instagramButton.addEventListener("click", () => controller.connectInstagram());
@@ -590,6 +728,7 @@ export function mountCustomerConnectorPage({ documentImpl = globalThis.document 
   emailDisconnect.addEventListener("click", () => controller.disconnectEmail());
   facebookButton.addEventListener("click", () => controller.connectFacebook());
   facebookDisconnect.addEventListener("click", () => controller.disconnectFacebook());
+  facebookConfirm.addEventListener("click", () => controller.selectFacebookPage(facebookChoice.value));
   for (const choice of emailChoices) {
     choice.addEventListener("change", () => controller.setEmailMailboxContext(choice.value));
   }
@@ -599,6 +738,7 @@ export function mountCustomerConnectorPage({ documentImpl = globalThis.document 
 }
 
 async function startBrowserPage() {
+  const facebookSelectionToken = consumeFacebookSelectionToken();
   const invitation = await bootstrapConnectorInvitation();
   if (!connectorInvitationAllowsPageStart(invitation)) {
     const error = globalThis.document?.getElementById("connection-error");
@@ -608,14 +748,11 @@ async function startBrowserPage() {
   consumeInstagramReturnHint();
   consumeEmailReturnHint();
   const facebookHint = consumeFacebookReturnHint();
-  if (facebookHint === "multiple-pages") {
-    const error = globalThis.document?.getElementById("connection-error");
-    if (error) error.textContent = "This Facebook account manages more than one Page. Page selection is the next setup step; nothing was connected automatically.";
-  } else if (facebookHint === "no-page") {
+  if (facebookHint === "no-page") {
     const error = globalThis.document?.getElementById("connection-error");
     if (error) error.textContent = "No manageable Facebook Page was found for that Facebook account.";
   }
-  mountCustomerConnectorPage();
+  mountCustomerConnectorPage({ facebookSelectionToken });
   mountConnectorInbox();
 }
 
