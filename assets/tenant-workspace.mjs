@@ -288,7 +288,7 @@ export function createTenantWorkspaceController({
     insights: { enabled: false, loading: false, error: "", inventory: null, sales: null, pulse: null },
     channels: { loading: false, error: "" },
     emailLogin: { loading: false, error: "", message: "" },
-    lead: { loading: false, error: "", result: null },
+    lead: { loading: false, error: "", result: null, sourceLeadId: "", markedReplied: false },
     inbox: {
       enabled: false,
       loading: false,
@@ -1061,7 +1061,7 @@ export function createTenantWorkspaceController({
   async function updateInboxStatus(leadId, action) {
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
     const id = String(leadId || "").trim();
-    const normalized = ["needs_follow_up", "close", "reopen"].includes(action) ? action : "";
+    const normalized = ["needs_follow_up", "mark_replied", "close", "reopen"].includes(action) ? action : "";
     if (!state.signedIn
       || state.subscription?.feature_access?.unified_inbox !== true
       || !businessId
@@ -1585,19 +1585,20 @@ export function createTenantWorkspaceController({
     }
   }
 
-  async function draftLead({ source, customerName, message }) {
+  async function draftLead({ source, customerName, message, sourceLeadId = "" }) {
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
     const text = String(message || "").trim();
     if (!state.signedIn || state.subscription?.access_granted !== true || !businessId) {
-      publish({ lead: { loading: false, error: "An active workspace is required.", result: null } });
+      publish({ lead: { loading: false, error: "An active workspace is required.", result: null, sourceLeadId: "", markedReplied: false } });
       return false;
     }
     if (!text) {
-      publish({ lead: { loading: false, error: "Enter the customer's message first.", result: null } });
+      publish({ lead: { loading: false, error: "Enter the customer's message first.", result: null, sourceLeadId: "", markedReplied: false } });
       return false;
     }
 
-    publish({ lead: { loading: true, error: "", result: null } });
+    const linkedLeadId = String(sourceLeadId || "").trim().slice(0, 220);
+    publish({ lead: { loading: true, error: "", result: null, sourceLeadId: linkedLeadId, markedReplied: false } });
     try {
       const response = await fetchImpl(`${LEAD_ENDPOINT}?business_id=${encodeURIComponent(businessId)}`, {
         method: "POST",
@@ -1614,7 +1615,7 @@ export function createTenantWorkspaceController({
       if (!response.ok || body?.ok !== true || typeof body?.reply !== "string") {
         throw new Error(body?.error || "Narleo could not draft the reply.");
       }
-      publish({ lead: { loading: false, error: "", result: body } });
+      publish({ lead: { loading: false, error: "", result: body, sourceLeadId: linkedLeadId, markedReplied: false } });
       await trackEvent("ai_workflow_used", { businessId, tenantKey });
       return true;
     } catch (error) {
@@ -1623,10 +1624,27 @@ export function createTenantWorkspaceController({
           loading: false,
           error: error?.message || "Narleo could not draft the reply.",
           result: null,
+          sourceLeadId: linkedLeadId,
+          markedReplied: false,
         },
       });
       return false;
     }
+  }
+
+  async function markDraftReplied() {
+    const leadId = String(state.lead?.sourceLeadId || "").trim();
+    if (!leadId || state.lead?.markedReplied === true) return false;
+    const updated = await updateInboxStatus(leadId, "mark_replied");
+    if (!updated) return false;
+    publish({
+      lead: {
+        ...state.lead,
+        error: "",
+        markedReplied: true,
+      },
+    });
+    return true;
   }
 
   async function signOut() {
@@ -1648,7 +1666,7 @@ export function createTenantWorkspaceController({
       insights: { enabled: false, loading: false, error: "", inventory: null, sales: null, pulse: null },
       channels: { loading: false, error: "" },
       emailLogin: { loading: false, error: "", message: "" },
-      lead: { loading: false, error: "", result: null },
+      lead: { loading: false, error: "", result: null, sourceLeadId: "", markedReplied: false },
       inbox: {
         enabled: false,
         loading: false,
@@ -1712,6 +1730,7 @@ export function createTenantWorkspaceController({
     refreshInstagramStatus,
     publishInstagram,
     draftLead,
+    markDraftReplied,
     signOut,
     getState: () => structuredClone(state),
     statusLabel,
@@ -1844,6 +1863,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const leadResult = documentImpl.getElementById("workspace-lead-result");
   const leadReply = documentImpl.getElementById("workspace-lead-reply");
   const leadCopy = documentImpl.getElementById("workspace-lead-copy");
+  const leadMarkReplied = documentImpl.getElementById("workspace-lead-mark-replied");
   const leadCopyStatus = documentImpl.getElementById("workspace-lead-copy-status");
   const leadMeta = documentImpl.getElementById("workspace-lead-meta");
   const leadFollowUp = documentImpl.getElementById("workspace-lead-followup");
@@ -2270,6 +2290,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
                 source,
                 customerName,
                 message: messageText,
+                sourceLeadId: lead.id,
               });
             } finally {
               draft.disabled = false;
@@ -2760,6 +2781,13 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     }
   });
   planButtons.forEach((button) => button.addEventListener("click", () => controller.changePlan(button.dataset.planChange)));
+  leadMarkReplied?.addEventListener("click", async () => {
+    const ok = await controller.markDraftReplied();
+    if (!ok && controller.getState().lead?.sourceLeadId) {
+      leadCopyStatus.textContent = "Inbox status could not be updated right now.";
+    }
+  });
+
   leadCopy?.addEventListener("click", async () => {
     const text = String(controller.getState().lead?.result?.reply || "").trim();
     if (!text) return;

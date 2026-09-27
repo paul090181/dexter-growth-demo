@@ -1322,6 +1322,101 @@ test("active tenant can draft a lead reply with tenant auth and no admin key", a
   assert.equal(calls.every((call) => !call.url.includes(TENANT_KEY)), true);
 });
 
+test("inbox-originated Narleo draft is marked replied only after explicit owner confirmation", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  const actions = [];
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    fetchImpl: async (url, init = {}) => {
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          business_name: "North Star Books",
+          business_type: "retail",
+        });
+      }
+      if (url.startsWith("/.netlify/functions/subscription-status?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          access_source: "stripe",
+          plan_key: "growth_monthly",
+          status: "active",
+          access_granted: true,
+          feature_access: {
+            unified_inbox: true,
+            lead_reply_drafting: true,
+            automated_publishing: false,
+            inventory_connection: false,
+          },
+        });
+      }
+      if (url.startsWith("/.netlify/functions/tenant-inbox?")) {
+        return response({
+          ok: true,
+          business_id: BUSINESS_ID,
+          count: 1,
+          unread_count: 1,
+          leads: [{
+            id: "ig-1",
+            source: "Instagram",
+            source_type: "instagram",
+            customer_name: "Alex",
+            message: "Do you have this in another size?",
+            direction: "inbound",
+            unread: true,
+            status: "new",
+          }],
+        });
+      }
+      if (url.startsWith("/.netlify/functions/retail-lead-assistant?")) {
+        const body = JSON.parse(init.body);
+        assert.equal(body.message, "Do you have this in another size?");
+        return response({
+          ok: true,
+          reply: "Which size are you looking for?",
+          intent: "product_clarification",
+          risk_level: "low",
+          decision: "auto_reply",
+          follow_up_action: "Confirm the requested size.",
+        });
+      }
+      if (url === "/.netlify/functions/tenant-inbox-action") {
+        const body = JSON.parse(init.body);
+        actions.push(body);
+        return response({
+          ok: true,
+          business_id: BUSINESS_ID,
+          lead_id: body.lead_id,
+          unread: false,
+          status: body.action === "mark_replied" ? "replied" : "new",
+        });
+      }
+      throw new Error(`unexpected URL ${url}`);
+    },
+  });
+
+  await controller.restore();
+  assert.equal(await controller.draftLead({
+    source: "Instagram",
+    customerName: "Alex",
+    message: "Do you have this in another size?",
+    sourceLeadId: "ig-1",
+  }), true);
+  assert.equal(controller.getState().lead.sourceLeadId, "ig-1");
+  assert.equal(controller.getState().lead.markedReplied, false);
+  assert.equal(actions.length, 0);
+
+  assert.equal(await controller.markDraftReplied(), true);
+  assert.equal(controller.getState().lead.markedReplied, true);
+  assert.equal(controller.getState().inbox.leads[0].status, "replied");
+  assert.deepEqual(actions, [{
+    business_id: BUSINESS_ID,
+    lead_id: "ig-1",
+    action: "mark_replied",
+  }]);
+});
+
 test("locked tenant cannot call the lead assistant", async () => {
   const s = storage();
   saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
@@ -1376,6 +1471,8 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /id="workspace-lead-customer"/);
   assert.match(html, /id="workspace-lead-message"/);
   assert.match(html, /id="workspace-lead-copy"/);
+  assert.match(html, /id="workspace-lead-mark-replied"/);
+  assert.match(html, /Mark as replied/);
   assert.match(html, /id="workspace-lead-copy-status"/);
   assert.match(html, /<option>Phone<\/option>/);
   assert.match(html, /id="workspace-starter-kit"/);
@@ -1471,6 +1568,9 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /No messages match this filter/);
   assert.match(js, /markInboxRead/);
   assert.match(js, /updateInboxStatus/);
+  assert.match(js, /markDraftReplied/);
+  assert.match(js, /sourceLeadId/);
+  assert.match(js, /mark_replied/);
   assert.match(js, /Needs follow-up/);
   assert.match(js, /Reopen/);
   assert.match(js, /Done/);
@@ -1481,6 +1581,7 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.equal(inboxDraftStart >= 0 && inboxDraftEnd > inboxDraftStart, true);
   const inboxDraftBridge = js.slice(inboxDraftStart, inboxDraftEnd);
   assert.match(inboxDraftBridge, /controller\.draftLead\(/);
+  assert.match(inboxDraftBridge, /sourceLeadId:\s*lead\.id/);
   assert.match(inboxDraftBridge, /controller\.markInboxRead\(lead\.id\)/);
   assert.doesNotMatch(inboxDraftBridge, /send|publish/i);
   assert.match(html, /Copy suggested reply/);
