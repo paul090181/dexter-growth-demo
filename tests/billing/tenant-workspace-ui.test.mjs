@@ -3,6 +3,7 @@ import fs from "node:fs";
 import test from "node:test";
 
 import {
+  buildInboxPulse,
   buildOnboardingSteps,
   buildReplyLaunchUrl,
   buildSquareBusinessPulse,
@@ -1302,6 +1303,32 @@ test("workspace never checks Facebook publishing for a plan without that entitle
   assert.equal(facebookCalls, 0);
 });
 
+test("inbox pulse summarizes recent workload without inventing conversion metrics", () => {
+  const pulse = buildInboxPulse([
+    { source_type: "website", status: "new", unread: true },
+    { source_type: "website", status: "follow-up", unread: false },
+    { source_type: "instagram", status: "replied", unread: false },
+    { source_type: "facebook", status: "closed", unread: false },
+    { source_type: "instagram", status: "new", unread: true },
+  ]);
+
+  assert.deepEqual(pulse, {
+    total: 5,
+    open: 3,
+    followUp: 1,
+    unread: 2,
+    replied: 1,
+    closed: 1,
+    sources: [
+      { source: "instagram", count: 2 },
+      { source: "website", count: 2 },
+      { source: "facebook", count: 1 },
+    ],
+  });
+  assert.equal(Object.hasOwn(pulse, "conversion_rate"), false);
+  assert.equal(Object.hasOwn(pulse, "lead_quality"), false);
+});
+
 test("reply launcher only builds explicit email or SMS composers and never sends automatically", () => {
   assert.equal(buildReplyLaunchUrl({
     sourceType: "website",
@@ -1572,6 +1599,13 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /id="workspace-channels-open"/);
   assert.match(html, /id="workspace-inbox-card"/);
   assert.match(html, /id="workspace-inbox-refresh"/);
+  assert.match(html, /id="workspace-inbox-pulse"/);
+  assert.match(html, /id="workspace-inbox-open-count"/);
+  assert.match(html, /id="workspace-inbox-follow-count"/);
+  assert.match(html, /id="workspace-inbox-unread-count"/);
+  assert.match(html, /id="workspace-inbox-replied-count"/);
+  assert.match(html, /id="workspace-inbox-source-summary"/);
+  assert.match(html, /id="workspace-inbox-ask"/);
   assert.match(html, /id="workspace-inbox-filter"/);
   assert.match(html, /id="workspace-inbox-attention"/);
   assert.match(html, /id="workspace-inbox-attention-title"/);
@@ -1682,6 +1716,10 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /leads need attention/);
   assert.match(js, /inboxNext/);
   assert.match(js, /filterInboxLeads/);
+  assert.match(js, /buildInboxPulse/);
+  assert.match(js, /Recent sources/);
+  assert.match(js, /Based only on these counts/);
+  assert.match(js, /Do not assume lead quality, conversion, sales, or customer intent/);
   assert.match(js, /No messages match this filter/);
   assert.match(js, /markInboxRead/);
   assert.match(js, /updateInboxStatus/);

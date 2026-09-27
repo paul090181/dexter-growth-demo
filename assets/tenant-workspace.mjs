@@ -261,6 +261,41 @@ export function prioritizeInboxLeads(leads = []) {
   });
 }
 
+export function buildInboxPulse(leads = []) {
+  const rows = Array.isArray(leads) ? leads : [];
+  const sourceCounts = {};
+  let open = 0;
+  let followUp = 0;
+  let unread = 0;
+  let replied = 0;
+  let closed = 0;
+
+  for (const lead of rows) {
+    const status = String(lead?.status || "new");
+    const source = String(lead?.source_type || "other").trim().toLowerCase() || "other";
+    sourceCounts[source] = Number(sourceCounts[source] || 0) + 1;
+    if (lead?.unread === true) unread += 1;
+    if (status === "follow-up") followUp += 1;
+    if (status === "replied") replied += 1;
+    if (status === "closed") closed += 1;
+    if (!["replied", "closed"].includes(status)) open += 1;
+  }
+
+  const sources = Object.entries(sourceCounts)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([source, count]) => ({ source, count }));
+
+  return {
+    total: rows.length,
+    open,
+    followUp,
+    unread,
+    replied,
+    closed,
+    sources,
+  };
+}
+
 export function filterInboxLeads(leads = [], filter = "all") {
   const rows = Array.isArray(leads) ? leads : [];
   const mode = String(filter || "all");
@@ -2302,6 +2337,48 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
       inboxRefresh.disabled = view.inbox?.loading === true;
       inboxRefresh.textContent = view.inbox?.loading === true ? "Refreshing…" : "Refresh messages";
       const leads = Array.isArray(view.inbox?.leads) ? view.inbox.leads : [];
+      const pulse = buildInboxPulse(leads);
+      inboxPulse.hidden = pulse.total === 0;
+      if (pulse.total > 0) {
+        inboxOpenCount.textContent = String(pulse.open);
+        inboxFollowCount.textContent = String(pulse.followUp);
+        inboxUnreadCount.textContent = String(pulse.unread);
+        inboxRepliedCount.textContent = String(pulse.replied);
+
+        const sourceLabels = {
+          instagram: "Instagram",
+          facebook: "Facebook",
+          email: "Email",
+          website: "Website",
+          sms: "SMS",
+          phone: "Phone",
+          manual: "Other",
+          other: "Other",
+        };
+        const sourceText = pulse.sources.length
+          ? pulse.sources.map(({ source, count }) =>
+              `${sourceLabels[source] || source}: ${count}`).join(" · ")
+          : "No source data yet";
+        inboxSourceSummary.textContent = "Recent sources · " + sourceText;
+
+        const canAskAboutInbox = featureAccess.ai_business_assistant === true;
+        inboxAsk.hidden = !canAskAboutInbox;
+        inboxAsk.dataset.prompt = canAskAboutInbox
+          ? [
+              "My recent Narleo inbox snapshot has:",
+              `- ${pulse.total} recent messages`,
+              `- ${pulse.open} open`,
+              `- ${pulse.followUp} marked for follow-up`,
+              `- ${pulse.unread} unread`,
+              `- ${pulse.replied} replied`,
+              `- ${pulse.closed} closed`,
+              `- Sources: ${sourceText}`,
+              "",
+              "Based only on these counts, what should I prioritize in my lead-response workflow next?",
+              "Do not assume lead quality, conversion, sales, or customer intent beyond this snapshot.",
+            ].join("\n")
+          : "";
+      }
       const visibleLeads = filterInboxLeads(leads, inboxFilter?.value || "all");
       inboxSummary.textContent = [
         inboxFilter?.value && inboxFilter.value !== "all" ? `${visibleLeads.length} shown` : "",
@@ -2343,17 +2420,6 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
         ? "No messages match this filter."
         : "No inbound messages yet. Connect customer channels when you're ready.";
       inboxList.replaceChildren();
-
-      const sourceLabels = {
-        instagram: "Instagram",
-        facebook: "Facebook",
-        email: "Email",
-        website: "Website",
-        sms: "SMS",
-        phone: "Phone",
-        manual: "Other",
-        other: "Other",
-      };
 
       for (const lead of visibleLeads) {
         const item = documentImpl.createElement("div");
@@ -2669,6 +2735,13 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   squareSkip?.addEventListener("click", () => controller.skipSquare());
   channelsOpen?.addEventListener("click", () => controller.openConnectorSetup());
   inboxRefresh?.addEventListener("click", () => controller.refreshInbox());
+  inboxAsk?.addEventListener("click", () => {
+    const prompt = String(inboxAsk.dataset.prompt || "").trim();
+    if (!prompt) return;
+    assistantQuestion.value = prompt;
+    assistantCard?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    assistantQuestion?.focus?.();
+  });
   inboxNext?.addEventListener("click", () => {
     if (inboxFilter) inboxFilter.value = "open";
     render(controller.getState());

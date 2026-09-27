@@ -298,6 +298,16 @@
         </select>
       </div>
       <div id="workspace-inbox-summary" style="margin-top:8px;font-size:13px;font-weight:800;color:#53606c"></div>
+      <div id="workspace-inbox-pulse" hidden>
+        <div class="pulse-grid" style="margin-bottom:8px">
+          <div class="pulse-metric"><span>Open</span><strong id="workspace-inbox-open-count">0</strong></div>
+          <div class="pulse-metric"><span>Needs follow-up</span><strong id="workspace-inbox-follow-count">0</strong></div>
+          <div class="pulse-metric"><span>Unread</span><strong id="workspace-inbox-unread-count">0</strong></div>
+          <div class="pulse-metric"><span>Replied</span><strong id="workspace-inbox-replied-count">0</strong></div>
+        </div>
+        <div id="workspace-inbox-source-summary" class="insight-note"></div>
+        <button class="button secondary" id="workspace-inbox-ask" type="button" style="margin-top:9px" hidden>Ask Narleo about lead flow</button>
+      </div>
       <div id="workspace-inbox-attention" class="journey-banner" hidden style="margin-top:10px">
         <strong id="workspace-inbox-attention-title"></strong>
         <div id="workspace-inbox-attention-detail" style="margin-top:5px"></div>
