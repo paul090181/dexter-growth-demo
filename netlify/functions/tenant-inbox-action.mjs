@@ -95,7 +95,7 @@ export function createTenantInboxActionHandler({
     const leadId = cleanLeadId(body.lead_id);
     const action = typeof body.action === "string" ? body.action : "";
     if (!businessId || !leadId
-      || !new Set(["mark_read", "needs_follow_up", "mark_replied", "close", "reopen"]).has(action)) {
+      || !new Set(["mark_read", "needs_follow_up", "mark_replied", "mark_won", "close", "reopen"]).has(action)) {
       return json(400, { error: "Invalid request." });
     }
 
@@ -126,9 +126,11 @@ export function createTenantInboxActionHandler({
               ? "follow-up"
               : action === "mark_replied"
                 ? "replied"
-                : action === "close"
-                  ? "closed"
-                  : "new",
+                : action === "mark_won"
+                  ? "won"
+                  : action === "close"
+                    ? "closed"
+                    : "new",
           });
     } catch {
       return json(503, { error: "Inbox could not be updated." });

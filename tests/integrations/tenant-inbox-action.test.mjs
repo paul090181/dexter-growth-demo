@@ -59,7 +59,7 @@ test("tenant inbox mark-read updates only a message belonging to the authorized 
   assert.deepEqual(calls, [{ businessId: BUSINESS_ID, leadId: "ig-message-1" }]);
 });
 
-test("tenant inbox workflow actions set follow-up, replied, close, and reopen safely", async () => {
+test("tenant inbox workflow actions set follow-up, replied, won, close, and reopen safely", async () => {
   const calls = [];
   const handler = createTenantInboxActionHandler({
     tenantStore: {},
@@ -75,6 +75,7 @@ test("tenant inbox workflow actions set follow-up, replied, close, and reopen sa
   for (const [action, expectedStatus] of [
     ["needs_follow_up", "follow-up"],
     ["mark_replied", "replied"],
+    ["mark_won", "won"],
     ["close", "closed"],
     ["reopen", "new"],
   ]) {
@@ -89,7 +90,7 @@ test("tenant inbox workflow actions set follow-up, replied, close, and reopen sa
     assert.equal(body.unread, false);
   }
 
-  assert.deepEqual(calls.map((call) => call.status), ["follow-up", "replied", "closed", "new"]);
+  assert.deepEqual(calls.map((call) => call.status), ["follow-up", "replied", "won", "closed", "new"]);
   assert.equal(calls.every((call) => call.businessId === BUSINESS_ID), true);
 });
 

@@ -268,6 +268,7 @@ export function buildInboxPulse(leads = []) {
   let followUp = 0;
   let unread = 0;
   let replied = 0;
+  let won = 0;
   let closed = 0;
 
   for (const lead of rows) {
@@ -277,8 +278,9 @@ export function buildInboxPulse(leads = []) {
     if (lead?.unread === true) unread += 1;
     if (status === "follow-up") followUp += 1;
     if (status === "replied") replied += 1;
+    if (status === "won") won += 1;
     if (status === "closed") closed += 1;
-    if (!["replied", "closed"].includes(status)) open += 1;
+    if (!["replied", "won", "closed"].includes(status)) open += 1;
   }
 
   const sources = Object.entries(sourceCounts)
@@ -291,6 +293,7 @@ export function buildInboxPulse(leads = []) {
     followUp,
     unread,
     replied,
+    won,
     closed,
     sources,
   };
@@ -301,11 +304,12 @@ export function filterInboxLeads(leads = [], filter = "all") {
   const mode = String(filter || "all");
   if (mode === "all") return [...rows];
   if (mode === "open") return prioritizeInboxLeads(
-    rows.filter((lead) => String(lead?.status || "new") !== "closed"),
+    rows.filter((lead) => !["replied", "won", "closed"].includes(String(lead?.status || "new"))),
   );
   if (mode === "follow_up") return prioritizeInboxLeads(
     rows.filter((lead) => String(lead?.status || "") === "follow-up"),
   );
+  if (mode === "won") return rows.filter((lead) => String(lead?.status || "") === "won");
   if (mode === "unread") return prioritizeInboxLeads(
     rows.filter((lead) => lead?.unread === true),
   );
@@ -1154,7 +1158,7 @@ export function createTenantWorkspaceController({
   async function updateInboxStatus(leadId, action) {
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
     const id = String(leadId || "").trim();
-    const normalized = ["needs_follow_up", "mark_replied", "close", "reopen"].includes(action) ? action : "";
+    const normalized = ["needs_follow_up", "mark_replied", "mark_won", "close", "reopen"].includes(action) ? action : "";
     if (!state.signedIn
       || state.subscription?.feature_access?.unified_inbox !== true
       || !businessId
@@ -1938,6 +1942,14 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const inboxRefresh = documentImpl.getElementById("workspace-inbox-refresh");
   const inboxFilter = documentImpl.getElementById("workspace-inbox-filter");
   const inboxSummary = documentImpl.getElementById("workspace-inbox-summary");
+  const inboxPulse = documentImpl.getElementById("workspace-inbox-pulse");
+  const inboxOpenCount = documentImpl.getElementById("workspace-inbox-open-count");
+  const inboxFollowCount = documentImpl.getElementById("workspace-inbox-follow-count");
+  const inboxUnreadCount = documentImpl.getElementById("workspace-inbox-unread-count");
+  const inboxRepliedCount = documentImpl.getElementById("workspace-inbox-replied-count");
+  const inboxWonCount = documentImpl.getElementById("workspace-inbox-won-count");
+  const inboxSourceSummary = documentImpl.getElementById("workspace-inbox-source-summary");
+  const inboxAsk = documentImpl.getElementById("workspace-inbox-ask");
   const inboxAttention = documentImpl.getElementById("workspace-inbox-attention");
   const inboxAttentionTitle = documentImpl.getElementById("workspace-inbox-attention-title");
   const inboxAttentionDetail = documentImpl.getElementById("workspace-inbox-attention-detail");
@@ -2344,6 +2356,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
         inboxFollowCount.textContent = String(pulse.followUp);
         inboxUnreadCount.textContent = String(pulse.unread);
         inboxRepliedCount.textContent = String(pulse.replied);
+        inboxWonCount.textContent = String(pulse.won);
 
         const sourceLabels = {
           instagram: "Instagram",
@@ -2371,11 +2384,12 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
               `- ${pulse.followUp} marked for follow-up`,
               `- ${pulse.unread} unread`,
               `- ${pulse.replied} replied`,
+              `- ${pulse.won} explicitly marked won`,
               `- ${pulse.closed} closed`,
               `- Sources: ${sourceText}`,
               "",
               "Based only on these counts, what should I prioritize in my lead-response workflow next?",
-              "Do not assume lead quality, conversion, sales, or customer intent beyond this snapshot.",
+              "Do not assume lead quality, revenue, profit, conversion rate, sales value, or customer intent beyond this snapshot and its explicit Won count.",
             ].join("\n")
           : "";
       }
@@ -2387,7 +2401,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
       ].filter(Boolean).join(" · ");
 
       const priorityLeads = prioritizeInboxLeads(
-        leads.filter((lead) => !["replied", "closed"].includes(String(lead?.status || "new"))),
+        leads.filter((lead) => !["replied", "won", "closed"].includes(String(lead?.status || "new"))),
       );
       const nextLead = priorityLeads[0] || null;
       inboxAttention.hidden = priorityLeads.length === 0;
@@ -2441,11 +2455,13 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
         badges.style.textAlign = "right";
         const statusText = lead.status === "follow-up"
           ? "Needs follow-up"
-          : lead.status === "closed"
-            ? "Done"
-            : lead.status === "replied"
-              ? "Replied"
-              : "";
+          : lead.status === "won"
+            ? "Won"
+            : lead.status === "closed"
+              ? "Done"
+              : lead.status === "replied"
+                ? "Replied"
+                : "";
         badges.textContent = [lead.unread ? "Unread" : "", statusText].filter(Boolean).join(" · ");
 
         heading.append(identity, badges);
@@ -2470,7 +2486,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
           actions.append(markRead);
         }
 
-        if (lead.status === "closed") {
+        if (["closed", "won"].includes(lead.status)) {
           const reopen = documentImpl.createElement("button");
           reopen.type = "button";
           reopen.className = "button secondary";
@@ -2487,6 +2503,13 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
             actions.append(followUp);
           }
 
+          const won = documentImpl.createElement("button");
+          won.type = "button";
+          won.className = "button secondary";
+          won.textContent = "Won";
+          won.addEventListener("click", () => controller.updateInboxStatus(lead.id, "mark_won"));
+          actions.append(won);
+
           const done = documentImpl.createElement("button");
           done.type = "button";
           done.className = "button secondary";
@@ -2495,7 +2518,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
           actions.append(done);
         }
 
-        if (lead.status !== "closed"
+        if (!["closed", "won"].includes(lead.status)
           && featureAccess.lead_reply_drafting === true
           && lead.direction !== "outbound") {
           const draft = documentImpl.createElement("button");

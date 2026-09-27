@@ -117,16 +117,18 @@ test("unified inbox filters stay client-side and preserve original rows", () => 
     { id: "sms-1", source_type: "sms", unread: true, status: "closed", created_at: "2026-09-27T13:00:00.000Z" },
     { id: "phone-1", source_type: "phone", unread: false, status: "new", created_at: "2026-09-27T12:00:00.000Z" },
     { id: "manual-1", source_type: "manual", unread: false, status: "replied", created_at: "2026-09-27T11:00:00.000Z" },
+    { id: "web-won", source_type: "website", unread: false, status: "won", created_at: "2026-09-27T10:00:00.000Z" },
   ];
 
-  assert.deepEqual(filterInboxLeads(leads, "open").map((lead) => lead.id), ["fb-1", "ig-1", "phone-1", "manual-1"]);
+  assert.deepEqual(filterInboxLeads(leads, "open").map((lead) => lead.id), ["fb-1", "ig-1", "phone-1"]);
   assert.deepEqual(filterInboxLeads(leads, "follow_up").map((lead) => lead.id), ["fb-1"]);
+  assert.deepEqual(filterInboxLeads(leads, "won").map((lead) => lead.id), ["web-won"]);
   assert.deepEqual(filterInboxLeads(leads, "unread").map((lead) => lead.id), ["ig-1", "sms-1"]);
   assert.deepEqual(filterInboxLeads(leads, "instagram").map((lead) => lead.id), ["ig-1"]);
   assert.deepEqual(filterInboxLeads(leads, "sms_phone").map((lead) => lead.id), ["sms-1", "phone-1"]);
   assert.deepEqual(filterInboxLeads(leads, "other").map((lead) => lead.id), ["manual-1"]);
   assert.deepEqual(filterInboxLeads(leads, "unknown").map((lead) => lead.id), leads.map((lead) => lead.id));
-  assert.equal(leads.length, 5);
+  assert.equal(leads.length, 6);
 });
 
 test("unified inbox priority puts follow-up first, then unread, then older open leads", () => {
@@ -1093,6 +1095,7 @@ test("unified-inbox tenant loads recent messages and refreshes without exposing 
         const statusByAction = {
           mark_read: "new",
           needs_follow_up: "follow-up",
+          mark_won: "won",
           close: "closed",
           reopen: "new",
         };
@@ -1121,6 +1124,10 @@ test("unified-inbox tenant loads recent messages and refreshes without exposing 
   assert.equal(controller.getState().inbox.leads[0].unread, false);
   assert.equal(await controller.updateInboxStatus("ig-1", "needs_follow_up"), true);
   assert.equal(controller.getState().inbox.leads[0].status, "follow-up");
+  assert.equal(await controller.updateInboxStatus("ig-1", "mark_won"), true);
+  assert.equal(controller.getState().inbox.leads[0].status, "won");
+  assert.equal(await controller.updateInboxStatus("ig-1", "reopen"), true);
+  assert.equal(controller.getState().inbox.leads[0].status, "new");
   assert.equal(await controller.updateInboxStatus("ig-1", "close"), true);
   assert.equal(controller.getState().inbox.leads[0].status, "closed");
   assert.equal(await controller.updateInboxStatus("ig-1", "reopen"), true);
@@ -1310,18 +1317,20 @@ test("inbox pulse summarizes recent workload without inventing conversion metric
     { source_type: "instagram", status: "replied", unread: false },
     { source_type: "facebook", status: "closed", unread: false },
     { source_type: "instagram", status: "new", unread: true },
+    { source_type: "website", status: "won", unread: false },
   ]);
 
   assert.deepEqual(pulse, {
-    total: 5,
+    total: 6,
     open: 3,
     followUp: 1,
     unread: 2,
     replied: 1,
+    won: 1,
     closed: 1,
     sources: [
+      { source: "website", count: 3 },
       { source: "instagram", count: 2 },
-      { source: "website", count: 2 },
       { source: "facebook", count: 1 },
     ],
   });
@@ -1604,6 +1613,7 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /id="workspace-inbox-follow-count"/);
   assert.match(html, /id="workspace-inbox-unread-count"/);
   assert.match(html, /id="workspace-inbox-replied-count"/);
+  assert.match(html, /id="workspace-inbox-won-count"/);
   assert.match(html, /id="workspace-inbox-source-summary"/);
   assert.match(html, /id="workspace-inbox-ask"/);
   assert.match(html, /id="workspace-inbox-filter"/);
@@ -1612,6 +1622,7 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /id="workspace-inbox-attention-detail"/);
   assert.match(html, /id="workspace-inbox-next"/);
   assert.match(html, /Work next lead/);
+  assert.match(html, /value="won"/);
   assert.match(html, /value="unread"/);
   assert.match(html, /value="sms_phone"/);
   assert.match(html, /id="workspace-inbox-list"/);
@@ -1717,9 +1728,17 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /inboxNext/);
   assert.match(js, /filterInboxLeads/);
   assert.match(js, /buildInboxPulse/);
+  assert.match(js, /const inboxPulse = documentImpl\.getElementById\("workspace-inbox-pulse"\)/);
+  assert.match(js, /const inboxOpenCount = documentImpl\.getElementById\("workspace-inbox-open-count"\)/);
+  assert.match(js, /const inboxFollowCount = documentImpl\.getElementById\("workspace-inbox-follow-count"\)/);
+  assert.match(js, /const inboxUnreadCount = documentImpl\.getElementById\("workspace-inbox-unread-count"\)/);
+  assert.match(js, /const inboxRepliedCount = documentImpl\.getElementById\("workspace-inbox-replied-count"\)/);
+  assert.match(js, /const inboxWonCount = documentImpl\.getElementById\("workspace-inbox-won-count"\)/);
+  assert.match(js, /const inboxSourceSummary = documentImpl\.getElementById\("workspace-inbox-source-summary"\)/);
+  assert.match(js, /const inboxAsk = documentImpl\.getElementById\("workspace-inbox-ask"\)/);
   assert.match(js, /Recent sources/);
   assert.match(js, /Based only on these counts/);
-  assert.match(js, /Do not assume lead quality, conversion, sales, or customer intent/);
+  assert.match(js, /Do not assume lead quality, revenue, profit, conversion rate, sales value, or customer intent/);
   assert.match(js, /No messages match this filter/);
   assert.match(js, /markInboxRead/);
   assert.match(js, /updateInboxStatus/);
@@ -1730,6 +1749,7 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /replyTarget/);
   assert.match(js, /sourceType/);
   assert.match(js, /mark_replied/);
+  assert.match(js, /mark_won/);
   assert.match(js, /Needs follow-up/);
   assert.match(js, /Reopen/);
   assert.match(js, /Done/);
