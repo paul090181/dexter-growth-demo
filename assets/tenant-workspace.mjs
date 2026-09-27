@@ -17,6 +17,38 @@ const FACEBOOK_PUBLISH_ENDPOINT = "/.netlify/functions/tenant-facebook-publish";
 const FIRST_WIN_ENDPOINT = "/.netlify/functions/tenant-first-win";
 const BUSINESS_ASSISTANT_ENDPOINT = "/.netlify/functions/tenant-business-assistant";
 
+export function businessStarterKit(businessType = "other") {
+  const kits = {
+    retail: [
+      { kind: "social_post", label: "Promote a product", prompt: "Create a social post for a product or display I want customers to notice." },
+      { kind: "customer_reply", label: "Answer a product question", prompt: "Customer asked: " },
+      { kind: "assistant", label: "Plan this week's promotion", prompt: "Help me decide what to promote this week and what information you need from me." },
+    ],
+    bakery_food: [
+      { kind: "social_post", label: "Promote a seasonal treat", prompt: "Create a social post for a seasonal treat, preorder, or class I want customers to notice." },
+      { kind: "customer_reply", label: "Answer a custom-order question", prompt: "Customer asked about a custom order: " },
+      { kind: "assistant", label: "Plan the next seasonal push", prompt: "Help me choose what to promote next for my bakery and what information you need from me." },
+    ],
+    auto_dealer: [
+      { kind: "social_post", label: "Feature a vehicle", prompt: "Create a social post for a vehicle I want shoppers to notice." },
+      { kind: "customer_reply", label: "Answer a vehicle inquiry", prompt: "Customer asked about a vehicle: " },
+      { kind: "assistant", label: "Plan lead follow-up", prompt: "Help me improve follow-up on vehicle inquiries and tell me what information you need from me." },
+    ],
+    service: [
+      { kind: "social_post", label: "Promote openings", prompt: "Create a social post that helps customers notice an available service or upcoming openings." },
+      { kind: "customer_reply", label: "Answer a scheduling question", prompt: "Customer asked about scheduling: " },
+      { kind: "assistant", label: "Improve inquiry follow-up", prompt: "Help me turn more service inquiries into booked appointments and tell me what information you need from me." },
+    ],
+    other: [
+      { kind: "social_post", label: "Create a promotion", prompt: "Create a social post for something I want customers to notice." },
+      { kind: "customer_reply", label: "Answer a customer", prompt: "Customer asked: " },
+      { kind: "assistant", label: "Choose my next priority", prompt: "Help me decide the most useful thing to work on next for my business." },
+    ],
+  };
+  const selected = kits[businessType] || kits.other;
+  return selected.map((item) => ({ ...item }));
+}
+
 const FEATURE_LABELS = Object.freeze([
   ["ai_business_assistant", "AI business assistant"],
   ["lead_reply_drafting", "AI lead reply"],
@@ -1200,6 +1232,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const channelsCard = documentImpl.getElementById("workspace-channels-card");
   const channelsError = documentImpl.getElementById("workspace-channels-error");
   const channelsOpen = documentImpl.getElementById("workspace-channels-open");
+  const starterKit = documentImpl.getElementById("workspace-starter-kit");
   const firstWinCard = documentImpl.getElementById("workspace-first-win-card");
   const firstWinForm = documentImpl.getElementById("workspace-first-win-form");
   const firstWinTask = documentImpl.getElementById("workspace-first-win-task");
@@ -1286,6 +1319,30 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
 
     if (!view.signedIn) return;
     businessName.textContent = view.profile?.business_name || "Your business";
+
+    starterKit.replaceChildren();
+    for (const item of businessStarterKit(view.profile?.business_type || "other")) {
+      const button = documentImpl.createElement("button");
+      button.type = "button";
+      button.className = "button secondary";
+      button.textContent = item.label;
+      button.dataset.starterKind = item.kind;
+      button.dataset.starterPrompt = item.prompt;
+      button.addEventListener("click", () => {
+        if (item.kind === "assistant") {
+          assistantQuestion.value = item.prompt;
+          assistantCard?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+          assistantQuestion?.focus?.();
+          return;
+        }
+        firstWinTask.value = item.kind;
+        updateFirstWinTaskUI();
+        firstWinPrompt.value = item.prompt;
+        firstWinCard?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+        firstWinPrompt?.focus?.();
+      });
+      starterKit.append(button);
+    }
     workspaceId.textContent = view.profile?.business_id || "";
     contact.textContent = [view.profile?.contact_name, view.profile?.contact_email].filter(Boolean).join(" · ");
     status.textContent = controller.statusLabel(view.subscription?.status);

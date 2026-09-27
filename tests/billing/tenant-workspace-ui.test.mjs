@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   buildOnboardingSteps,
   buildSquareBusinessPulse,
+  businessStarterKit,
   clearWorkspaceCredentials,
   createOnboardingTracker,
   createTenantWorkspaceController,
@@ -79,6 +80,30 @@ test("Square can be deferred without blocking the rest of onboarding", () => {
     ["Square connected", false, "Later"],
     ["Business pulse ready", false, "Later"],
   ]);
+});
+
+test("business starter kits adapt quick workflows by vertical without inventing business facts", () => {
+  const bakery = businessStarterKit("bakery_food");
+  assert.deepEqual(bakery.map((item) => item.kind), [
+    "social_post",
+    "customer_reply",
+    "assistant",
+  ]);
+  assert.match(bakery[0].label, /seasonal treat/i);
+  assert.match(bakery[1].label, /custom-order/i);
+
+  const auto = businessStarterKit("auto_dealer");
+  assert.match(auto[0].label, /vehicle/i);
+  assert.match(auto[2].label, /lead follow-up/i);
+
+  const service = businessStarterKit("service");
+  assert.match(service[0].label, /openings/i);
+
+  const fallback = businessStarterKit("unknown");
+  assert.match(fallback[0].label, /promotion/i);
+
+  bakery[0].label = "mutated";
+  assert.notEqual(businessStarterKit("bakery_food")[0].label, "mutated");
 });
 
 test("business pulse turns Square summaries into useful metrics and actions", () => {
@@ -1105,6 +1130,8 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /id="workspace-next-step"/);
   assert.match(html, /id="workspace-channels-card"/);
   assert.match(html, /id="workspace-channels-open"/);
+  assert.match(html, /id="workspace-starter-kit"/);
+  assert.match(html, /What would help right now/);
   assert.match(html, /id="workspace-first-win-card"/);
   assert.match(html, /id="workspace-first-win-form"/);
   assert.match(html, /id="workspace-first-win-task"/);
@@ -1143,6 +1170,8 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /tenant-first-win/);
   assert.match(js, /tenant-business-assistant/);
   assert.match(js, /askNarleo/);
+  assert.match(js, /businessStarterKit/);
+  assert.match(js, /data-starter-kind|starterKind/);
   assert.match(js, /createFirstWin/);
   assert.match(js, /growthwise_first_win/);
   assert.match(js, /facebookMessage\.value = result\.primary_text/);
