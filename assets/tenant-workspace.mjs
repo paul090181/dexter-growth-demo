@@ -19,6 +19,7 @@ const INSTAGRAM_PUBLISH_ENDPOINT = "/.netlify/functions/tenant-instagram-publish
 const FIRST_WIN_ENDPOINT = "/.netlify/functions/tenant-first-win";
 const BUSINESS_ASSISTANT_ENDPOINT = "/.netlify/functions/tenant-business-assistant";
 const TENANT_INBOX_ENDPOINT = "/.netlify/functions/tenant-inbox";
+const TENANT_INBOX_ACTION_ENDPOINT = "/.netlify/functions/tenant-inbox-action";
 
 export function businessStarterKit(businessType = "other") {
   const kits = {
@@ -962,6 +963,64 @@ export function createTenantWorkspaceController({
     return inbox.error === "";
   }
 
+  async function markInboxRead(leadId) {
+    const { businessId, tenantKey } = readWorkspaceCredentials(storage);
+    const id = String(leadId || "").trim();
+    if (!state.signedIn
+      || state.subscription?.feature_access?.unified_inbox !== true
+      || !businessId
+      || !id) {
+      return false;
+    }
+
+    try {
+      const response = await fetchImpl(TENANT_INBOX_ACTION_ENDPOINT, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          ...authHeaders(tenantKey),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          business_id: businessId,
+          lead_id: id,
+          action: "mark_read",
+        }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || body?.ok !== true || body.business_id !== businessId
+        || body.lead_id !== id || body.unread !== false) {
+        throw new Error(body?.error || "Message could not be marked read.");
+      }
+
+      let changed = false;
+      const leads = (state.inbox?.leads || []).map((lead) => {
+        if (lead.id !== id || lead.unread === false) return lead;
+        changed = true;
+        return { ...lead, unread: false };
+      });
+      publish({
+        inbox: {
+          ...state.inbox,
+          error: "",
+          leads,
+          unreadCount: changed
+            ? Math.max(0, Number(state.inbox?.unreadCount || 0) - 1)
+            : Number(state.inbox?.unreadCount || 0),
+        },
+      });
+      return true;
+    } catch (error) {
+      publish({
+        inbox: {
+          ...state.inbox,
+          error: error?.message || "Message could not be marked read.",
+        },
+      });
+      return false;
+    }
+  }
+
   async function askNarleo(question) {
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
     const text = String(question || "").trim();
@@ -1542,6 +1601,7 @@ export function createTenantWorkspaceController({
     refreshSquareInsights,
     openConnectorSetup,
     refreshInbox,
+    markInboxRead,
     askNarleo,
     createFirstWin,
     rateFirstWin,
@@ -2026,21 +2086,36 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
 
         item.append(heading, message);
 
+        const actions = documentImpl.createElement("div");
+        actions.className = "actions";
+        actions.style.marginTop = "9px";
+
+        if (lead.unread) {
+          const markRead = documentImpl.createElement("button");
+          markRead.type = "button";
+          markRead.className = "button secondary";
+          markRead.textContent = "Mark read";
+          markRead.addEventListener("click", () => controller.markInboxRead(lead.id));
+          actions.append(markRead);
+        }
+
         if (featureAccess.lead_reply_drafting === true && lead.direction !== "outbound") {
           const draft = documentImpl.createElement("button");
           draft.type = "button";
           draft.className = "button secondary";
-          draft.style.marginTop = "9px";
           draft.textContent = "Draft reply with Narleo";
-          draft.addEventListener("click", () => {
+          draft.addEventListener("click", async () => {
+            if (lead.unread) await controller.markInboxRead(lead.id);
             if (leadSource) leadSource.value = sourceLabels[lead.source_type] || "Other";
             if (leadCustomer) leadCustomer.value = lead.customer_name || "";
             if (leadMessage) leadMessage.value = lead.message || "";
             leadCard?.scrollIntoView?.({ behavior: "smooth", block: "start" });
             leadMessage?.focus?.();
           });
-          item.append(draft);
+          actions.append(draft);
         }
+
+        if (actions.childNodes.length) item.append(actions);
 
         inboxList.append(item);
       }

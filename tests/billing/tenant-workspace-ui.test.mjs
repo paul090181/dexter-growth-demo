@@ -1008,6 +1008,21 @@ test("unified-inbox tenant loads recent messages and refreshes without exposing 
           }],
         });
       }
+      if (url === "/.netlify/functions/tenant-inbox-action") {
+        assert.equal(init.headers["X-GrowthWise-Tenant-Key"], TENANT_KEY);
+        assert.equal(Object.hasOwn(init.headers, "X-GrowthWise-Key"), false);
+        assert.deepEqual(JSON.parse(init.body), {
+          business_id: BUSINESS_ID,
+          lead_id: "ig-1",
+          action: "mark_read",
+        });
+        return response({
+          ok: true,
+          business_id: BUSINESS_ID,
+          lead_id: "ig-1",
+          unread: false,
+        });
+      }
       throw new Error(`unexpected URL ${url}`);
     },
   });
@@ -1019,6 +1034,9 @@ test("unified-inbox tenant loads recent messages and refreshes without exposing 
   assert.equal(restored.inbox.leads[0].source_type, "instagram");
   assert.equal(await controller.refreshInbox(), true);
   assert.equal(inboxReads, 2);
+  assert.equal(await controller.markInboxRead("ig-1"), true);
+  assert.equal(controller.getState().inbox.unreadCount, 0);
+  assert.equal(controller.getState().inbox.leads[0].unread, false);
   assert.equal(calls.every((call) => !call.url.includes(TENANT_KEY)), true);
   assert.equal(calls.every((call) => !Object.hasOwn(call.init?.headers || {}, "X-GrowthWise-Key")), true);
 });
@@ -1370,7 +1388,10 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.doesNotMatch(firstWinInstagramBridge, /publishInstagram\(/);
   assert.match(js, /openConnectorSetup/);
   assert.match(js, /tenant-inbox/);
+  assert.match(js, /tenant-inbox-action/);
   assert.match(js, /refreshInbox/);
+  assert.match(js, /markInboxRead/);
+  assert.match(js, /Mark read/);
   assert.match(js, /Draft reply with Narleo/);
   assert.match(js, /tenant-facebook-connection/);
   assert.match(js, /tenant-facebook-publish/);
