@@ -1193,6 +1193,9 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const firstWinPrimary = documentImpl.getElementById("workspace-first-win-primary");
   const firstWinSecondaryWrap = documentImpl.getElementById("workspace-first-win-secondary-wrap");
   const firstWinSecondary = documentImpl.getElementById("workspace-first-win-secondary");
+  const firstWinCopy = documentImpl.getElementById("workspace-first-win-copy");
+  const firstWinCopySecondary = documentImpl.getElementById("workspace-first-win-copy-secondary");
+  const firstWinUseFacebook = documentImpl.getElementById("workspace-first-win-use-facebook");
   const firstWinNote = documentImpl.getElementById("workspace-first-win-note");
   const firstWinNext = documentImpl.getElementById("workspace-first-win-next");
   const assistantCard = documentImpl.getElementById("workspace-assistant-card");
@@ -1212,6 +1215,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const facebookRefresh = documentImpl.getElementById("workspace-facebook-refresh");
   const facebookForm = documentImpl.getElementById("workspace-facebook-form");
   const facebookImage = documentImpl.getElementById("workspace-facebook-image");
+  const facebookMessage = documentImpl.getElementById("workspace-facebook-message");
   const facebookPreview = documentImpl.getElementById("workspace-facebook-preview");
   const facebookReviewed = documentImpl.getElementById("workspace-facebook-reviewed");
   const facebookPublish = documentImpl.getElementById("workspace-facebook-publish");
@@ -1416,6 +1420,10 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
         const secondary = view.firstWin.result.secondary_text || "";
         firstWinSecondaryWrap.hidden = !secondary;
         firstWinSecondary.textContent = secondary;
+        const socialResult = view.firstWin.result.task === "social_post";
+        firstWinCopy.textContent = socialResult ? "Copy Facebook draft" : "Copy reply";
+        firstWinCopySecondary.hidden = !secondary;
+        firstWinUseFacebook.hidden = !(socialResult && featureAccess.automated_publishing === true);
         firstWinNote.textContent = view.firstWin.result.note || "";
         firstWinNext.textContent = view.firstWin.result.next_step || "";
       }
@@ -1669,6 +1677,53 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     const question = String(data.get("question") || "").trim();
     const ok = await controller.askNarleo(question);
     if (ok && assistantQuestion) assistantQuestion.value = "";
+  });
+
+  firstWinCopy?.addEventListener("click", async () => {
+    const text = String(controller.getState().firstWin?.result?.primary_text || "");
+    if (!text) return;
+    try {
+      await globalThis.navigator?.clipboard?.writeText(text);
+      firstWinCopy.textContent = "Copied";
+    } catch {
+      firstWinStatus.hidden = false;
+      firstWinStatus.textContent = "Copy is not available in this browser. Select the text above to copy it.";
+    }
+  });
+
+  firstWinCopySecondary?.addEventListener("click", async () => {
+    const text = String(controller.getState().firstWin?.result?.secondary_text || "");
+    if (!text) return;
+    try {
+      await globalThis.navigator?.clipboard?.writeText(text);
+      firstWinCopySecondary.textContent = "Copied";
+    } catch {
+      firstWinStatus.hidden = false;
+      firstWinStatus.textContent = "Copy is not available in this browser. Select the Instagram text above to copy it.";
+    }
+  });
+
+  firstWinUseFacebook?.addEventListener("click", () => {
+    const result = controller.getState().firstWin?.result;
+    if (result?.task !== "social_post" || !result.primary_text) return;
+    if (facebookMessage) facebookMessage.value = result.primary_text;
+    if (firstWinImageDataUrl) {
+      facebookImageDataUrl = firstWinImageDataUrl;
+      if (facebookPreview) {
+        facebookPreview.src = firstWinImageDataUrl;
+        facebookPreview.hidden = false;
+      }
+    }
+    if (facebookReviewed) facebookReviewed.checked = false;
+    facebookCard?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    if (controller.getState().facebook?.status?.state !== "Connected") {
+      facebookPublishStatus.hidden = false;
+      facebookPublishStatus.textContent = "Your draft is ready here. Connect Facebook before publishing.";
+    } else {
+      facebookPublishStatus.hidden = true;
+      facebookPublishStatus.textContent = "";
+      facebookMessage?.focus?.();
+    }
   });
 
   firstWinForm?.addEventListener("submit", async (event) => {

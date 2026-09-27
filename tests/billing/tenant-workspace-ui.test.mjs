@@ -1041,6 +1041,10 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /id="workspace-first-win-card"/);
   assert.match(html, /id="workspace-first-win-form"/);
   assert.match(html, /id="workspace-first-win-task"/);
+  assert.match(html, /id="workspace-first-win-copy"/);
+  assert.match(html, /id="workspace-first-win-copy-secondary"/);
+  assert.match(html, /id="workspace-first-win-use-facebook"/);
+  assert.match(html, /id="workspace-facebook-message"/);
   assert.match(html, /id="workspace-assistant-card"/);
   assert.match(html, /id="workspace-assistant-form"/);
   assert.match(html, /id="workspace-assistant-thread"/);
@@ -1072,6 +1076,13 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /askNarleo/);
   assert.match(js, /createFirstWin/);
   assert.match(js, /growthwise_first_win/);
+  assert.match(js, /facebookMessage\.value = result\.primary_text/);
+  assert.match(js, /facebookReviewed\.checked = false/);
+  const firstWinFacebookStart = js.indexOf("firstWinUseFacebook?.addEventListener");
+  const firstWinFacebookEnd = js.indexOf("firstWinForm?.addEventListener", firstWinFacebookStart);
+  assert.equal(firstWinFacebookStart >= 0 && firstWinFacebookEnd > firstWinFacebookStart, true);
+  const firstWinFacebookBridge = js.slice(firstWinFacebookStart, firstWinFacebookEnd);
+  assert.doesNotMatch(firstWinFacebookBridge, /publishFacebook\(/);
   assert.match(js, /openConnectorSetup/);
   assert.match(js, /tenant-facebook-connection/);
   assert.match(js, /tenant-facebook-publish/);

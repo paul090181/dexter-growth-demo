@@ -102,6 +102,11 @@
           <strong>Instagram version</strong>
           <div id="workspace-first-win-secondary" style="margin-top:5px;white-space:pre-wrap"></div>
         </div>
+        <div class="actions" style="margin-top:12px">
+          <button class="button secondary" id="workspace-first-win-copy" type="button">Copy result</button>
+          <button class="button secondary" id="workspace-first-win-copy-secondary" type="button" hidden>Copy Instagram draft</button>
+        </div>
+        <button class="button" id="workspace-first-win-use-facebook" type="button" style="margin-top:9px" hidden>Prepare Facebook post</button>
         <div class="followup">
           <strong>Why / what to do next</strong>
           <div id="workspace-first-win-note" style="margin-top:5px"></div>
@@ -180,7 +185,7 @@
       </div>
       <form id="workspace-facebook-form" hidden style="margin-top:14px">
         <label class="field">Post copy
-          <textarea name="message" maxlength="5000" placeholder="Write or paste the Facebook post you want to publish." required></textarea>
+          <textarea id="workspace-facebook-message" name="message" maxlength="5000" placeholder="Write or paste the Facebook post you want to publish." required></textarea>
         </label>
         <label class="field">Photo (optional)
           <input id="workspace-facebook-image" type="file" accept="image/jpeg,image/png" />
