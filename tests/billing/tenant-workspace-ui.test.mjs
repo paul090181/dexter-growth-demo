@@ -1188,6 +1188,7 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /id="workspace-first-win-use-instagram"/);
   assert.match(html, /id="workspace-facebook-message"/);
   assert.match(html, /id="workspace-instagram-caption"/);
+  assert.match(html, /id="workspace-instagram-image"[^>]*accept="image\/jpeg"/);
   assert.match(html, /id="workspace-assistant-card"/);
   assert.match(html, /id="workspace-assistant-form"/);
   assert.match(html, /id="workspace-assistant-thread"/);
@@ -1239,6 +1240,7 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.equal(firstWinInstagramStart >= 0 && firstWinInstagramEnd > firstWinInstagramStart, true);
   const firstWinInstagramBridge = js.slice(firstWinInstagramStart, firstWinInstagramEnd);
   assert.match(firstWinInstagramBridge, /instagramCaption\.value = result\.secondary_text/);
+  assert.match(firstWinInstagramBridge, /data:image\/jpeg;base64/);
   assert.match(firstWinInstagramBridge, /instagramReviewed\.checked = false/);
   assert.doesNotMatch(firstWinInstagramBridge, /publishInstagram\(/);
   assert.match(js, /openConnectorSetup/);

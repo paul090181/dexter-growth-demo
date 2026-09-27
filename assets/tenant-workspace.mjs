@@ -2083,11 +2083,18 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     const result = controller.getState().firstWin?.result;
     if (result?.task !== "social_post" || !result.secondary_text) return;
     if (instagramCaption) instagramCaption.value = result.secondary_text;
-    if (firstWinImageDataUrl) {
+    const reusableInstagramImage = firstWinImageDataUrl.startsWith("data:image/jpeg;base64,");
+    if (reusableInstagramImage) {
       instagramImageDataUrl = firstWinImageDataUrl;
       if (instagramPreview) {
         instagramPreview.src = firstWinImageDataUrl;
         instagramPreview.hidden = false;
+      }
+    } else {
+      instagramImageDataUrl = "";
+      if (instagramPreview) {
+        instagramPreview.src = "";
+        instagramPreview.hidden = true;
       }
     }
     if (instagramReviewed) instagramReviewed.checked = false;
@@ -2095,9 +2102,9 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     if (controller.getState().instagram?.status?.state !== "Connected") {
       instagramPublishStatus.hidden = false;
       instagramPublishStatus.textContent = "Your caption is ready here. Connect Instagram before publishing.";
-    } else if (!firstWinImageDataUrl) {
+    } else if (!reusableInstagramImage) {
       instagramPublishStatus.hidden = false;
-      instagramPublishStatus.textContent = "Your caption is ready. Choose the photo you want to publish with it.";
+      instagramPublishStatus.textContent = "Your caption is ready. Choose a JPG photo to publish with it.";
       instagramCaption?.focus?.();
     } else {
       instagramPublishStatus.hidden = true;
@@ -2127,9 +2134,9 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     instagramPreview.src = "";
     instagramPreview.hidden = true;
     if (!file) return;
-    if (!["image/jpeg", "image/png"].includes(file.type) || file.size > 5 * 1024 * 1024) {
+    if (file.type !== "image/jpeg" || file.size > 5 * 1024 * 1024) {
       instagramPublishStatus.hidden = false;
-      instagramPublishStatus.textContent = "Choose a JPG or PNG photo under 5 MB.";
+      instagramPublishStatus.textContent = "Choose a JPG photo under 5 MB.";
       instagramImage.value = "";
       return;
     }
