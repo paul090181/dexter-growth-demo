@@ -2349,6 +2349,16 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
       inboxRefresh.disabled = view.inbox?.loading === true;
       inboxRefresh.textContent = view.inbox?.loading === true ? "Refreshing…" : "Refresh messages";
       const leads = Array.isArray(view.inbox?.leads) ? view.inbox.leads : [];
+      const sourceLabels = {
+        instagram: "Instagram",
+        facebook: "Facebook",
+        email: "Email",
+        website: "Website",
+        sms: "SMS",
+        phone: "Phone",
+        manual: "Other",
+        other: "Other",
+      };
       const pulse = buildInboxPulse(leads);
       inboxPulse.hidden = pulse.total === 0;
       if (pulse.total > 0) {
@@ -2358,16 +2368,6 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
         inboxRepliedCount.textContent = String(pulse.replied);
         inboxWonCount.textContent = String(pulse.won);
 
-        const sourceLabels = {
-          instagram: "Instagram",
-          facebook: "Facebook",
-          email: "Email",
-          website: "Website",
-          sms: "SMS",
-          phone: "Phone",
-          manual: "Other",
-          other: "Other",
-        };
         const sourceText = pulse.sources.length
           ? pulse.sources.map(({ source, count }) =>
               `${sourceLabels[source] || source}: ${count}`).join(" · ")
@@ -2406,16 +2406,6 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
       const nextLead = priorityLeads[0] || null;
       inboxAttention.hidden = priorityLeads.length === 0;
       if (nextLead) {
-        const sourceLabels = {
-          instagram: "Instagram",
-          facebook: "Facebook",
-          email: "Email",
-          website: "Website",
-          sms: "SMS",
-          phone: "Phone",
-          manual: "Other",
-          other: "Other",
-        };
         const nextCustomer = nextLead.customer_name || nextLead.customer_contact || "Customer";
         const nextSource = sourceLabels[nextLead.source_type] || nextLead.source || "Customer";
         inboxAttentionTitle.textContent = priorityLeads.length === 1

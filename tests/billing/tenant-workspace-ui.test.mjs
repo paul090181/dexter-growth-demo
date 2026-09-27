@@ -1736,6 +1736,8 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /const inboxWonCount = documentImpl\.getElementById\("workspace-inbox-won-count"\)/);
   assert.match(js, /const inboxSourceSummary = documentImpl\.getElementById\("workspace-inbox-source-summary"\)/);
   assert.match(js, /const inboxAsk = documentImpl\.getElementById\("workspace-inbox-ask"\)/);
+  assert.match(js, /const leads = Array\.isArray\(view\.inbox\?\.leads\)[\s\S]*const sourceLabels = \{/);
+  assert.equal((js.match(/const sourceLabels = \{/g) || []).length, 1);
   assert.match(js, /Recent sources/);
   assert.match(js, /Based only on these counts/);
   assert.match(js, /Do not assume lead quality, revenue, profit, conversion rate, sales value, or customer intent/);
