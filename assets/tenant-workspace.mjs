@@ -12,6 +12,8 @@ const CONNECTOR_SESSION_START_ENDPOINT = "/.netlify/functions/tenant-connector-s
 const LOGIN_REQUEST_ENDPOINT = "/.netlify/functions/tenant-login-request";
 const TENANT_SESSION_ENDPOINT = "/.netlify/functions/tenant-session";
 const TENANT_SESSION_LOGOUT_ENDPOINT = "/.netlify/functions/tenant-session-logout";
+const FACEBOOK_CONNECTION_ENDPOINT = "/.netlify/functions/tenant-facebook-connection";
+const FACEBOOK_PUBLISH_ENDPOINT = "/.netlify/functions/tenant-facebook-publish";
 
 const FEATURE_LABELS = Object.freeze([
   ["ai_business_assistant", "AI business assistant"],
@@ -202,6 +204,15 @@ export function createTenantWorkspaceController({
     channels: { loading: false, error: "" },
     emailLogin: { loading: false, error: "", message: "" },
     lead: { loading: false, error: "", result: null },
+    facebook: {
+      enabled: false,
+      loading: false,
+      error: "",
+      status: null,
+      publishing: false,
+      publishError: "",
+      result: null,
+    },
   };
 
   const publish = (next) => {
@@ -230,6 +241,54 @@ export function createTenantWorkspaceController({
         loading: false,
         error: error?.message || "Square connection status is temporarily unavailable.",
         status: null,
+      };
+    }
+  }
+
+  async function readFacebookStatus({ businessId, tenantKey, subscription }) {
+    if (subscription?.feature_access?.automated_publishing !== true) {
+      return {
+        enabled: false,
+        loading: false,
+        error: "",
+        status: null,
+        publishing: false,
+        publishError: "",
+        result: null,
+      };
+    }
+    try {
+      const response = await fetchImpl(
+        `${FACEBOOK_CONNECTION_ENDPOINT}?business_id=${encodeURIComponent(businessId)}`,
+        {
+          method: "GET",
+          headers: authHeaders(tenantKey),
+          cache: "no-store",
+          credentials: "same-origin",
+        },
+      );
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || body.business_id !== businessId || typeof body.state !== "string") {
+        throw new Error(body.error || "Facebook connection status is temporarily unavailable.");
+      }
+      return {
+        enabled: true,
+        loading: false,
+        error: "",
+        status: body,
+        publishing: false,
+        publishError: "",
+        result: null,
+      };
+    } catch (error) {
+      return {
+        enabled: true,
+        loading: false,
+        error: error?.message || "Facebook connection status is temporarily unavailable.",
+        status: null,
+        publishing: false,
+        publishError: "",
+        result: null,
       };
     }
   }
@@ -332,6 +391,12 @@ export function createTenantWorkspaceController({
         square,
       });
 
+      const facebook = await readFacebookStatus({
+        businessId: id,
+        tenantKey: key,
+        subscription,
+      });
+
       await trackEvent("workspace_opened", { businessId: id, tenantKey: key });
       if (subscription?.access_source === "stripe" && subscription?.access_granted === true) {
         await trackEvent("checkout_completed", { businessId: id, tenantKey: key });
@@ -353,6 +418,7 @@ export function createTenantWorkspaceController({
         subscription,
         square,
         insights,
+        facebook,
       });
     } catch (error) {
       clearWorkspaceCredentials(storage);
@@ -364,6 +430,15 @@ export function createTenantWorkspaceController({
         subscription: null,
         square: { enabled: false, loading: false, error: "", status: null },
         insights: { enabled: false, loading: false, error: "", inventory: null, sales: null, pulse: null },
+        facebook: {
+          enabled: false,
+          loading: false,
+          error: "",
+          status: null,
+          publishing: false,
+          publishError: "",
+          result: null,
+        },
       });
     }
   }
@@ -614,6 +689,133 @@ export function createTenantWorkspaceController({
     return Boolean(insights.pulse);
   }
 
+  async function refreshFacebookStatus() {
+    const { businessId, tenantKey } = readWorkspaceCredentials(storage);
+    if (!state.signedIn
+      || state.subscription?.feature_access?.automated_publishing !== true
+      || !businessId) {
+      return false;
+    }
+    publish({
+      facebook: {
+        ...state.facebook,
+        enabled: true,
+        loading: true,
+        error: "",
+      },
+    });
+    const facebook = await readFacebookStatus({
+      businessId,
+      tenantKey,
+      subscription: state.subscription,
+    });
+    publish({ facebook: { ...facebook, result: state.facebook?.result || null } });
+    return facebook.status?.state === "Connected";
+  }
+
+  async function publishFacebook({ message, imageDataUrl = "", reviewed = false } = {}) {
+    const { businessId, tenantKey } = readWorkspaceCredentials(storage);
+    const text = String(message || "").trim();
+    if (!state.signedIn
+      || state.subscription?.feature_access?.automated_publishing !== true
+      || !businessId) {
+      publish({
+        facebook: {
+          ...state.facebook,
+          publishError: "Facebook publishing is not available for this workspace.",
+          result: null,
+        },
+      });
+      return false;
+    }
+    if (state.facebook?.status?.state !== "Connected") {
+      publish({
+        facebook: {
+          ...state.facebook,
+          publishError: "Connect this business's Facebook Page before publishing.",
+          result: null,
+        },
+      });
+      return false;
+    }
+    if (!reviewed || !text) {
+      publish({
+        facebook: {
+          ...state.facebook,
+          publishError: "Review the post copy and confirm it before publishing.",
+          result: null,
+        },
+      });
+      return false;
+    }
+
+    publish({
+      facebook: {
+        ...state.facebook,
+        publishing: true,
+        publishError: "",
+        result: null,
+      },
+    });
+    try {
+      const body = {
+        business_id: businessId,
+        reviewed: true,
+        message: text.slice(0, 5000),
+        expected_page_name: String(state.facebook?.status?.account?.page_name || "").slice(0, 220),
+      };
+      if (imageDataUrl) body.image_data_url = String(imageDataUrl);
+
+      const response = await fetchImpl(FACEBOOK_PUBLISH_ENDPOINT, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          ...authHeaders(tenantKey),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result?.ok !== true || result.business_id !== businessId) {
+        throw Object.assign(
+          new Error(result?.error || "Facebook could not publish the reviewed post."),
+          { code: result?.code || "" },
+        );
+      }
+      publish({
+        facebook: {
+          ...state.facebook,
+          publishing: false,
+          publishError: "",
+          result,
+        },
+      });
+      return true;
+    } catch (error) {
+      const needsAttention = [
+        "FACEBOOK_RECONNECT_REQUIRED",
+        "FACEBOOK_PUBLISHING_PERMISSION_REQUIRED",
+        "FACEBOOK_PAGE_MISMATCH",
+      ].includes(error?.code);
+      publish({
+        facebook: {
+          ...state.facebook,
+          publishing: false,
+          publishError: error?.message || "Facebook could not publish the reviewed post.",
+          result: null,
+          status: needsAttention
+            ? {
+                ...(state.facebook?.status || {}),
+                state: "Needs Attention",
+                action: "Reconnect Facebook before publishing again.",
+              }
+            : state.facebook?.status,
+        },
+      });
+      return false;
+    }
+  }
+
   async function draftLead({ source, customerName, message }) {
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
     const text = String(message || "").trim();
@@ -678,6 +880,15 @@ export function createTenantWorkspaceController({
       channels: { loading: false, error: "" },
       emailLogin: { loading: false, error: "", message: "" },
       lead: { loading: false, error: "", result: null },
+      facebook: {
+        enabled: false,
+        loading: false,
+        error: "",
+        status: null,
+        publishing: false,
+        publishError: "",
+        result: null,
+      },
     });
   }
 
@@ -691,6 +902,8 @@ export function createTenantWorkspaceController({
     connectSquare,
     refreshSquareInsights,
     openConnectorSetup,
+    refreshFacebookStatus,
+    publishFacebook,
     draftLead,
     signOut,
     getState: () => structuredClone(state),
@@ -730,6 +943,19 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const channelsCard = documentImpl.getElementById("workspace-channels-card");
   const channelsError = documentImpl.getElementById("workspace-channels-error");
   const channelsOpen = documentImpl.getElementById("workspace-channels-open");
+  const facebookCard = documentImpl.getElementById("workspace-facebook-card");
+  const facebookState = documentImpl.getElementById("workspace-facebook-state");
+  const facebookDetail = documentImpl.getElementById("workspace-facebook-detail");
+  const facebookError = documentImpl.getElementById("workspace-facebook-error");
+  const facebookConnect = documentImpl.getElementById("workspace-facebook-connect");
+  const facebookRefresh = documentImpl.getElementById("workspace-facebook-refresh");
+  const facebookForm = documentImpl.getElementById("workspace-facebook-form");
+  const facebookImage = documentImpl.getElementById("workspace-facebook-image");
+  const facebookPreview = documentImpl.getElementById("workspace-facebook-preview");
+  const facebookReviewed = documentImpl.getElementById("workspace-facebook-reviewed");
+  const facebookPublish = documentImpl.getElementById("workspace-facebook-publish");
+  const facebookPublishStatus = documentImpl.getElementById("workspace-facebook-publish-status");
+  const facebookResult = documentImpl.getElementById("workspace-facebook-result");
   const pulseCard = documentImpl.getElementById("workspace-pulse-card");
   const pulseError = documentImpl.getElementById("workspace-pulse-error");
   const pulseLoading = documentImpl.getElementById("workspace-pulse-loading");
@@ -749,6 +975,8 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const leadReply = documentImpl.getElementById("workspace-lead-reply");
   const leadMeta = documentImpl.getElementById("workspace-lead-meta");
   const leadFollowUp = documentImpl.getElementById("workspace-lead-followup");
+
+  let facebookImageDataUrl = "";
 
   const render = (view) => {
     signedOut.hidden = view.signedIn;
@@ -909,6 +1137,47 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
       channelsError.textContent = view.channels?.error || "";
     }
 
+    const facebookEligible = featureAccess.automated_publishing === true;
+    facebookCard.hidden = !facebookEligible;
+    if (facebookEligible) {
+      const connectionState = view.facebook?.status?.state
+        || (view.facebook?.loading ? "Checking…" : "Not Connected");
+      const connected = connectionState === "Connected";
+      facebookState.textContent = connectionState;
+      facebookDetail.textContent = view.facebook?.status?.account?.page_name
+        || view.facebook?.status?.action
+        || "Connect this business's own Facebook Page before publishing.";
+      facebookError.hidden = !view.facebook?.error;
+      facebookError.textContent = view.facebook?.error || "";
+      facebookConnect.hidden = connected;
+      facebookConnect.disabled = view.facebook?.loading === true || view.channels?.loading === true;
+      facebookConnect.textContent = connectionState === "Needs Attention"
+        ? "Reconnect Facebook"
+        : "Connect Facebook";
+      facebookRefresh.disabled = view.facebook?.loading === true || view.facebook?.publishing === true;
+      facebookRefresh.textContent = view.facebook?.loading === true ? "Checking…" : "Refresh connection";
+      facebookForm.hidden = !connected;
+      facebookPublish.disabled = view.facebook?.publishing === true;
+      facebookPublish.textContent = view.facebook?.publishing === true
+        ? "Publishing…"
+        : "Publish reviewed post";
+      facebookPublishStatus.hidden = !view.facebook?.publishError;
+      facebookPublishStatus.textContent = view.facebook?.publishError || "";
+      facebookResult.hidden = !view.facebook?.result;
+      if (view.facebook?.result) {
+        const type = view.facebook.result.post_type === "photo"
+          ? "photo post"
+          : view.facebook.result.post_type === "multi_photo"
+            ? "multi-photo post"
+            : "post";
+        facebookResult.textContent = "Published to "
+          + (view.facebook.result.page_name || "Facebook")
+          + " · "
+          + type
+          + ".";
+      }
+    }
+
     pulseCard.hidden = !squareConnected;
     if (squareConnected) {
       pulseLoading.hidden = view.insights?.loading !== true;
@@ -972,6 +1241,47 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   manage?.addEventListener("click", () => controller.openBilling());
   squareConnect?.addEventListener("click", () => controller.connectSquare());
   channelsOpen?.addEventListener("click", () => controller.openConnectorSetup());
+  facebookConnect?.addEventListener("click", () => controller.openConnectorSetup());
+  facebookRefresh?.addEventListener("click", () => controller.refreshFacebookStatus());
+
+  facebookImage?.addEventListener("change", () => {
+    const file = facebookImage.files?.[0];
+    facebookImageDataUrl = "";
+    facebookPreview.src = "";
+    facebookPreview.hidden = true;
+    if (!file) return;
+    if (!["image/jpeg", "image/png"].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      facebookPublishStatus.hidden = false;
+      facebookPublishStatus.textContent = "Choose a JPG or PNG photo under 5 MB.";
+      facebookImage.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      facebookImageDataUrl = String(reader.result || "");
+      facebookPreview.src = facebookImageDataUrl;
+      facebookPreview.hidden = !facebookImageDataUrl;
+      facebookPublishStatus.hidden = true;
+      facebookPublishStatus.textContent = "";
+    };
+    reader.readAsDataURL(file);
+  });
+
+  facebookForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const data = new FormData(facebookForm);
+    if (facebookReviewed?.checked !== true) {
+      facebookPublishStatus.hidden = false;
+      facebookPublishStatus.textContent = "Review the copy and photo, then confirm before publishing.";
+      return;
+    }
+    const ok = await controller.publishFacebook({
+      message: data.get("message"),
+      imageDataUrl: facebookImageDataUrl,
+      reviewed: true,
+    });
+    if (ok && facebookReviewed) facebookReviewed.checked = false;
+  });
   nextStep?.addEventListener("click", async () => {
     const action = nextStep.dataset.nextAction || "";
     if (action === "activate") {

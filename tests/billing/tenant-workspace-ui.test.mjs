@@ -655,6 +655,125 @@ test("Starter tenant cannot launch customer channel setup", async () => {
   assert.equal(connectorCalls, 0);
 });
 
+test("publishing-enabled tenant loads only its own Facebook Page and publishes only after review", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  const calls = [];
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    fetchImpl: async (url, init = {}) => {
+      calls.push({ url, init });
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          business_name: "North Star Books",
+        });
+      }
+      if (url.startsWith("/.netlify/functions/subscription-status?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          access_source: "stripe",
+          plan_key: "growth_monthly",
+          status: "active",
+          access_granted: true,
+          feature_access: {
+            inventory_connection: false,
+            unified_inbox: true,
+            automated_publishing: true,
+          },
+        });
+      }
+      if (url.startsWith("/.netlify/functions/tenant-facebook-connection?")) {
+        assert.equal(init.headers["X-GrowthWise-Tenant-Key"], TENANT_KEY);
+        assert.equal(url.includes(TENANT_KEY), false);
+        return response({
+          business_id: BUSINESS_ID,
+          state: "Connected",
+          account: { page_name: "North Star Books" },
+          action: "",
+        });
+      }
+      if (url === "/.netlify/functions/tenant-facebook-publish") {
+        assert.equal(init.headers["X-GrowthWise-Tenant-Key"], TENANT_KEY);
+        assert.equal(Object.hasOwn(init.headers, "X-GrowthWise-Key"), false);
+        assert.deepEqual(JSON.parse(init.body), {
+          business_id: BUSINESS_ID,
+          reviewed: true,
+          message: "New arrivals are here.",
+          expected_page_name: "North Star Books",
+          image_data_url: "data:image/jpeg;base64,AA==",
+        });
+        return response({
+          ok: true,
+          business_id: BUSINESS_ID,
+          page_name: "North Star Books",
+          post_type: "photo",
+          post_id: "page-123_456",
+          photo_count: 1,
+        });
+      }
+      throw new Error(`unexpected URL ${url}`);
+    },
+  });
+
+  const restored = await controller.restore();
+  assert.equal(restored.facebook.enabled, true);
+  assert.equal(restored.facebook.status.state, "Connected");
+  assert.equal(restored.facebook.status.account.page_name, "North Star Books");
+
+  assert.equal(await controller.publishFacebook({
+    message: "New arrivals are here.",
+    imageDataUrl: "data:image/jpeg;base64,AA==",
+    reviewed: false,
+  }), false);
+  assert.match(controller.getState().facebook.publishError, /confirm/i);
+  assert.equal(calls.some((call) => call.url === "/.netlify/functions/tenant-facebook-publish"), false);
+
+  assert.equal(await controller.publishFacebook({
+    message: "New arrivals are here.",
+    imageDataUrl: "data:image/jpeg;base64,AA==",
+    reviewed: true,
+  }), true);
+  assert.equal(controller.getState().facebook.result.page_name, "North Star Books");
+  assert.equal(calls.every((call) => !call.url.includes(TENANT_KEY)), true);
+});
+
+test("workspace never checks Facebook publishing for a plan without that entitlement", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  let facebookCalls = 0;
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    fetchImpl: async (url) => {
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) {
+        return response({ business_id: BUSINESS_ID, business_name: "North Star Books" });
+      }
+      if (url.startsWith("/.netlify/functions/subscription-status?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          access_source: "stripe",
+          plan_key: "starter_monthly",
+          status: "active",
+          access_granted: true,
+          feature_access: {
+            inventory_connection: false,
+            unified_inbox: false,
+            automated_publishing: false,
+          },
+        });
+      }
+      facebookCalls += 1;
+      return response({});
+    },
+  });
+
+  const restored = await controller.restore();
+  assert.equal(restored.facebook.enabled, false);
+  assert.equal(await controller.refreshFacebookStatus(), false);
+  assert.equal(await controller.publishFacebook({ message: "No", reviewed: true }), false);
+  assert.equal(facebookCalls, 0);
+});
+
 test("active tenant can draft a lead reply with tenant auth and no admin key", async () => {
   const s = storage();
   saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
@@ -745,6 +864,10 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /id="workspace-next-step"/);
   assert.match(html, /id="workspace-channels-card"/);
   assert.match(html, /id="workspace-channels-open"/);
+  assert.match(html, /id="workspace-facebook-card"/);
+  assert.match(html, /id="workspace-facebook-form"/);
+  assert.match(html, /id="workspace-facebook-reviewed"/);
+  assert.match(html, /id="workspace-facebook-publish"/);
   assert.match(html, /id="workspace-pulse-card"/);
   assert.match(html, /id="workspace-pulse-sales"/);
   assert.match(html, /id="workspace-pulse-inventory-value"/);
@@ -763,6 +886,10 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /refresh-insights/);
   assert.match(js, /tenant-connector-session-start/);
   assert.match(js, /openConnectorSetup/);
+  assert.match(js, /tenant-facebook-connection/);
+  assert.match(js, /tenant-facebook-publish/);
+  assert.match(js, /publishFacebook/);
+  assert.match(js, /refreshFacebookStatus/);
   assert.match(js, /tenant-login-request/);
   assert.match(js, /tenant-session-logout/);
   assert.match(js, /You're signed in securely/);

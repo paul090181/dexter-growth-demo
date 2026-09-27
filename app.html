@@ -109,6 +109,37 @@
       <button class="button" id="workspace-channels-open" type="button">Manage customer channels</button>
     </section>
 
+    <section class="card" id="workspace-facebook-card" hidden>
+      <div class="eyebrow">Facebook publishing</div>
+      <h2>Review it here. Post only when you're ready.</h2>
+      <p>GrowthWise uses only the Facebook Page connected to this workspace. Nothing publishes automatically.</p>
+      <div class="plan-banner">
+        <strong id="workspace-facebook-state">Checking…</strong>
+        <div id="workspace-facebook-detail" style="margin-top:5px"></div>
+      </div>
+      <div id="workspace-facebook-error" class="status" hidden></div>
+      <div class="actions" style="margin-top:10px">
+        <button class="button" id="workspace-facebook-connect" type="button">Connect Facebook</button>
+        <button class="button secondary" id="workspace-facebook-refresh" type="button">Refresh connection</button>
+      </div>
+      <form id="workspace-facebook-form" hidden style="margin-top:14px">
+        <label class="field">Post copy
+          <textarea name="message" maxlength="5000" placeholder="Write or paste the Facebook post you want to publish." required></textarea>
+        </label>
+        <label class="field">Photo (optional)
+          <input id="workspace-facebook-image" type="file" accept="image/jpeg,image/png" />
+        </label>
+        <img id="workspace-facebook-preview" alt="Selected Facebook post preview" hidden style="display:block;width:100%;max-height:360px;object-fit:contain;border-radius:14px;background:#f4f6f8;margin:10px 0" />
+        <label style="display:flex;gap:9px;align-items:flex-start;margin:13px 0;font-size:13px;font-weight:750;color:#45515d">
+          <input id="workspace-facebook-reviewed" type="checkbox" style="margin-top:3px" />
+          <span>I reviewed this copy and photo and want to publish them to the Facebook Page shown above.</span>
+        </label>
+        <button class="button" id="workspace-facebook-publish" type="submit">Publish reviewed post</button>
+      </form>
+      <div id="workspace-facebook-publish-status" class="status" hidden></div>
+      <div id="workspace-facebook-result" class="journey-banner" hidden></div>
+    </section>
+
     <section class="card" id="workspace-pulse-card" hidden>
       <div class="eyebrow">Business pulse</div>
       <h2>What Square is telling you right now.</h2>
