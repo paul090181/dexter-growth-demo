@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
   buildOnboardingSteps,
+  buildReplyLaunchUrl,
   buildSquareBusinessPulse,
   businessStarterKit,
   clearWorkspaceCredentials,
@@ -1301,6 +1302,88 @@ test("workspace never checks Facebook publishing for a plan without that entitle
   assert.equal(facebookCalls, 0);
 });
 
+test("reply launcher only builds explicit email or SMS composers and never sends automatically", () => {
+  assert.equal(buildReplyLaunchUrl({
+    sourceType: "website",
+    replyTarget: "customer@example.com",
+    replyText: "Thanks — we will confirm availability.",
+  }), "mailto:customer%40example.com?body=Thanks%20%E2%80%94%20we%20will%20confirm%20availability.");
+
+  assert.equal(buildReplyLaunchUrl({
+    sourceType: "website",
+    replyTarget: "(716) 555-0100",
+    replyText: "Thanks!",
+  }), "sms:7165550100?body=Thanks!");
+
+  assert.equal(buildReplyLaunchUrl({
+    sourceType: "instagram",
+    replyTarget: "javascript:alert(1)",
+    replyText: "No",
+  }), "");
+  assert.equal(buildReplyLaunchUrl({
+    sourceType: "email",
+    replyTarget: "not-an-email",
+    replyText: "No",
+  }), "");
+  assert.equal(buildReplyLaunchUrl({
+    sourceType: "email",
+    replyTarget: "customer@example.com",
+    replyText: "",
+  }), "");
+});
+
+test("owner can hand a drafted website reply to the native email composer without Narleo sending it", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  const navigations = [];
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    navigate: (url) => navigations.push(url),
+    fetchImpl: async (url, init = {}) => {
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) {
+        return response({ business_id: BUSINESS_ID, business_name: "North Star Books" });
+      }
+      if (url.startsWith("/.netlify/functions/subscription-status?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          access_source: "stripe",
+          plan_key: "starter_monthly",
+          status: "active",
+          access_granted: true,
+        });
+      }
+      if (url.startsWith("/.netlify/functions/retail-lead-assistant?")) {
+        assert.equal(Object.hasOwn(init.headers, "X-GrowthWise-Key"), false);
+        return response({
+          ok: true,
+          reply: "Thanks for reaching out. We can help with that request.",
+          intent: "general_inquiry",
+          risk_level: "low",
+          decision: "review",
+          follow_up_action: "Review and send.",
+        });
+      }
+      throw new Error(`unexpected URL ${url}`);
+    },
+  });
+
+  await controller.restore();
+  assert.equal(await controller.draftLead({
+    source: "Website form",
+    sourceType: "website",
+    replyTarget: "customer@example.com",
+    customerName: "Alex",
+    message: "Can I place an order for Saturday?",
+    sourceLeadId: "web-1",
+  }), true);
+
+  assert.equal(controller.openDraftReplyComposer(), true);
+  assert.equal(navigations.length, 1);
+  assert.match(navigations[0], /^mailto:customer%40example\.com\?body=/);
+  assert.match(decodeURIComponent(navigations[0]), /Thanks for reaching out/);
+  assert.equal(controller.getState().lead.markedReplied, false);
+});
+
 test("active tenant can draft a lead reply with tenant auth and no admin key", async () => {
   const s = storage();
   saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
@@ -1604,6 +1687,10 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /updateInboxStatus/);
   assert.match(js, /markDraftReplied/);
   assert.match(js, /sourceLeadId/);
+  assert.match(js, /buildReplyLaunchUrl/);
+  assert.match(js, /openDraftReplyComposer/);
+  assert.match(js, /replyTarget/);
+  assert.match(js, /sourceType/);
   assert.match(js, /mark_replied/);
   assert.match(js, /Needs follow-up/);
   assert.match(js, /Reopen/);
@@ -1619,6 +1706,7 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(inboxDraftBridge, /controller\.markInboxRead\(lead\.id\)/);
   assert.doesNotMatch(inboxDraftBridge, /send|publish/i);
   assert.match(html, /Copy suggested reply/);
+  assert.match(html, /id="workspace-lead-open-reply"/);
   assert.match(js, /navigator\?\.clipboard\?\.writeText/);
   assert.match(js, /phone: "Phone"/);
   assert.match(js, /tenant-facebook-connection/);

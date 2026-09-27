@@ -286,6 +286,28 @@ export function filterInboxLeads(leads = [], filter = "all") {
   return [...rows];
 }
 
+export function buildReplyLaunchUrl({ sourceType = "", replyTarget = "", replyText = "" } = {}) {
+  const type = String(sourceType || "").trim().toLowerCase();
+  const target = String(replyTarget || "").trim();
+  const text = String(replyText || "").trim();
+  if (!target || !text) return "";
+
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if ((type === "email" || type === "website" || type === "other" || type === "manual")
+    && emailPattern.test(target)) {
+    return `mailto:${encodeURIComponent(target)}?body=${encodeURIComponent(text)}`;
+  }
+
+  if (["sms", "phone", "website", "other", "manual"].includes(type)) {
+    const normalized = target.replace(/[()\s.-]/g, "");
+    if (/^\+?\d{7,15}$/.test(normalized)) {
+      return `sms:${normalized}?body=${encodeURIComponent(text)}`;
+    }
+  }
+
+  return "";
+}
+
 function statusLabel(status) {
   return ({
     active: "Active",
@@ -316,7 +338,15 @@ export function createTenantWorkspaceController({
     insights: { enabled: false, loading: false, error: "", inventory: null, sales: null, pulse: null },
     channels: { loading: false, error: "" },
     emailLogin: { loading: false, error: "", message: "" },
-    lead: { loading: false, error: "", result: null, sourceLeadId: "", markedReplied: false },
+    lead: {
+      loading: false,
+      error: "",
+      result: null,
+      sourceLeadId: "",
+      sourceType: "",
+      replyTarget: "",
+      markedReplied: false,
+    },
     inbox: {
       enabled: false,
       loading: false,
@@ -1613,20 +1643,59 @@ export function createTenantWorkspaceController({
     }
   }
 
-  async function draftLead({ source, customerName, message, sourceLeadId = "" }) {
+  async function draftLead({
+    source,
+    customerName,
+    message,
+    sourceLeadId = "",
+    sourceType = "",
+    replyTarget = "",
+  }) {
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
     const text = String(message || "").trim();
     if (!state.signedIn || state.subscription?.access_granted !== true || !businessId) {
-      publish({ lead: { loading: false, error: "An active workspace is required.", result: null, sourceLeadId: "", markedReplied: false } });
+      publish({
+        lead: {
+          loading: false,
+          error: "An active workspace is required.",
+          result: null,
+          sourceLeadId: "",
+          sourceType: "",
+          replyTarget: "",
+          markedReplied: false,
+        },
+      });
       return false;
     }
     if (!text) {
-      publish({ lead: { loading: false, error: "Enter the customer's message first.", result: null, sourceLeadId: "", markedReplied: false } });
+      publish({
+        lead: {
+          loading: false,
+          error: "Enter the customer's message first.",
+          result: null,
+          sourceLeadId: "",
+          sourceType: "",
+          replyTarget: "",
+          markedReplied: false,
+        },
+      });
       return false;
     }
 
     const linkedLeadId = String(sourceLeadId || "").trim().slice(0, 220);
-    publish({ lead: { loading: true, error: "", result: null, sourceLeadId: linkedLeadId, markedReplied: false } });
+    const linkedSourceType = String(sourceType || "").trim().toLowerCase().slice(0, 40);
+    const linkedReplyTarget = String(replyTarget || "").trim().slice(0, 320);
+    publish({
+      lead: {
+        loading: true,
+        error: "",
+        result: null,
+        sourceLeadId: linkedLeadId,
+        sourceType: linkedSourceType,
+        replyTarget: linkedReplyTarget,
+        markedReplied: false,
+      },
+    });
     try {
       const response = await fetchImpl(`${LEAD_ENDPOINT}?business_id=${encodeURIComponent(businessId)}`, {
         method: "POST",
@@ -1643,7 +1712,17 @@ export function createTenantWorkspaceController({
       if (!response.ok || body?.ok !== true || typeof body?.reply !== "string") {
         throw new Error(body?.error || "Narleo could not draft the reply.");
       }
-      publish({ lead: { loading: false, error: "", result: body, sourceLeadId: linkedLeadId, markedReplied: false } });
+      publish({
+        lead: {
+          loading: false,
+          error: "",
+          result: body,
+          sourceLeadId: linkedLeadId,
+          sourceType: linkedSourceType,
+          replyTarget: linkedReplyTarget,
+          markedReplied: false,
+        },
+      });
       await trackEvent("ai_workflow_used", { businessId, tenantKey });
       return true;
     } catch (error) {
@@ -1653,11 +1732,24 @@ export function createTenantWorkspaceController({
           error: error?.message || "Narleo could not draft the reply.",
           result: null,
           sourceLeadId: linkedLeadId,
+          sourceType: linkedSourceType,
+          replyTarget: linkedReplyTarget,
           markedReplied: false,
         },
       });
       return false;
     }
+  }
+
+  function openDraftReplyComposer() {
+    const url = buildReplyLaunchUrl({
+      sourceType: state.lead?.sourceType,
+      replyTarget: state.lead?.replyTarget,
+      replyText: state.lead?.result?.reply,
+    });
+    if (!url) return false;
+    navigate(url);
+    return true;
   }
 
   async function markDraftReplied() {
@@ -1694,7 +1786,15 @@ export function createTenantWorkspaceController({
       insights: { enabled: false, loading: false, error: "", inventory: null, sales: null, pulse: null },
       channels: { loading: false, error: "" },
       emailLogin: { loading: false, error: "", message: "" },
-      lead: { loading: false, error: "", result: null, sourceLeadId: "", markedReplied: false },
+      lead: {
+        loading: false,
+        error: "",
+        result: null,
+        sourceLeadId: "",
+        sourceType: "",
+        replyTarget: "",
+        markedReplied: false,
+      },
       inbox: {
         enabled: false,
         loading: false,
@@ -1758,6 +1858,7 @@ export function createTenantWorkspaceController({
     refreshInstagramStatus,
     publishInstagram,
     draftLead,
+    openDraftReplyComposer,
     markDraftReplied,
     signOut,
     getState: () => structuredClone(state),
@@ -1895,6 +1996,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const leadResult = documentImpl.getElementById("workspace-lead-result");
   const leadReply = documentImpl.getElementById("workspace-lead-reply");
   const leadCopy = documentImpl.getElementById("workspace-lead-copy");
+  const leadOpenReply = documentImpl.getElementById("workspace-lead-open-reply");
   const leadMarkReplied = documentImpl.getElementById("workspace-lead-mark-replied");
   const leadCopyStatus = documentImpl.getElementById("workspace-lead-copy-status");
   const leadMeta = documentImpl.getElementById("workspace-lead-meta");
@@ -2351,6 +2453,8 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
                 customerName,
                 message: messageText,
                 sourceLeadId: lead.id,
+                sourceType: lead.source_type,
+                replyTarget: lead.reply_target || lead.customer_contact || "",
               });
             } finally {
               draft.disabled = false;
@@ -2498,6 +2602,21 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     leadResult.hidden = !view.lead?.result;
     if (view.lead?.result) {
       leadReply.textContent = view.lead.result.reply || "";
+      const replyLaunchUrl = buildReplyLaunchUrl({
+        sourceType: view.lead?.sourceType,
+        replyTarget: view.lead?.replyTarget,
+        replyText: view.lead.result.reply || "",
+      });
+      leadOpenReply.hidden = !replyLaunchUrl;
+      leadOpenReply.textContent = replyLaunchUrl.startsWith("mailto:")
+        ? "Open email reply"
+        : replyLaunchUrl.startsWith("sms:")
+          ? "Open text reply"
+          : "Open reply";
+      leadMarkReplied.hidden = !view.lead?.sourceLeadId || view.lead?.markedReplied === true;
+      if (view.lead?.markedReplied === true) {
+        leadCopyStatus.textContent = "This inbox lead is marked as replied.";
+      }
       leadMeta.textContent = [
         view.lead.result.intent ? `Intent: ${view.lead.result.intent}` : "",
         view.lead.result.risk_level ? `Risk: ${view.lead.result.risk_level}` : "",
@@ -2846,6 +2965,12 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     }
   });
   planButtons.forEach((button) => button.addEventListener("click", () => controller.changePlan(button.dataset.planChange)));
+  leadOpenReply?.addEventListener("click", () => {
+    if (!controller.openDraftReplyComposer()) {
+      leadCopyStatus.textContent = "A supported email or phone reply target is not available for this lead.";
+    }
+  });
+
   leadMarkReplied?.addEventListener("click", async () => {
     const ok = await controller.markDraftReplied();
     if (!ok && controller.getState().lead?.sourceLeadId) {
