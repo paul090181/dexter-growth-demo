@@ -93,6 +93,82 @@ export function createGrowthWiseDevEmailInvitationController({
   return { hasAdminKey, createAndOpen };
 }
 
+export function createGrowthWiseDevFacebookInvitationController({
+  fetchImpl = globalThis.fetch,
+  storage = globalThis.sessionStorage,
+  origin = globalThis.location?.origin,
+  navigate = (url) => globalThis.location.assign(url),
+  onState = () => {},
+} = {}) {
+  if (typeof fetchImpl !== "function" || !storage || typeof origin !== "string" || !origin) {
+    throw new TypeError("Invalid invitation controller configuration.");
+  }
+
+  function hasAdminKey() {
+    return Boolean((storage.getItem(STORAGE_KEY) || "").trim());
+  }
+
+  async function createAndOpen() {
+    const adminKey = (storage.getItem(STORAGE_KEY) || "").trim();
+    if (!adminKey) {
+      onState({ status: "locked", message: "Unlock GrowthWise first." });
+      return false;
+    }
+
+    onState({ status: "loading", message: "Creating secure Facebook invitation…" });
+
+    let response;
+    try {
+      response = await fetchImpl(ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-GrowthWise-Key": adminKey,
+        },
+        body: JSON.stringify({
+          business_id: BUSINESS_ID,
+          connectors: ["facebook"],
+        }),
+      });
+    } catch {
+      onState({ status: "error", message: "Invitation service could not be reached." });
+      return false;
+    }
+
+    const body = await response.json().catch(() => ({}));
+
+    if (response.status === 401) {
+      storage.removeItem(STORAGE_KEY);
+      onState({ status: "locked", message: "GrowthWise admin session expired. Unlock again." });
+      return false;
+    }
+
+    if (!response.ok
+      || body?.business_id !== BUSINESS_ID
+      || !Array.isArray(body?.connectors)
+      || body.connectors.length !== 1
+      || body.connectors[0] !== "facebook"
+      || typeof body?.invitation_url !== "string") {
+      onState({ status: "error", message: "Secure invitation could not be created." });
+      return false;
+    }
+
+    let target;
+    try {
+      target = sameOriginInvitation(body.invitation_url, origin);
+    } catch {
+      onState({ status: "error", message: "Invitation response was rejected." });
+      return false;
+    }
+
+    onState({ status: "opening", message: "Opening secure connector…" });
+    navigate(target.toString());
+    return true;
+  }
+
+  return { hasAdminKey, createAndOpen };
+}
+
 export function mountGrowthWiseDevEmailInvitation({
   documentImpl = globalThis.document,
   windowImpl = globalThis.window,
@@ -142,8 +218,58 @@ export function mountGrowthWiseDevEmailInvitation({
   return controller;
 }
 
+export function mountGrowthWiseDevFacebookInvitation({
+  documentImpl = globalThis.document,
+  windowImpl = globalThis.window,
+} = {}) {
+  const card = documentImpl?.getElementById("facebookAcceptanceOperator");
+  const button = documentImpl?.getElementById("createFacebookAcceptanceInvitationBtn");
+  const status = documentImpl?.getElementById("facebookAcceptanceOperatorStatus");
+  if (!card || !button || !status) return null;
+
+  function setState(state) {
+    status.className = "create-status";
+    if (state.status === "error" || state.status === "locked") status.classList.add("error");
+    else if (state.status === "loading" || state.status === "opening") status.classList.add("loading");
+    else status.classList.add("ok");
+    status.textContent = state.message;
+  }
+
+  const controller = createGrowthWiseDevFacebookInvitationController({
+    fetchImpl: windowImpl.fetch.bind(windowImpl),
+    storage: windowImpl.sessionStorage,
+    origin: windowImpl.location.origin,
+    navigate: (url) => windowImpl.location.assign(url),
+    onState: setState,
+  });
+
+  function refreshVisibility() {
+    const unlocked = controller.hasAdminKey();
+    card.classList.toggle("hidden", !unlocked);
+    if (!unlocked) {
+      status.className = "create-status hidden";
+      status.textContent = "";
+    }
+  }
+
+  button.addEventListener("click", async () => {
+    button.disabled = true;
+    try {
+      await controller.createAndOpen();
+    } finally {
+      button.disabled = false;
+      refreshVisibility();
+    }
+  });
+
+  windowImpl.addEventListener("growthwise:admin-key-ready", refreshVisibility);
+  refreshVisibility();
+  return controller;
+}
+
 if (typeof window !== "undefined" && typeof document !== "undefined") {
   mountGrowthWiseDevEmailInvitation();
+  mountGrowthWiseDevFacebookInvitation();
 }
 
 
