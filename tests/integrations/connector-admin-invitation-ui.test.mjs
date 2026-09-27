@@ -4,6 +4,8 @@ import { readFile } from "node:fs/promises";
 
 import {
   createGrowthWiseDevEmailInvitationController,
+  createGrowthWiseDevFacebookInvitationController,
+  mountGrowthWiseDevFacebookInvitation,
 } from "../../assets/admin-connector-invitation.mjs";
 
 const ORIGIN = "https://deploy-preview-14--euphonious-beijinho-db4b4d.netlify.app";
@@ -55,6 +57,97 @@ test("admin invitation control creates only growthwise-dev email invitation and 
   });
   assert.deepEqual(navigated, [INVITE]);
   assert.equal(states.some((state) => JSON.stringify(state).includes("gw_inv_")), false);
+});
+
+test("Facebook acceptance control creates only a growthwise-dev Facebook invitation and opens it", async () => {
+  const calls = [];
+  const navigated = [];
+  const states = [];
+
+  const controller = createGrowthWiseDevFacebookInvitationController({
+    origin: ORIGIN,
+    storage: storageWith(),
+    onState: (state) => states.push(state),
+    navigate: (url) => navigated.push(url),
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      return new Response(JSON.stringify({
+        business_id: "growthwise-dev",
+        connectors: ["facebook"],
+        expires_at: "2026-09-27T20:00:00.000Z",
+        invitation_url: INVITE,
+      }), {
+        status: 201,
+        headers: { "content-type": "application/json" },
+      });
+    },
+  });
+
+  assert.equal(controller.hasAdminKey(), true);
+  assert.equal(await controller.createAndOpen(), true);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "/.netlify/functions/connector-invitation-create");
+  assert.equal(calls[0].init.method, "POST");
+  assert.deepEqual(JSON.parse(calls[0].init.body), {
+    business_id: "growthwise-dev",
+    connectors: ["facebook"],
+  });
+  assert.deepEqual(navigated, [INVITE]);
+  assert.equal(states.some((state) => JSON.stringify(state).includes("gw_inv_")), false);
+});
+
+test("Facebook acceptance card mounts behind the admin unlock and opens its secure invitation", async () => {
+  const handlers = new Map();
+  const calls = [];
+  const navigated = [];
+  const classes = new Set(["hidden"]);
+  const card = {
+    classList: {
+      toggle(name, force) { force ? classes.add(name) : classes.delete(name); },
+    },
+  };
+  const button = {
+    disabled: false,
+    addEventListener(name, handler) { handlers.set(name, handler); },
+  };
+  const status = {
+    className: "create-status hidden",
+    classList: { add() {} },
+    textContent: "",
+  };
+  const elements = new Map([
+    ["facebookAcceptanceOperator", card],
+    ["createFacebookAcceptanceInvitationBtn", button],
+    ["facebookAcceptanceOperatorStatus", status],
+  ]);
+  const windowImpl = {
+    fetch: async (url, init) => {
+      calls.push({ url, init });
+      return new Response(JSON.stringify({
+        business_id: "growthwise-dev",
+        connectors: ["facebook"],
+        invitation_url: INVITE,
+      }), { status: 201, headers: { "content-type": "application/json" } });
+    },
+    sessionStorage: storageWith(),
+    location: { origin: ORIGIN, assign: (url) => navigated.push(url) },
+    addEventListener() {},
+  };
+
+  const controller = mountGrowthWiseDevFacebookInvitation({
+    documentImpl: { getElementById: (id) => elements.get(id) ?? null },
+    windowImpl,
+  });
+
+  assert.ok(controller);
+  assert.equal(classes.has("hidden"), false);
+  await handlers.get("click")();
+  assert.equal(button.disabled, false);
+  assert.deepEqual(JSON.parse(calls[0].init.body), {
+    business_id: "growthwise-dev",
+    connectors: ["facebook"],
+  });
+  assert.deepEqual(navigated, [INVITE]);
 });
 
 test("admin invitation control refuses mismatched tenant or connector response", async () => {
@@ -122,11 +215,14 @@ test("401 removes stale admin key and never navigates", async () => {
   assert.equal(navigated, false);
 });
 
-test("operator UI is admin-gated and fixed to growthwise-dev email only", async () => {
+test("operator UI is admin-gated and keeps acceptance controls fixed to growthwise-dev", async () => {
   const html = await readFile(new URL("../../index.html", import.meta.url), "utf8");
   assert.match(html, /id="emailAcceptanceOperator"[^>]*class="operator-card hidden"|class="operator-card hidden" id="emailAcceptanceOperator"/);
   assert.match(html, /growthwise-dev · email only/);
+  assert.match(html, /id="facebookAcceptanceOperator"[^>]*class="operator-card hidden"|class="operator-card hidden" id="facebookAcceptanceOperator"/);
+  assert.match(html, /growthwise-dev · facebook only/);
   assert.match(html, /cannot target Dexter’s Hats/);
   assert.match(html, /assets\/admin-connector-invitation\.mjs/);
   assert.doesNotMatch(html, /id="emailAcceptanceInvitationUrl"/);
+  assert.doesNotMatch(html, /id="facebookAcceptanceInvitationUrl"/);
 });
