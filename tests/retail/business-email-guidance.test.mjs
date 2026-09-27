@@ -7,7 +7,7 @@ const help = await readFile(new URL("../../business-email-help.html", import.met
 
 test("signup gives a clear just-in-time business-mailbox privacy recommendation", () => {
   assert.match(signup, /Use a business mailbox when possible\./);
-  assert.match(signup, /If you connect a personal mailbox, GrowthWise may be able to access personal messages/i);
+  assert.match(signup, /If you connect a personal mailbox, Narleo may be able to access personal messages/i);
   assert.match(signup, /business-email-help\.html/);
 });
 
@@ -19,7 +19,7 @@ test("business email help offers a separate free Microsoft mailbox and a custom-
 });
 
 test("business email guidance does not encourage sharing credentials", () => {
-  assert.match(help, /GrowthWise does not receive or store your Microsoft password\./);
+  assert.match(help, /Narleo does not receive or store your Microsoft password\./);
   assert.match(help, /Avoid connecting the same inbox you use for family, banking, healthcare, or other personal messages\./);
   assert.match(help, /Start with read-only access/);
   assert.match(help, /Enable sending or automated replies only when you are comfortable/);
@@ -28,4 +28,12 @@ test("business email guidance does not encourage sharing credentials", () => {
 test("external email-setup links do not leak referrers or opener access", () => {
   assert.match(help, /Referrer-Policy/);
   assert.match(help, /target="_blank" rel="noopener noreferrer"/);
+});
+
+
+test("business email help is customer-facing Narleo copy", () => {
+  assert.match(help, /<title>Business email setup \| Narleo<\/title>/);
+  assert.match(help, /<div class="brand">Narleo<\/div>/);
+  assert.match(help, /What Narleo recommends/);
+  assert.match(help, /Back to Narleo signup/);
 });
