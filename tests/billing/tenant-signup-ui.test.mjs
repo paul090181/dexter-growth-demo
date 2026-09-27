@@ -43,7 +43,8 @@ test("the page grants access only from server-confirmed subscription status", ()
   assert.match(page, /billingResult\s*===\s*['"]success['"][\s\S]{0,300}refreshStatus\(\)/);
   assert.doesNotMatch(page, /billingResult\s*===\s*['"]success['"][\s\S]{0,300}accessGranted\s*=\s*true/);
   assert.match(page, /const stripeLinked = data\.access_source === ['"]stripe['"]/);
-  assert.match(page, /checkoutButton\.disabled\s*=\s*stripeLinked\s*\|\|\s*data\.access_source\s*===\s*['"]pilot['"]/);
+  assert.match(page, /const pilotAccess = data\.access_source === ['"]pilot['"]/);
+  assert.match(page, /checkoutButton\.disabled\s*=\s*stripeLinked\s*\|\|\s*pilotAccess/);
 });
 
 test("the standalone tenant page does not load Dexter integrations or data", () => {
@@ -82,7 +83,7 @@ test("signup keeps the current browser signed in and hands active customers into
   assert.match(page, />Continue<\/button>/);
   assert.match(page, /href="\.\/app\.html\?onboarding=1"/);
   assert.match(page, /Continue setup/);
-  assert.match(page, /planCard\.scrollIntoView/);
+  assert.match(page, /target\.scrollIntoView/);
   assert.match(page, /accessCard\.scrollIntoView/);
 });
 
@@ -101,7 +102,7 @@ test("returning businesses can find passwordless sign in directly from signup", 
   assert.match(page, /Sign in by email/);
   assert.match(page, /href="\.\/app\.html"/);
   assert.doesNotMatch(page, /Password recovery is not part of this preview yet/i);
-  assert.match(page, /use email sign-in from the business workspace/i);
+  assert.match(page, /use your business email to sign in securely/i);
 });
 
 
