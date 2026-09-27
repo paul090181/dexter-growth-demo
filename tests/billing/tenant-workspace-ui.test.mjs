@@ -9,6 +9,7 @@ import {
   clearWorkspaceCredentials,
   createOnboardingTracker,
   createTenantWorkspaceController,
+  filterInboxLeads,
   readWorkspaceCredentials,
   saveWorkspaceCredentials,
 } from "../../assets/tenant-workspace.mjs";
@@ -104,6 +105,23 @@ test("business starter kits adapt quick workflows by vertical without inventing 
 
   bakery[0].label = "mutated";
   assert.notEqual(businessStarterKit("bakery_food")[0].label, "mutated");
+});
+
+test("unified inbox filters stay client-side and preserve original rows", () => {
+  const leads = [
+    { id: "ig-1", source_type: "instagram", unread: true },
+    { id: "fb-1", source_type: "facebook", unread: false },
+    { id: "sms-1", source_type: "sms", unread: true },
+    { id: "phone-1", source_type: "phone", unread: false },
+    { id: "manual-1", source_type: "manual", unread: false },
+  ];
+
+  assert.deepEqual(filterInboxLeads(leads, "unread").map((lead) => lead.id), ["ig-1", "sms-1"]);
+  assert.deepEqual(filterInboxLeads(leads, "instagram").map((lead) => lead.id), ["ig-1"]);
+  assert.deepEqual(filterInboxLeads(leads, "sms_phone").map((lead) => lead.id), ["sms-1", "phone-1"]);
+  assert.deepEqual(filterInboxLeads(leads, "other").map((lead) => lead.id), ["manual-1"]);
+  assert.deepEqual(filterInboxLeads(leads, "unknown").map((lead) => lead.id), leads.map((lead) => lead.id));
+  assert.equal(leads.length, 5);
 });
 
 test("business pulse turns Square summaries into useful metrics and actions", () => {
@@ -1336,6 +1354,9 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /id="workspace-channels-open"/);
   assert.match(html, /id="workspace-inbox-card"/);
   assert.match(html, /id="workspace-inbox-refresh"/);
+  assert.match(html, /id="workspace-inbox-filter"/);
+  assert.match(html, /value="unread"/);
+  assert.match(html, /value="sms_phone"/);
   assert.match(html, /id="workspace-inbox-list"/);
   assert.match(html, /id="workspace-lead-source"/);
   assert.match(html, /id="workspace-lead-customer"/);
@@ -1432,6 +1453,8 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /tenant-inbox/);
   assert.match(js, /tenant-inbox-action/);
   assert.match(js, /refreshInbox/);
+  assert.match(js, /filterInboxLeads/);
+  assert.match(js, /No messages match this filter/);
   assert.match(js, /markInboxRead/);
   assert.match(js, /Mark read/);
   assert.match(js, /Draft reply with Narleo/);

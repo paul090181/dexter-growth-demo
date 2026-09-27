@@ -284,8 +284,18 @@
       <p>Messages from connected channels stay tied to this business. Use Narleo to turn an inbound message into a draft reply.</p>
       <div class="actions">
         <button class="button secondary" id="workspace-inbox-refresh" type="button">Refresh messages</button>
-        <span id="workspace-inbox-summary" style="align-self:center;font-size:13px;font-weight:800;color:#53606c"></span>
+        <select id="workspace-inbox-filter" aria-label="Filter inbox messages" style="border:1px solid #d5dce2;border-radius:12px;padding:12px;font:inherit;background:#fff;color:#14202c">
+          <option value="all">All messages</option>
+          <option value="unread">Unread</option>
+          <option value="instagram">Instagram</option>
+          <option value="facebook">Facebook</option>
+          <option value="email">Email</option>
+          <option value="website">Website</option>
+          <option value="sms_phone">SMS / Phone</option>
+          <option value="other">Other</option>
+        </select>
       </div>
+      <div id="workspace-inbox-summary" style="margin-top:8px;font-size:13px;font-weight:800;color:#53606c"></div>
       <div id="workspace-inbox-error" class="status" hidden></div>
       <div id="workspace-inbox-empty" class="plan-banner" hidden>No inbound messages yet. Connect customer channels when you're ready.</div>
       <div id="workspace-inbox-list" style="display:grid;gap:10px;margin-top:12px"></div>

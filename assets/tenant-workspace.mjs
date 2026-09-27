@@ -239,6 +239,23 @@ export function buildOnboardingSteps({
   return steps;
 }
 
+export function filterInboxLeads(leads = [], filter = "all") {
+  const rows = Array.isArray(leads) ? leads : [];
+  const mode = String(filter || "all");
+  if (mode === "all") return [...rows];
+  if (mode === "unread") return rows.filter((lead) => lead?.unread === true);
+  if (mode === "sms_phone") {
+    return rows.filter((lead) => ["sms", "phone"].includes(String(lead?.source_type || "")));
+  }
+  if (mode === "other") {
+    return rows.filter((lead) => ["manual", "other"].includes(String(lead?.source_type || "")));
+  }
+  if (["instagram", "facebook", "email", "website"].includes(mode)) {
+    return rows.filter((lead) => String(lead?.source_type || "") === mode);
+  }
+  return [...rows];
+}
+
 function statusLabel(status) {
   return ({
     active: "Active",
@@ -1669,6 +1686,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const channelsOpen = documentImpl.getElementById("workspace-channels-open");
   const inboxCard = documentImpl.getElementById("workspace-inbox-card");
   const inboxRefresh = documentImpl.getElementById("workspace-inbox-refresh");
+  const inboxFilter = documentImpl.getElementById("workspace-inbox-filter");
   const inboxSummary = documentImpl.getElementById("workspace-inbox-summary");
   const inboxError = documentImpl.getElementById("workspace-inbox-error");
   const inboxEmpty = documentImpl.getElementById("workspace-inbox-empty");
@@ -2062,13 +2080,19 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     if (channelEligible) {
       inboxRefresh.disabled = view.inbox?.loading === true;
       inboxRefresh.textContent = view.inbox?.loading === true ? "Refreshing…" : "Refresh messages";
-      inboxSummary.textContent = view.inbox?.unreadCount
-        ? `${view.inbox.unreadCount} unread · ${view.inbox.count} recent`
-        : `${view.inbox?.count || 0} recent`;
+      const leads = Array.isArray(view.inbox?.leads) ? view.inbox.leads : [];
+      const visibleLeads = filterInboxLeads(leads, inboxFilter?.value || "all");
+      inboxSummary.textContent = [
+        inboxFilter?.value && inboxFilter.value !== "all" ? `${visibleLeads.length} shown` : "",
+        view.inbox?.unreadCount ? `${view.inbox.unreadCount} unread` : "",
+        `${view.inbox?.count || 0} recent`,
+      ].filter(Boolean).join(" · ");
       inboxError.hidden = !view.inbox?.error;
       inboxError.textContent = view.inbox?.error || "";
-      const leads = Array.isArray(view.inbox?.leads) ? view.inbox.leads : [];
-      inboxEmpty.hidden = leads.length > 0 || view.inbox?.loading === true || Boolean(view.inbox?.error);
+      inboxEmpty.hidden = visibleLeads.length > 0 || view.inbox?.loading === true || Boolean(view.inbox?.error);
+      inboxEmpty.textContent = leads.length > 0 && visibleLeads.length === 0
+        ? "No messages match this filter."
+        : "No inbound messages yet. Connect customer channels when you're ready.";
       inboxList.replaceChildren();
 
       const sourceLabels = {
@@ -2082,7 +2106,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
         other: "Other",
       };
 
-      for (const lead of leads) {
+      for (const lead of visibleLeads) {
         const item = documentImpl.createElement("div");
         item.className = "reply-box";
 
@@ -2329,6 +2353,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   squareSkip?.addEventListener("click", () => controller.skipSquare());
   channelsOpen?.addEventListener("click", () => controller.openConnectorSetup());
   inboxRefresh?.addEventListener("click", () => controller.refreshInbox());
+  inboxFilter?.addEventListener("change", () => render(controller.getState()));
   function updateFirstWinTaskUI() {
     const social = firstWinTask?.value !== "customer_reply";
     const businessType = controller.getState().profile?.business_type || "other";
