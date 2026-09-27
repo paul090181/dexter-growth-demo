@@ -1738,6 +1738,8 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const leadStatus = documentImpl.getElementById("workspace-lead-status");
   const leadResult = documentImpl.getElementById("workspace-lead-result");
   const leadReply = documentImpl.getElementById("workspace-lead-reply");
+  const leadCopy = documentImpl.getElementById("workspace-lead-copy");
+  const leadCopyStatus = documentImpl.getElementById("workspace-lead-copy-status");
   const leadMeta = documentImpl.getElementById("workspace-lead-meta");
   const leadFollowUp = documentImpl.getElementById("workspace-lead-followup");
 
@@ -2556,6 +2558,17 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     }
   });
   planButtons.forEach((button) => button.addEventListener("click", () => controller.changePlan(button.dataset.planChange)));
+  leadCopy?.addEventListener("click", async () => {
+    const text = String(controller.getState().lead?.result?.reply || "").trim();
+    if (!text) return;
+    try {
+      await globalThis.navigator?.clipboard?.writeText(text);
+      leadCopyStatus.textContent = "Reply copied. Review it once more before sending.";
+    } catch {
+      leadCopyStatus.textContent = "Copy is not available in this browser. Select the reply above to copy it.";
+    }
+  });
+
   leadForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const data = new FormData(leadForm);

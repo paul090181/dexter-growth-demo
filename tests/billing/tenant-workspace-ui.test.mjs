@@ -1312,6 +1312,8 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /id="workspace-lead-source"/);
   assert.match(html, /id="workspace-lead-customer"/);
   assert.match(html, /id="workspace-lead-message"/);
+  assert.match(html, /id="workspace-lead-copy"/);
+  assert.match(html, /id="workspace-lead-copy-status"/);
   assert.match(html, /<option>Phone<\/option>/);
   assert.match(html, /id="workspace-starter-kit"/);
   assert.match(html, /What would help right now/);
@@ -1394,6 +1396,8 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /markInboxRead/);
   assert.match(js, /Mark read/);
   assert.match(js, /Draft reply with Narleo/);
+  assert.match(js, /Copy suggested reply/);
+  assert.match(js, /navigator\?\.clipboard\?\.writeText/);
   assert.match(js, /phone: "Phone"/);
   assert.match(js, /tenant-facebook-connection/);
   assert.match(js, /tenant-facebook-publish/);
