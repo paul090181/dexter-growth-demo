@@ -2,6 +2,7 @@ import { authorizeTenantPublishingRequest } from "./_tenant-publishing-auth.mjs"
 import { createInstagramPublishHandler } from "./instagram-publish.mjs";
 
 const INTERNAL_AUTH = "tenant-instagram-publish-authorized";
+const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
 function json(status, body) {
   return new Response(JSON.stringify(body), {
@@ -41,10 +42,18 @@ export function createTenantInstagramPublishHandler(options = {}) {
       return json(415, { error: "JSON is required." });
     }
 
+    const declared = request.headers.get("content-length");
+    if (declared && (!/^\d+$/.test(declared) || Number(declared) > MAX_BODY_BYTES)) {
+      return json(413, { error: "Instagram publish request is too large." });
+    }
+
     let body;
     let raw;
     try {
       raw = await request.text();
+      if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) {
+        return json(413, { error: "Instagram publish request is too large." });
+      }
       body = JSON.parse(raw);
     } catch {
       return json(400, { error: "Invalid Instagram publish request." });
@@ -87,6 +96,7 @@ export function createTenantInstagramPublishHandler(options = {}) {
     headers.set("x-growthwise-key", INTERNAL_AUTH);
     headers.delete("content-length");
     headers.delete("cookie");
+    headers.delete("x-growthwise-tenant-key");
 
     const response = await innerHandler(new Request(targetUrl, {
       method: "POST",

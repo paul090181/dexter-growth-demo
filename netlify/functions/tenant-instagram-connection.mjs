@@ -75,6 +75,7 @@ export function createTenantInstagramConnectionHandler(options = {}) {
     const headers = new Headers(request.headers);
     headers.set("x-growthwise-key", INTERNAL_AUTH);
     headers.delete("cookie");
+    headers.delete("x-growthwise-tenant-key");
 
     const response = await innerHandler(new Request(target, {
       method: "GET",

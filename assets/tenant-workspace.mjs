@@ -2055,7 +2055,9 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
         email: "Email",
         website: "Website",
         sms: "SMS",
+        phone: "Phone",
         manual: "Other",
+        other: "Other",
       };
 
       for (const lead of leads) {

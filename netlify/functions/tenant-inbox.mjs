@@ -7,7 +7,9 @@ import { hasEntitlement, resolveSubscriptionEntitlements } from "./_entitlements
 const PATH = "/.netlify/functions/tenant-inbox";
 const MAX_ROWS = 100;
 const RETURN_LIMIT = 30;
-const ALLOWED_SOURCES = new Set(["instagram", "facebook", "email", "website", "sms", "manual"]);
+const ALLOWED_SOURCES = new Set([
+  "instagram", "facebook", "email", "website", "sms", "phone", "manual", "other",
+]);
 
 function json(status, body) {
   return new Response(JSON.stringify(body), {
@@ -51,6 +53,12 @@ function safeText(value, max) {
   return value == null ? null : String(value).slice(0, max);
 }
 
+function safeIso(value) {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
 function safeLead(row) {
   return {
     id: safeText(row?.id, 220) || "",
@@ -61,12 +69,12 @@ function safeLead(row) {
     customer_contact: safeText(row?.customer_contact, 320),
     message: safeText(row?.message, 4000) || "",
     direction: safeText(row?.direction, 40) || "inbound",
-    received_at: row?.received_at ? new Date(row.received_at).toISOString() : null,
+    received_at: safeIso(row?.received_at),
     unread: row?.unread !== false,
     reply_supported: row?.reply_supported === true,
     reply_target: safeText(row?.reply_target, 320),
     status: safeText(row?.status, 80) || "new",
-    created_at: row?.created_at ? new Date(row.created_at).toISOString() : null,
+    created_at: safeIso(row?.created_at),
   };
 }
 

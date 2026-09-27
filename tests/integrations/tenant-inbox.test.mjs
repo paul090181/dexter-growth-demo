@@ -68,6 +68,25 @@ test("tenant inbox returns only rows for the authorized business and supported s
           created_at: NOW,
         },
         {
+          id: "phone-1",
+          business_id: BUSINESS_ID,
+          source: "Phone",
+          source_type: "phone",
+          customer_name: "Caller",
+          message: "Please call me back.",
+          unread: true,
+          created_at: "not-a-date",
+        },
+        {
+          id: "other-1",
+          business_id: BUSINESS_ID,
+          source: "Other",
+          source_type: "other",
+          message: "Imported inquiry",
+          unread: false,
+          created_at: NOW,
+        },
+        {
           id: "wrong-tenant",
           business_id: OTHER_ID,
           source: "Instagram",
@@ -94,9 +113,10 @@ test("tenant inbox returns only rows for the authorized business and supported s
   assert.deepEqual(queried, [BUSINESS_ID]);
   assert.equal(body.ok, true);
   assert.equal(body.business_id, BUSINESS_ID);
-  assert.equal(body.count, 2);
-  assert.equal(body.unread_count, 1);
-  assert.deepEqual(body.leads.map((lead) => lead.id), ["ig-1", "fb-1"]);
+  assert.equal(body.count, 4);
+  assert.equal(body.unread_count, 2);
+  assert.deepEqual(body.leads.map((lead) => lead.id), ["ig-1", "fb-1", "phone-1", "other-1"]);
+  assert.equal(body.leads.find((lead) => lead.id === "phone-1").created_at, null);
   assert.equal(JSON.stringify(body).includes("wrong-tenant"), false);
   assert.equal(JSON.stringify(body).includes("unsupported"), false);
 });

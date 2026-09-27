@@ -268,6 +268,93 @@ test("tenant Instagram publishing blocks cross-tenant authorization before store
   assert.equal(innerCalls, 0);
 });
 
+test("tenant Instagram adapters do not forward the tenant credential into the internal Instagram handlers", async () => {
+  const seen = [];
+  const connection = createTenantInstagramConnectionHandler({
+    authorize: allowed(),
+    innerHandler: async (request) => {
+      seen.push({
+        kind: "connection",
+        admin: request.headers.get("x-growthwise-key"),
+        tenant: request.headers.get("x-growthwise-tenant-key"),
+      });
+      return new Response(JSON.stringify({
+        business_id: BUSINESS_ID,
+        state: "Not Connected",
+        checked_at: NOW.toISOString(),
+        action: "Connect Instagram.",
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    },
+  });
+  const connectionRequest = new Request(
+    ORIGIN + "/.netlify/functions/tenant-instagram-connection?business_id=" + BUSINESS_ID,
+    { headers: { "x-growthwise-tenant-key": "TENANT_SECRET" } },
+  );
+  assert.equal((await connection(connectionRequest)).status, 200);
+
+  const publish = createTenantInstagramPublishHandler({
+    authorize: allowed(),
+    innerHandler: async (request) => {
+      seen.push({
+        kind: "publish",
+        admin: request.headers.get("x-growthwise-key"),
+        tenant: request.headers.get("x-growthwise-tenant-key"),
+      });
+      return new Response(JSON.stringify({
+        ok: true,
+        published: true,
+        live_sent: true,
+        media_id: "media-1",
+        account: { username: "tierneytreats" },
+      }), { status: 200, headers: { "content-type": "application/json" } });
+    },
+  });
+  const publishRequest = new Request(ORIGIN + "/.netlify/functions/tenant-instagram-publish", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-growthwise-tenant-key": "TENANT_SECRET",
+    },
+    body: JSON.stringify({
+      business_id: BUSINESS_ID,
+      caption: "Reviewed",
+      image_data_url: "data:image/jpeg;base64,/9j/2Q==",
+      reviewed: true,
+    }),
+  });
+  assert.equal((await publish(publishRequest)).status, 200);
+  assert.equal(seen.length, 2);
+  assert.equal(seen.every((item) => typeof item.admin === "string" && item.admin.length > 0), true);
+  assert.equal(seen.every((item) => item.tenant === null), true);
+});
+
+test("tenant Instagram publish rejects an oversized body before tenant or provider work", async () => {
+  let authCalls = 0;
+  let innerCalls = 0;
+  const handler = createTenantInstagramPublishHandler({
+    authorize: async () => {
+      authCalls += 1;
+      return { ok: true, via: "tenant", businessId: BUSINESS_ID };
+    },
+    innerHandler: async () => {
+      innerCalls += 1;
+      return new Response("{}", { status: 200 });
+    },
+  });
+
+  const response = await handler(new Request(ORIGIN + "/.netlify/functions/tenant-instagram-publish", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "content-length": String(8 * 1024 * 1024 + 1),
+    },
+    body: "{}",
+  }));
+  assert.equal(response.status, 413);
+  assert.equal(authCalls, 0);
+  assert.equal(innerCalls, 0);
+});
+
 test("tenant Instagram publishing preserves safe reconnect and retry guidance without provider secrets", async () => {
   const handler = createTenantInstagramPublishHandler({
     authorize: allowed(),
