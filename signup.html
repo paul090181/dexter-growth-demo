@@ -11,7 +11,7 @@
 </head>
 <body>
   <main class="shell">
-    <div class="brand">GrowthWise</div>
+    <div class="brand">Narleo</div>
     <div class="top-actions">
       <a class="signin-link" href="./app.html">Already have a workspace? Sign in</a>
     </div>
@@ -38,7 +38,7 @@
     <section class="card email-privacy-note" id="emailPrivacyNote">
       <div class="eyebrow">Email privacy</div>
       <h2>Use a business mailbox when possible.</h2>
-      <p>Later, if you connect email to GrowthWise, we strongly recommend authorizing a mailbox used only for your business. If you connect a personal mailbox, GrowthWise may be able to access personal messages under the permissions you approve.</p>
+      <p>Later, if you connect email to Narleo, we strongly recommend authorizing a mailbox used only for your business. If you connect a personal mailbox, Narleo may be able to access personal messages under the permissions you approve.</p>
       <p style="margin-top:10px">A separate business mailbox keeps customer conversations, AI assistance, and future automated replies separate from your personal email. <a href="./business-email-help.html">See business email setup options</a>.</p>
     </section>
 
@@ -312,7 +312,7 @@
 
     const billingResult = new URLSearchParams(window.location.search).get('billing');
     if(billingResult === 'success'){
-      subscriptionStatus.textContent = 'Checkout finished. Confirming access with the GrowthWise server…';
+      subscriptionStatus.textContent = 'Checkout finished. Narleo is confirming your access…';
       refreshStatus();
     }else if(billingResult === 'cancelled'){
       subscriptionStatus.textContent = 'Checkout was cancelled. Access remains locked.';
