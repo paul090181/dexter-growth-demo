@@ -109,13 +109,15 @@ test("business starter kits adapt quick workflows by vertical without inventing 
 
 test("unified inbox filters stay client-side and preserve original rows", () => {
   const leads = [
-    { id: "ig-1", source_type: "instagram", unread: true },
-    { id: "fb-1", source_type: "facebook", unread: false },
-    { id: "sms-1", source_type: "sms", unread: true },
-    { id: "phone-1", source_type: "phone", unread: false },
-    { id: "manual-1", source_type: "manual", unread: false },
+    { id: "ig-1", source_type: "instagram", unread: true, status: "new" },
+    { id: "fb-1", source_type: "facebook", unread: false, status: "follow-up" },
+    { id: "sms-1", source_type: "sms", unread: true, status: "closed" },
+    { id: "phone-1", source_type: "phone", unread: false, status: "new" },
+    { id: "manual-1", source_type: "manual", unread: false, status: "replied" },
   ];
 
+  assert.deepEqual(filterInboxLeads(leads, "open").map((lead) => lead.id), ["ig-1", "fb-1", "phone-1", "manual-1"]);
+  assert.deepEqual(filterInboxLeads(leads, "follow_up").map((lead) => lead.id), ["fb-1"]);
   assert.deepEqual(filterInboxLeads(leads, "unread").map((lead) => lead.id), ["ig-1", "sms-1"]);
   assert.deepEqual(filterInboxLeads(leads, "instagram").map((lead) => lead.id), ["ig-1"]);
   assert.deepEqual(filterInboxLeads(leads, "sms_phone").map((lead) => lead.id), ["sms-1", "phone-1"]);
@@ -1050,23 +1052,29 @@ test("unified-inbox tenant loads recent messages and refreshes without exposing 
             direction: "inbound",
             unread: false,
             reply_supported: false,
-            status: "new",
+            status: "follow-up",
           }],
         });
       }
       if (url === "/.netlify/functions/tenant-inbox-action") {
         assert.equal(init.headers["X-GrowthWise-Tenant-Key"], TENANT_KEY);
         assert.equal(Object.hasOwn(init.headers, "X-GrowthWise-Key"), false);
-        assert.deepEqual(JSON.parse(init.body), {
-          business_id: BUSINESS_ID,
-          lead_id: "ig-1",
-          action: "mark_read",
-        });
+        const body = JSON.parse(init.body);
+        assert.equal(body.business_id, BUSINESS_ID);
+        assert.equal(body.lead_id, "ig-1");
+        const statusByAction = {
+          mark_read: "new",
+          needs_follow_up: "follow-up",
+          close: "closed",
+          reopen: "new",
+        };
+        assert.equal(Object.hasOwn(statusByAction, body.action), true);
         return response({
           ok: true,
           business_id: BUSINESS_ID,
           lead_id: "ig-1",
           unread: false,
+          status: statusByAction[body.action],
         });
       }
       throw new Error(`unexpected URL ${url}`);
@@ -1083,6 +1091,12 @@ test("unified-inbox tenant loads recent messages and refreshes without exposing 
   assert.equal(await controller.markInboxRead("ig-1"), true);
   assert.equal(controller.getState().inbox.unreadCount, 0);
   assert.equal(controller.getState().inbox.leads[0].unread, false);
+  assert.equal(await controller.updateInboxStatus("ig-1", "needs_follow_up"), true);
+  assert.equal(controller.getState().inbox.leads[0].status, "follow-up");
+  assert.equal(await controller.updateInboxStatus("ig-1", "close"), true);
+  assert.equal(controller.getState().inbox.leads[0].status, "closed");
+  assert.equal(await controller.updateInboxStatus("ig-1", "reopen"), true);
+  assert.equal(controller.getState().inbox.leads[0].status, "new");
   assert.equal(calls.every((call) => !call.url.includes(TENANT_KEY)), true);
   assert.equal(calls.every((call) => !Object.hasOwn(call.init?.headers || {}, "X-GrowthWise-Key")), true);
 });
@@ -1456,6 +1470,10 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /filterInboxLeads/);
   assert.match(js, /No messages match this filter/);
   assert.match(js, /markInboxRead/);
+  assert.match(js, /updateInboxStatus/);
+  assert.match(js, /Needs follow-up/);
+  assert.match(js, /Reopen/);
+  assert.match(js, /Done/);
   assert.match(js, /Mark read/);
   assert.match(js, /Draft reply with Narleo/);
   const inboxDraftStart = js.indexOf('draft.textContent = "Draft reply with Narleo"');

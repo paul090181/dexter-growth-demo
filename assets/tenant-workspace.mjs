@@ -243,6 +243,8 @@ export function filterInboxLeads(leads = [], filter = "all") {
   const rows = Array.isArray(leads) ? leads : [];
   const mode = String(filter || "all");
   if (mode === "all") return [...rows];
+  if (mode === "open") return rows.filter((lead) => String(lead?.status || "new") !== "closed");
+  if (mode === "follow_up") return rows.filter((lead) => String(lead?.status || "") === "follow-up");
   if (mode === "unread") return rows.filter((lead) => lead?.unread === true);
   if (mode === "sms_phone") {
     return rows.filter((lead) => ["sms", "phone"].includes(String(lead?.source_type || "")));
@@ -1056,6 +1058,70 @@ export function createTenantWorkspaceController({
     }
   }
 
+  async function updateInboxStatus(leadId, action) {
+    const { businessId, tenantKey } = readWorkspaceCredentials(storage);
+    const id = String(leadId || "").trim();
+    const normalized = ["needs_follow_up", "close", "reopen"].includes(action) ? action : "";
+    if (!state.signedIn
+      || state.subscription?.feature_access?.unified_inbox !== true
+      || !businessId
+      || !id
+      || !normalized) {
+      return false;
+    }
+
+    try {
+      const response = await fetchImpl(TENANT_INBOX_ACTION_ENDPOINT, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          ...authHeaders(tenantKey),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          business_id: businessId,
+          lead_id: id,
+          action: normalized,
+        }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || body?.ok !== true || body.business_id !== businessId
+        || body.lead_id !== id || typeof body.status !== "string") {
+        throw new Error(body?.error || "Message status could not be updated.");
+      }
+
+      let unreadChanged = false;
+      const leads = (state.inbox?.leads || []).map((lead) => {
+        if (lead.id !== id) return lead;
+        unreadChanged = lead.unread === true && body.unread === false;
+        return {
+          ...lead,
+          status: body.status,
+          unread: body.unread === true,
+        };
+      });
+      publish({
+        inbox: {
+          ...state.inbox,
+          error: "",
+          leads,
+          unreadCount: unreadChanged
+            ? Math.max(0, Number(state.inbox?.unreadCount || 0) - 1)
+            : Number(state.inbox?.unreadCount || 0),
+        },
+      });
+      return true;
+    } catch (error) {
+      publish({
+        inbox: {
+          ...state.inbox,
+          error: error?.message || "Message status could not be updated.",
+        },
+      });
+      return false;
+    }
+  }
+
   async function askNarleo(question) {
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
     const text = String(question || "").trim();
@@ -1637,6 +1703,7 @@ export function createTenantWorkspaceController({
     openConnectorSetup,
     refreshInbox,
     markInboxRead,
+    updateInboxStatus,
     askNarleo,
     createFirstWin,
     rateFirstWin,
@@ -2120,12 +2187,20 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
         const customer = lead.customer_name || lead.customer_contact || "Customer";
         identity.textContent = `${sourceLabel} · ${customer}`;
 
-        const unread = documentImpl.createElement("span");
-        unread.style.fontSize = "12px";
-        unread.style.fontWeight = "850";
-        unread.textContent = lead.unread ? "Unread" : "";
+        const badges = documentImpl.createElement("span");
+        badges.style.fontSize = "12px";
+        badges.style.fontWeight = "850";
+        badges.style.textAlign = "right";
+        const statusText = lead.status === "follow-up"
+          ? "Needs follow-up"
+          : lead.status === "closed"
+            ? "Done"
+            : lead.status === "replied"
+              ? "Replied"
+              : "";
+        badges.textContent = [lead.unread ? "Unread" : "", statusText].filter(Boolean).join(" · ");
 
-        heading.append(identity, unread);
+        heading.append(identity, badges);
 
         const message = documentImpl.createElement("div");
         message.style.marginTop = "7px";
@@ -2147,7 +2222,34 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
           actions.append(markRead);
         }
 
-        if (featureAccess.lead_reply_drafting === true && lead.direction !== "outbound") {
+        if (lead.status === "closed") {
+          const reopen = documentImpl.createElement("button");
+          reopen.type = "button";
+          reopen.className = "button secondary";
+          reopen.textContent = "Reopen";
+          reopen.addEventListener("click", () => controller.updateInboxStatus(lead.id, "reopen"));
+          actions.append(reopen);
+        } else {
+          if (lead.status !== "follow-up") {
+            const followUp = documentImpl.createElement("button");
+            followUp.type = "button";
+            followUp.className = "button secondary";
+            followUp.textContent = "Needs follow-up";
+            followUp.addEventListener("click", () => controller.updateInboxStatus(lead.id, "needs_follow_up"));
+            actions.append(followUp);
+          }
+
+          const done = documentImpl.createElement("button");
+          done.type = "button";
+          done.className = "button secondary";
+          done.textContent = "Done";
+          done.addEventListener("click", () => controller.updateInboxStatus(lead.id, "close"));
+          actions.append(done);
+        }
+
+        if (lead.status !== "closed"
+          && featureAccess.lead_reply_drafting === true
+          && lead.direction !== "outbound") {
           const draft = documentImpl.createElement("button");
           draft.type = "button";
           draft.className = "button secondary";

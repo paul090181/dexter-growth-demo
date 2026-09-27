@@ -45,7 +45,21 @@ async function defaultMarkRead({ businessId, leadId }) {
     SET unread = FALSE, updated_at = CURRENT_TIMESTAMP
     WHERE business_id = ${businessId}
       AND id = ${leadId}
-    RETURNING id, business_id, unread
+    RETURNING id, business_id, unread, status
+  `;
+  return rows?.[0] ?? null;
+}
+
+async function defaultSetStatus({ businessId, leadId, status }) {
+  const db = getDatabase();
+  const rows = await db.sql`
+    UPDATE retail_customer_leads
+    SET status = ${status},
+        unread = FALSE,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE business_id = ${businessId}
+      AND id = ${leadId}
+    RETURNING id, business_id, unread, status
   `;
   return rows?.[0] ?? null;
 }
@@ -55,6 +69,7 @@ export function createTenantInboxActionHandler({
   billingStore = createBillingStore(),
   authorize = authorizeTenantRequest,
   markRead = defaultMarkRead,
+  setStatus = defaultSetStatus,
   now = () => new Date(),
 } = {}) {
   return async function tenantInboxAction(request) {
@@ -78,7 +93,9 @@ export function createTenantInboxActionHandler({
 
     const businessId = cleanBusinessId(body.business_id);
     const leadId = cleanLeadId(body.lead_id);
-    if (!businessId || !leadId || body.action !== "mark_read") {
+    const action = typeof body.action === "string" ? body.action : "";
+    if (!businessId || !leadId
+      || !new Set(["mark_read", "needs_follow_up", "close", "reopen"]).has(action)) {
       return json(400, { error: "Invalid request." });
     }
 
@@ -100,7 +117,17 @@ export function createTenantInboxActionHandler({
 
     let row;
     try {
-      row = await markRead({ businessId, leadId });
+      row = action === "mark_read"
+        ? await markRead({ businessId, leadId })
+        : await setStatus({
+            businessId,
+            leadId,
+            status: action === "needs_follow_up"
+              ? "follow-up"
+              : action === "close"
+                ? "closed"
+                : "new",
+          });
     } catch {
       return json(503, { error: "Inbox could not be updated." });
     }
@@ -112,7 +139,8 @@ export function createTenantInboxActionHandler({
       ok: true,
       business_id: businessId,
       lead_id: leadId,
-      unread: false,
+      unread: row.unread === true,
+      status: typeof row.status === "string" ? row.status : null,
     });
   };
 }
