@@ -166,6 +166,7 @@ export function buildOnboardingSteps({
   firstWinReady = false,
   squareEligible = false,
   squareConnected = false,
+  squareSkipped = false,
   pulseReady = false,
 } = {}) {
   const steps = [
@@ -177,8 +178,8 @@ export function buildOnboardingSteps({
   }
   if (squareEligible) {
     steps.push(
-      ["Square connected", squareConnected, squareConnected ? "Done" : "Next"],
-      ["Business pulse ready", pulseReady, pulseReady ? "Done" : "Next"],
+      ["Square connected", squareConnected, squareConnected ? "Done" : squareSkipped ? "Later" : "Next"],
+      ["Business pulse ready", pulseReady, pulseReady ? "Done" : squareSkipped && !squareConnected ? "Later" : "Next"],
     );
   }
   return steps;
@@ -210,7 +211,7 @@ export function createTenantWorkspaceController({
     error: "",
     profile: null,
     subscription: null,
-    square: { enabled: false, loading: false, error: "", status: null },
+    square: { enabled: false, loading: false, error: "", status: null, skipped: false },
     insights: { enabled: false, loading: false, error: "", inventory: null, sales: null, pulse: null },
     channels: { loading: false, error: "" },
     emailLogin: { loading: false, error: "", message: "" },
@@ -406,6 +407,7 @@ export function createTenantWorkspaceController({
         tenantKey: key,
         subscription,
       });
+      square.skipped = storage?.getItem(`growthwise_square_skip:${id}`) === "1";
 
       const insights = await readSquareInsights({
         businessId: id,
@@ -464,7 +466,7 @@ export function createTenantWorkspaceController({
         error: error?.message || "Workspace sign-in failed.",
         profile: null,
         subscription: null,
-        square: { enabled: false, loading: false, error: "", status: null },
+        square: { enabled: false, loading: false, error: "", status: null, skipped: false },
         insights: { enabled: false, loading: false, error: "", inventory: null, sales: null, pulse: null },
         facebook: {
           enabled: false,
@@ -708,6 +710,24 @@ export function createTenantWorkspaceController({
       });
       return false;
     }
+  }
+
+  function skipSquare() {
+    const { businessId } = readWorkspaceCredentials(storage);
+    if (!state.signedIn
+      || state.subscription?.feature_access?.inventory_connection !== true
+      || state.square?.status?.state === "Connected"
+      || !businessId) {
+      return false;
+    }
+    storage?.setItem(`growthwise_square_skip:${businessId}`, "1");
+    publish({
+      square: {
+        ...state.square,
+        skipped: true,
+      },
+    });
+    return true;
   }
 
   async function refreshSquareInsights() {
@@ -1133,6 +1153,7 @@ export function createTenantWorkspaceController({
     openBilling,
     changePlan,
     connectSquare,
+    skipSquare,
     refreshSquareInsights,
     openConnectorSetup,
     askNarleo,
@@ -1171,6 +1192,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const squareDetail = documentImpl.getElementById("workspace-square-detail");
   const squareError = documentImpl.getElementById("workspace-square-error");
   const squareConnect = documentImpl.getElementById("workspace-square-connect");
+  const squareSkip = documentImpl.getElementById("workspace-square-skip");
   const onboardingSummary = documentImpl.getElementById("workspace-onboarding-summary");
   const onboardingList = documentImpl.getElementById("workspace-onboarding-list");
   const journeyBanner = documentImpl.getElementById("workspace-journey-banner");
@@ -1326,6 +1348,9 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
         : connectionState === "Needs Attention"
           ? "Reconnect Square"
           : "Connect Square";
+      squareSkip.hidden = connected;
+      squareSkip.disabled = view.square?.loading === true || view.square?.skipped === true;
+      squareSkip.textContent = view.square?.skipped === true ? "We'll do this later" : "Do this later";
     }
 
     const squareEligible = featureAccess.inventory_connection === true;
@@ -1337,6 +1362,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
       firstWinReady,
       squareEligible,
       squareConnected,
+      squareSkipped: view.square?.skipped === true,
       pulseReady,
     });
     const completedSteps = setupSteps.filter(([, done]) => done).length;
@@ -1344,7 +1370,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
     onboardingList.replaceChildren();
     setupSteps.forEach(([label, done, tag], index) => {
       const item = documentImpl.createElement("div");
-      const isNext = !done && setupSteps.slice(0, index).every(([, previousDone]) => previousDone);
+      const isNext = !done && tag === "Next";
       item.className = `progress-item ${done ? "done" : isNext ? "next" : ""}`;
       const name = documentImpl.createElement("strong");
       name.textContent = label;
@@ -1380,7 +1406,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
         journeyBanner.hidden = false;
         journeyBanner.textContent = "Your access is active. Get a useful result now—no integrations required.";
       }
-    } else if (squareEligible && !squareConnected) {
+    } else if (squareEligible && !squareConnected && view.square?.skipped !== true) {
       nextStep.dataset.nextAction = "connect-square";
       nextStep.textContent = "Connect Square";
       if (firstRun) {
@@ -1599,6 +1625,7 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   });
   manage?.addEventListener("click", () => controller.openBilling());
   squareConnect?.addEventListener("click", () => controller.connectSquare());
+  squareSkip?.addEventListener("click", () => controller.skipSquare());
   channelsOpen?.addEventListener("click", () => controller.openConnectorSetup());
   function updateFirstWinTaskUI() {
     const social = firstWinTask?.value !== "customer_reply";

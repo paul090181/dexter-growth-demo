@@ -64,6 +64,23 @@ test("Growth onboarding includes Square and Business Pulse only when entitled", 
   ]);
 });
 
+test("Square can be deferred without blocking the rest of onboarding", () => {
+  assert.deepEqual(buildOnboardingSteps({
+    accessGranted: true,
+    firstWinReady: true,
+    squareEligible: true,
+    squareConnected: false,
+    squareSkipped: true,
+    pulseReady: false,
+  }), [
+    ["Workspace ready", true, "Done"],
+    ["Plan active", true, "Done"],
+    ["First useful result", true, "Done"],
+    ["Square connected", false, "Later"],
+    ["Business pulse ready", false, "Later"],
+  ]);
+});
+
 test("business pulse turns Square summaries into useful metrics and actions", () => {
   const pulse = buildSquareBusinessPulse({
     summary: {
@@ -540,6 +557,55 @@ test("workspace does not call Square when inventory connection is not entitled",
   assert.equal(restored.square.enabled, false);
   assert.equal(await controller.connectSquare(), false);
   assert.equal(squareCalls, 0);
+});
+
+test("inventory-enabled tenant can defer Square for the current onboarding session", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  const calls = [];
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    fetchImpl: async (url, init = {}) => {
+      calls.push({ url, init });
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          business_name: "North Star Books",
+        });
+      }
+      if (url.startsWith("/.netlify/functions/subscription-status?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          access_source: "stripe",
+          plan_key: "growth_monthly",
+          status: "active",
+          access_granted: true,
+          feature_access: {
+            inventory_connection: true,
+            unified_inbox: true,
+            automated_publishing: false,
+          },
+        });
+      }
+      if (url.startsWith("/.netlify/functions/square-connection?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          state: "Not Connected",
+          account: null,
+          action: "Connect Square.",
+        });
+      }
+      throw new Error(`unexpected URL ${url}`);
+    },
+  });
+
+  const restored = await controller.restore();
+  assert.equal(restored.square.skipped, false);
+  const callCount = calls.length;
+  assert.equal(controller.skipSquare(), true);
+  assert.equal(controller.getState().square.skipped, true);
+  assert.equal(s.getItem(`growthwise_square_skip:${BUSINESS_ID}`), "1");
+  assert.equal(calls.length, callCount);
 });
 
 test("workspace rejects a non-Square OAuth destination", async () => {
@@ -1032,6 +1098,7 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /id="workspace-pro-trial"/);
   assert.match(html, /id="workspace-square-card"/);
   assert.match(html, /id="workspace-square-connect"/);
+  assert.match(html, /id="workspace-square-skip"/);
   assert.match(html, /id="workspace-onboarding-card"/);
   assert.match(html, /id="workspace-onboarding-list"/);
   assert.match(html, /id="workspace-journey-banner"/);
@@ -1069,6 +1136,8 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /openActivation/);
   assert.match(js, /nextAction/);
   assert.match(js, /connect-square/);
+  assert.match(js, /growthwise_square_skip/);
+  assert.match(js, /skipSquare/);
   assert.match(js, /refresh-insights/);
   assert.match(js, /tenant-connector-session-start/);
   assert.match(js, /tenant-first-win/);
