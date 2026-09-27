@@ -1458,6 +1458,13 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /markInboxRead/);
   assert.match(js, /Mark read/);
   assert.match(js, /Draft reply with Narleo/);
+  const inboxDraftStart = js.indexOf('draft.textContent = "Draft reply with Narleo"');
+  const inboxDraftEnd = js.indexOf("actions.append(draft)", inboxDraftStart);
+  assert.equal(inboxDraftStart >= 0 && inboxDraftEnd > inboxDraftStart, true);
+  const inboxDraftBridge = js.slice(inboxDraftStart, inboxDraftEnd);
+  assert.match(inboxDraftBridge, /controller\.draftLead\(/);
+  assert.match(inboxDraftBridge, /controller\.markInboxRead\(lead\.id\)/);
+  assert.doesNotMatch(inboxDraftBridge, /send|publish/i);
   assert.match(html, /Copy suggested reply/);
   assert.match(js, /navigator\?\.clipboard\?\.writeText/);
   assert.match(js, /phone: "Phone"/);

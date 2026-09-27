@@ -2153,12 +2153,26 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
           draft.className = "button secondary";
           draft.textContent = "Draft reply with Narleo";
           draft.addEventListener("click", async () => {
-            if (lead.unread) await controller.markInboxRead(lead.id);
-            if (leadSource) leadSource.value = sourceLabels[lead.source_type] || "Other";
-            if (leadCustomer) leadCustomer.value = lead.customer_name || "";
-            if (leadMessage) leadMessage.value = lead.message || "";
-            leadCard?.scrollIntoView?.({ behavior: "smooth", block: "start" });
-            leadMessage?.focus?.();
+            const source = sourceLabels[lead.source_type] || "Other";
+            const customerName = lead.customer_name || "";
+            const messageText = lead.message || "";
+            draft.disabled = true;
+            draft.textContent = "Drafting…";
+            try {
+              if (lead.unread) await controller.markInboxRead(lead.id);
+              if (leadSource) leadSource.value = source;
+              if (leadCustomer) leadCustomer.value = customerName;
+              if (leadMessage) leadMessage.value = messageText;
+              leadCard?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+              await controller.draftLead({
+                source,
+                customerName,
+                message: messageText,
+              });
+            } finally {
+              draft.disabled = false;
+              draft.textContent = "Draft reply with Narleo";
+            }
           });
           actions.append(draft);
         }
