@@ -1396,7 +1396,7 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /markInboxRead/);
   assert.match(js, /Mark read/);
   assert.match(js, /Draft reply with Narleo/);
-  assert.match(js, /Copy suggested reply/);
+  assert.match(html, /Copy suggested reply/);
   assert.match(js, /navigator\?\.clipboard\?\.writeText/);
   assert.match(js, /phone: "Phone"/);
   assert.match(js, /tenant-facebook-connection/);
