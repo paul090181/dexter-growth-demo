@@ -84,12 +84,17 @@
     <section class="card" aria-labelledby="facebook-title">
       <div class="row">
         <div>
-          <h2 id="facebook-title">Facebook</h2>
-          <p id="facebook-status" class="status">Setup unavailable</p>
-          <p class="detail">Facebook connection setup is not available yet.</p>
+          <h2 id="facebook-title">Facebook Page</h2>
+          <p id="facebook-status" class="status">Checking…</p>
+          <p id="facebook-detail" class="detail">Checking your secure Facebook Page connection.</p>
         </div>
-        <span class="unavailable">Coming later</span>
+        <span id="facebook-unavailable" class="unavailable">Setup unavailable</span>
+        <div>
+          <button id="facebook-connect" type="button" hidden>Connect Facebook</button>
+          <button id="facebook-disconnect" class="secondary" type="button" hidden>Disconnect</button>
+        </div>
       </div>
+      <p class="detail" style="margin-top:12px">GrowthWise connects to a Facebook Page you manage. Your Facebook password stays with Meta.</p>
     </section>
 
     <a class="back-link" href="./app.html">← Back to business workspace</a>

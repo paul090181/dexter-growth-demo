@@ -1,9 +1,11 @@
 const ENDPOINT = "/.netlify/functions";
 const INSTAGRAM_ORIGIN = "https://www.instagram.com";
 const MICROSOFT_LOGIN_ORIGIN = "https://login.microsoftonline.com";
+const FACEBOOK_ORIGIN = "https://www.facebook.com";
 const INVITATION_PATTERN = /^gw_inv_[A-Za-z0-9_-]{43}$/;
 const INSTAGRAM_STATES = new Set(["Not Connected", "Connected", "Needs Attention"]);
 const EMAIL_STATES = new Set(["Not Connected", "Connected", "Needs Attention"]);
+const FACEBOOK_STATES = new Set(["Not Connected", "Connected", "Needs Attention"]);
 
 function safePath(url) { return `${url.pathname}${url.search}`; }
 
@@ -69,6 +71,17 @@ export function consumeInstagramReturnHint({ href = globalThis.location.href, hi
   return new Set(["connected", "cancelled", "attention"]).has(hint) ? hint : null;
 }
 
+export function consumeFacebookReturnHint({ href = globalThis.location.href, historyImpl = globalThis.history } = {}) {
+  const url = new URL(href, globalThis.location?.origin);
+  const hint = url.searchParams.get("facebook");
+  if (hint !== null) {
+    url.searchParams.delete("facebook");
+    historyImpl.replaceState(null, "", safePath(url));
+  }
+  return new Set(["connected", "cancelled", "attention", "multiple-pages", "no-page"]).has(hint)
+    ? hint : null;
+}
+
 export function createCustomerConnectorController({
   fetchImpl = globalThis.fetch,
   navigate = (url) => globalThis.location.assign(url),
@@ -90,7 +103,15 @@ export function createCustomerConnectorController({
       disconnecting: false,
       mailboxContext: "",
     },
-    facebook: { state: "Setup unavailable", available: false },
+    facebook: {
+      state: "Setup unavailable",
+      action: "Facebook Page connection is not available yet.",
+      account: null,
+      available: false,
+      allowed: false,
+      connecting: false,
+      disconnecting: false,
+    },
   };
   let connectPromise = null;
   const publish = (change) => {
@@ -163,13 +184,42 @@ export function createCustomerConnectorController({
             : null,
         };
       }
+      const facebookAllowed = session.connectors?.facebook?.allowed === true;
+      const facebookAvailable = facebookAllowed && session.connectors?.facebook?.available === true;
+      let facebook = {
+        state: facebookAvailable ? "Not Connected" : "Setup unavailable",
+        action: facebookAvailable
+          ? "Connect the Facebook Page used by this business."
+          : "Facebook Page connection is not available yet.",
+        account: null,
+        available: facebookAvailable,
+        allowed: facebookAllowed,
+        connecting: false,
+        disconnecting: false,
+      };
+      if (facebookAvailable) {
+        const healthResponse = await fetchImpl(`${ENDPOINT}/facebook-connection?business_id=${encodeURIComponent(session.business_id)}`, {
+          method: "GET", credentials: "same-origin", cache: "no-store",
+        });
+        const health = await healthResponse.json();
+        if (!healthResponse.ok || health.business_id !== session.business_id || !FACEBOOK_STATES.has(health.state)) {
+          throw new Error("facebook_health_failed");
+        }
+        facebook = {
+          ...facebook,
+          state: health.state,
+          action: typeof health.action === "string" ? health.action : "",
+          account: health.state === "Connected" && typeof health.account?.page_name === "string"
+            ? { pageName: health.account.page_name } : null,
+        };
+      }
       return publish({
         businessId: session.business_id,
         businessName: session.business_name,
         loading: false,
         instagram,
         email,
-        facebook: { state: "Setup unavailable", available: false },
+        facebook,
       });
     } catch {
       return publish({ loading: false, error: "This connection session is invalid or expired." });
@@ -283,11 +333,87 @@ export function createCustomerConnectorController({
     return connectPromise;
   }
 
+  function connectFacebook() {
+    if (!state.businessId || !state.facebook.allowed || !state.facebook.available || state.facebook.connecting) {
+      return Promise.resolve(false);
+    }
+    publish({ facebook: { ...state.facebook, connecting: true } });
+    return (async () => {
+      try {
+        const response = await fetchImpl(`${ENDPOINT}/facebook-oauth-start`, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ business_id: state.businessId }),
+        });
+        const body = await response.json();
+        if (!response.ok || !body || Object.keys(body).length !== 1 || typeof body.authorization_url !== "string") {
+          throw new Error("start_failed");
+        }
+        const target = new URL(body.authorization_url);
+        if (target.protocol !== "https:" || target.origin !== FACEBOOK_ORIGIN
+          || target.username || target.password || target.hash) {
+          throw new Error("unsafe_authorization_url");
+        }
+        navigate(target.toString());
+        return true;
+      } catch {
+        publish({
+          facebook: {
+            ...state.facebook,
+            state: "Needs Attention",
+            connecting: false,
+            action: "Facebook connection could not be started.",
+          },
+        });
+        return false;
+      }
+    })();
+  }
+
+  async function disconnectFacebook() {
+    if (!state.businessId || !state.facebook.allowed || !state.facebook.available
+      || !["Connected", "Needs Attention"].includes(state.facebook.state)
+      || state.facebook.disconnecting) return false;
+    publish({ facebook: { ...state.facebook, disconnecting: true } });
+    try {
+      const response = await fetchImpl(`${ENDPOINT}/facebook-disconnect`, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", "Origin": globalThis.location.origin },
+        body: JSON.stringify({ business_id: state.businessId }),
+      });
+      const body = await response.json();
+      if (!response.ok || body?.ok !== true) throw new Error("disconnect_failed");
+      publish({
+        facebook: {
+          ...state.facebook,
+          state: "Not Connected",
+          action: "Connect the Facebook Page used by this business.",
+          account: null,
+          disconnecting: false,
+        },
+      });
+      return true;
+    } catch {
+      publish({
+        facebook: {
+          ...state.facebook,
+          disconnecting: false,
+          action: "Facebook could not be disconnected.",
+        },
+      });
+      return false;
+    }
+  }
+
   return {
     load,
     connectInstagram,
     connectEmail,
     disconnectEmail,
+    connectFacebook,
+    disconnectFacebook,
     setEmailMailboxContext,
     getState: () => structuredClone(state),
   };
@@ -413,6 +539,11 @@ export function mountCustomerConnectorPage({ documentImpl = globalThis.document 
   const emailUnavailable = documentImpl.getElementById("email-unavailable");
   const emailDisconnect = documentImpl.getElementById("email-disconnect");
   const emailChoices = [...documentImpl.querySelectorAll('input[name="email-mailbox-context"]')];
+  const facebookStatus = documentImpl.getElementById("facebook-status");
+  const facebookDetail = documentImpl.getElementById("facebook-detail");
+  const facebookButton = documentImpl.getElementById("facebook-connect");
+  const facebookUnavailable = documentImpl.getElementById("facebook-unavailable");
+  const facebookDisconnect = documentImpl.getElementById("facebook-disconnect");
   const render = (view) => {
     businessName.textContent = view.businessName;
     error.textContent = view.error;
@@ -439,11 +570,26 @@ export function mountCustomerConnectorPage({ documentImpl = globalThis.document 
       choice.checked = choice.value === view.email.mailboxContext;
       choice.disabled = view.loading || !view.email.allowed || view.email.state === "Connected";
     }
+    facebookStatus.textContent = view.loading ? "Checking…" : view.facebook.state;
+    facebookDetail.textContent = view.facebook.account
+      ? `Connected to ${view.facebook.account.pageName}`
+      : view.facebook.action;
+    facebookUnavailable.hidden = view.facebook.available;
+    facebookButton.hidden = !view.facebook.available || view.facebook.state === "Connected";
+    facebookButton.disabled = view.loading || view.facebook.connecting;
+    facebookButton.textContent = view.facebook.connecting ? "Connecting…"
+      : view.facebook.state === "Not Connected" ? "Connect Facebook" : "Reconnect Facebook";
+    facebookDisconnect.hidden = !view.facebook.available
+      || !["Connected", "Needs Attention"].includes(view.facebook.state);
+    facebookDisconnect.disabled = view.loading || view.facebook.disconnecting;
+    facebookDisconnect.textContent = view.facebook.disconnecting ? "Disconnecting…" : "Disconnect";
   };
   const controller = createCustomerConnectorController({ onChange: render });
   instagramButton.addEventListener("click", () => controller.connectInstagram());
   emailButton.addEventListener("click", () => controller.connectEmail());
   emailDisconnect.addEventListener("click", () => controller.disconnectEmail());
+  facebookButton.addEventListener("click", () => controller.connectFacebook());
+  facebookDisconnect.addEventListener("click", () => controller.disconnectFacebook());
   for (const choice of emailChoices) {
     choice.addEventListener("change", () => controller.setEmailMailboxContext(choice.value));
   }
@@ -461,6 +607,14 @@ async function startBrowserPage() {
   }
   consumeInstagramReturnHint();
   consumeEmailReturnHint();
+  const facebookHint = consumeFacebookReturnHint();
+  if (facebookHint === "multiple-pages") {
+    const error = globalThis.document?.getElementById("connection-error");
+    if (error) error.textContent = "This Facebook account manages more than one Page. Page selection is the next setup step; nothing was connected automatically.";
+  } else if (facebookHint === "no-page") {
+    const error = globalThis.document?.getElementById("connection-error");
+    if (error) error.textContent = "No manageable Facebook Page was found for that Facebook account.";
+  }
   mountCustomerConnectorPage();
   mountConnectorInbox();
 }

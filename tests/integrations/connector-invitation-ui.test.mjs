@@ -84,7 +84,9 @@ test("controller loads cookie-bound session and authoritative Instagram health",
   assert.equal(state.businessName, "Dexter's Hats");
   assert.equal(state.instagram.state, "Connected");
   assert.equal(state.instagram.account.username, "dexters.hats");
-  assert.deepEqual(state.facebook, { state: "Setup unavailable", available: false });
+  assert.equal(state.facebook.state, "Setup unavailable");
+  assert.equal(state.facebook.available, false);
+  assert.equal(state.facebook.allowed, true);
   assert.equal(calls[1].url, "/.netlify/functions/instagram-connection?business_id=dexters-hats");
   assert.equal(calls.every((call) => !call.init?.headers?.["X-GrowthWise-Key"]), true);
   assert.equal(states.at(-1).businessId, "dexters-hats");
@@ -112,7 +114,7 @@ test("Instagram connect posts only the session tenant and navigates only to Inst
   assert.equal(navigated, "https://www.instagram.com/oauth/authorize?state=opaque");
 });
 
-test("Facebook remains unavailable and no connection action is exposed", async () => {
+test("Facebook remains disabled when the server reports setup unavailable", async () => {
   const controller = createCustomerConnectorController({
     fetchImpl: async (url) => url.endsWith("/connector-session") ? response({
       business_id: "dexters-hats", business_name: "Dexter's Hats",
@@ -122,7 +124,46 @@ test("Facebook remains unavailable and no connection action is exposed", async (
   const state = await controller.load();
   assert.equal(state.facebook.state, "Setup unavailable");
   assert.equal(state.facebook.available, false);
-  assert.equal(Object.hasOwn(controller, "connectFacebook"), false);
+  assert.equal(Object.hasOwn(controller, "connectFacebook"), true);
+  assert.equal(await controller.connectFacebook(), false);
+});
+
+test("available Facebook connector loads Page health and starts tenant-bound Meta OAuth", async () => {
+  const calls = [];
+  let navigated = null;
+  const controller = createCustomerConnectorController({
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      if (url.endsWith("/connector-session")) return response({
+        business_id: "tierney-town-treats",
+        business_name: "Tierney Town Treats",
+        connectors: {
+          facebook: { allowed: true, available: true, state: "Not Connected" },
+          instagram: { allowed: false, available: false },
+          email: { allowed: false, available: false, state: "Setup unavailable" },
+        },
+      });
+      if (url.includes("/facebook-connection?")) return response({
+        business_id: "tierney-town-treats",
+        state: "Not Connected",
+        checked_at: "2026-09-27T02:00:00.000Z",
+        action: "Connect the Facebook Page used by this business.",
+      });
+      if (url.endsWith("/facebook-oauth-start")) return response({
+        authorization_url: "https://www.facebook.com/v26.0/dialog/oauth?state=opaque",
+      });
+      return response({});
+    },
+    navigate: (url) => { navigated = url; },
+  });
+  const state = await controller.load();
+  assert.equal(state.facebook.state, "Not Connected");
+  assert.equal(state.facebook.allowed, true);
+  assert.equal(state.facebook.available, true);
+  assert.equal(await controller.connectFacebook(), true);
+  const start = calls.find((call) => call.url.endsWith("/facebook-oauth-start"));
+  assert.deepEqual(JSON.parse(start.init.body), { business_id: "tierney-town-treats" });
+  assert.equal(navigated, "https://www.facebook.com/v26.0/dialog/oauth?state=opaque");
 });
 
 test("the static page is no-store, self-contained, credential-free, and contains safe account slots", async () => {
@@ -132,7 +173,8 @@ test("the static page is no-store, self-contained, credential-free, and contains
   assert.match(html, /id="business-name"/);
   assert.match(html, /id="instagram-status"/);
   assert.match(html, /id="facebook-status"/);
-  assert.match(html, /Facebook connection setup is not available yet\./);
+  assert.match(html, /Connect Facebook/);
+  assert.match(html, /Facebook Page/);
   assert.match(html, /Referrer-Policy/i);
   assert.match(html, /Cache-Control/i);
   assert.match(html, /Content-Security-Policy/i);

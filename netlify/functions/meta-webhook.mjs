@@ -1,6 +1,8 @@
 import { createInstagramCrypto } from "./_instagram-crypto.mjs";
 import { INSTAGRAM_CLIENTS } from "./_instagram-clients.mjs";
 import { instagramDatabase } from "./_instagram-store.mjs";
+import { createFacebookCrypto } from "./_facebook-crypto.mjs";
+import { createFacebookStore } from "./_facebook-store.mjs";
 import { ingestRetailLead } from "./_retail-lead-ingest.mjs";
 import {
   normalizeMetaWebhookPayload,
@@ -47,6 +49,24 @@ function configuredInstagramRouter(env) {
   return (accountId) => store.resolveBusinessByAccountId({ accountId, businessIds });
 }
 
+function configuredFacebookRouter(env) {
+  const required = [
+    env("GROWTHWISE_FACEBOOK_OAUTH_STATE_SECRET"),
+    env("GROWTHWISE_FACEBOOK_ACCOUNT_BINDING_SECRET"),
+    env("GROWTHWISE_FACEBOOK_CREDENTIAL_ENCRYPTION_KEY"),
+  ];
+  if (required.some((value) => typeof value !== "string" || !value.trim())) {
+    return async () => null;
+  }
+  const crypto = createFacebookCrypto({
+    stateSecrets: versions(env, "GROWTHWISE_FACEBOOK_OAUTH_STATE_SECRET"),
+    bindingSecrets: versions(env, "GROWTHWISE_FACEBOOK_ACCOUNT_BINDING_SECRET"),
+    credentialKeys: versions(env, "GROWTHWISE_FACEBOOK_CREDENTIAL_ENCRYPTION_KEY"),
+  });
+  const store = createFacebookStore({ crypto });
+  return (pageId) => store.resolveBusinessByPageId({ pageId });
+}
+
 async function enrichInstagramAccountMap(payload, accountMap, routeInstagramBusiness) {
   if (payload?.object !== "instagram" || typeof routeInstagramBusiness !== "function") return accountMap;
   const instagram = { ...(accountMap.instagram || {}) };
@@ -61,10 +81,25 @@ async function enrichInstagramAccountMap(payload, accountMap, routeInstagramBusi
   return { ...accountMap, instagram };
 }
 
+async function enrichFacebookAccountMap(payload, accountMap, routeFacebookBusiness) {
+  if (payload?.object !== "page" || typeof routeFacebookBusiness !== "function") return accountMap;
+  const facebook = { ...(accountMap.facebook || {}) };
+  const pageIds = [...new Set((Array.isArray(payload.entry) ? payload.entry : [])
+    .map((entry) => String(entry?.id ?? "").trim())
+    .filter(Boolean))];
+  for (const pageId of pageIds) {
+    if (facebook[pageId]) continue;
+    const businessId = await routeFacebookBusiness(pageId);
+    if (businessId) facebook[pageId] = businessId;
+  }
+  return { ...accountMap, facebook };
+}
+
 export function createMetaWebhookHandler({
   env = configuredEnv,
   ingest = (input) => ingestRetailLead(input, { ingestionTag: "meta_webhook" }),
   routeInstagramBusiness,
+  routeFacebookBusiness,
   logger = console,
 } = {}) {
   return async function metaWebhookHandler(request) {
@@ -113,6 +148,9 @@ export function createMetaWebhookHandler({
       if (payload?.object === "instagram") {
         const instagramRouter = routeInstagramBusiness ?? configuredInstagramRouter(env);
         accountMap = await enrichInstagramAccountMap(payload, accountMap, instagramRouter);
+      } else if (payload?.object === "page") {
+        const facebookRouter = routeFacebookBusiness ?? configuredFacebookRouter(env);
+        accountMap = await enrichFacebookAccountMap(payload, accountMap, facebookRouter);
       }
     } catch {
       return json(503, { error: "Meta account routing is not configured correctly." });

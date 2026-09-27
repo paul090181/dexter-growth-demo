@@ -14,7 +14,7 @@ import { resolveGrowthWisePublicOrigin } from "./_public-origin.mjs";
 import { authorizeTenantRequest } from "./_tenant-auth.mjs";
 import { createTenantStore } from "./_tenant-store.mjs";
 
-const CONNECTORS = Object.freeze(["email", "instagram"]);
+const CONNECTORS = Object.freeze(["email", "facebook", "instagram"]);
 
 function configuredOrigin(requestUrl = "") {
   return resolveGrowthWisePublicOrigin(undefined, requestUrl);
