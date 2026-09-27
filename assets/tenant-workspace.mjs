@@ -15,6 +15,7 @@ const TENANT_SESSION_LOGOUT_ENDPOINT = "/.netlify/functions/tenant-session-logou
 const FACEBOOK_CONNECTION_ENDPOINT = "/.netlify/functions/tenant-facebook-connection";
 const FACEBOOK_PUBLISH_ENDPOINT = "/.netlify/functions/tenant-facebook-publish";
 const FIRST_WIN_ENDPOINT = "/.netlify/functions/tenant-first-win";
+const BUSINESS_ASSISTANT_ENDPOINT = "/.netlify/functions/tenant-business-assistant";
 
 const FEATURE_LABELS = Object.freeze([
   ["ai_business_assistant", "AI business assistant"],
@@ -227,6 +228,12 @@ export function createTenantWorkspaceController({
       completed: false,
       loading: false,
       error: "",
+      result: null,
+    },
+    assistant: {
+      loading: false,
+      error: "",
+      messages: [],
       result: null,
     },
   };
@@ -442,6 +449,12 @@ export function createTenantWorkspaceController({
           error: "",
           result: null,
         },
+        assistant: {
+          loading: false,
+          error: "",
+          messages: [],
+          result: null,
+        },
       });
     } catch (error) {
       clearWorkspaceCredentials(storage);
@@ -466,6 +479,12 @@ export function createTenantWorkspaceController({
           completed: false,
           loading: false,
           error: "",
+          result: null,
+        },
+        assistant: {
+          loading: false,
+          error: "",
+          messages: [],
           result: null,
         },
       });
@@ -716,6 +735,93 @@ export function createTenantWorkspaceController({
       await trackEvent("business_pulse_loaded", { businessId, tenantKey });
     }
     return Boolean(insights.pulse);
+  }
+
+  async function askNarleo(question) {
+    const { businessId, tenantKey } = readWorkspaceCredentials(storage);
+    const text = String(question || "").trim();
+    if (!state.signedIn
+      || state.subscription?.feature_access?.ai_business_assistant !== true
+      || !businessId) {
+      publish({
+        assistant: {
+          ...state.assistant,
+          loading: false,
+          error: "Narleo business assistant is not available for this workspace.",
+        },
+      });
+      return false;
+    }
+    if (!text) {
+      publish({
+        assistant: {
+          ...state.assistant,
+          loading: false,
+          error: "Ask Narleo a business question first.",
+        },
+      });
+      return false;
+    }
+
+    const history = (state.assistant?.messages || []).slice(-6).map((message) => ({
+      role: message.role === "assistant" ? "assistant" : "user",
+      text: String(message.text || "").slice(0, 1800),
+    }));
+
+    publish({
+      assistant: {
+        ...state.assistant,
+        loading: true,
+        error: "",
+      },
+    });
+
+    try {
+      const response = await fetchImpl(BUSINESS_ASSISTANT_ENDPOINT, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          ...authHeaders(tenantKey),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          business_id: businessId,
+          question: text.slice(0, 4000),
+          history,
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result?.ok !== true || result.business_id !== businessId
+        || typeof result.answer !== "string") {
+        throw new Error(result?.error || "Narleo could not answer that right now.");
+      }
+
+      const messages = [
+        ...(state.assistant?.messages || []),
+        { role: "user", text },
+        { role: "assistant", text: result.answer },
+      ].slice(-12);
+
+      publish({
+        assistant: {
+          loading: false,
+          error: "",
+          messages,
+          result,
+        },
+      });
+      await trackEvent("ai_workflow_used", { businessId, tenantKey });
+      return true;
+    } catch (error) {
+      publish({
+        assistant: {
+          ...state.assistant,
+          loading: false,
+          error: error?.message || "Narleo could not answer that right now.",
+        },
+      });
+      return false;
+    }
   }
 
   async function createFirstWin({
@@ -1010,6 +1116,12 @@ export function createTenantWorkspaceController({
         error: "",
         result: null,
       },
+      assistant: {
+        loading: false,
+        error: "",
+        messages: [],
+        result: null,
+      },
     });
   }
 
@@ -1023,6 +1135,7 @@ export function createTenantWorkspaceController({
     connectSquare,
     refreshSquareInsights,
     openConnectorSetup,
+    askNarleo,
     createFirstWin,
     refreshFacebookStatus,
     publishFacebook,
@@ -1082,6 +1195,15 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const firstWinSecondary = documentImpl.getElementById("workspace-first-win-secondary");
   const firstWinNote = documentImpl.getElementById("workspace-first-win-note");
   const firstWinNext = documentImpl.getElementById("workspace-first-win-next");
+  const assistantCard = documentImpl.getElementById("workspace-assistant-card");
+  const assistantThread = documentImpl.getElementById("workspace-assistant-thread");
+  const assistantForm = documentImpl.getElementById("workspace-assistant-form");
+  const assistantQuestion = documentImpl.getElementById("workspace-assistant-question");
+  const assistantSubmit = documentImpl.getElementById("workspace-assistant-submit");
+  const assistantStatus = documentImpl.getElementById("workspace-assistant-status");
+  const assistantAction = documentImpl.getElementById("workspace-assistant-action");
+  const assistantData = documentImpl.getElementById("workspace-assistant-data");
+  const assistantFollowups = documentImpl.getElementById("workspace-assistant-followups");
   const facebookCard = documentImpl.getElementById("workspace-facebook-card");
   const facebookState = documentImpl.getElementById("workspace-facebook-state");
   const facebookDetail = documentImpl.getElementById("workspace-facebook-detail");
@@ -1299,6 +1421,64 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
       }
     }
 
+    const assistantEligible = featureAccess.ai_business_assistant === true;
+    assistantCard.hidden = !assistantEligible;
+    if (assistantEligible) {
+      assistantSubmit.disabled = view.assistant?.loading === true;
+      assistantSubmit.textContent = view.assistant?.loading === true ? "Thinking…" : "Ask Narleo";
+      assistantStatus.hidden = !view.assistant?.error;
+      assistantStatus.textContent = view.assistant?.error || "";
+
+      assistantThread.replaceChildren();
+      for (const message of view.assistant?.messages || []) {
+        const item = documentImpl.createElement("div");
+        item.className = message.role === "assistant" ? "reply-box" : "plan-banner";
+        const who = documentImpl.createElement("strong");
+        who.textContent = message.role === "assistant" ? "Narleo" : "You";
+        const body = documentImpl.createElement("div");
+        body.textContent = message.text || "";
+        body.style.marginTop = "6px";
+        body.style.whiteSpace = "pre-wrap";
+        item.append(who, body);
+        assistantThread.append(item);
+      }
+
+      const result = view.assistant?.result;
+      assistantAction.hidden = !result?.recommended_action;
+      assistantAction.textContent = result?.recommended_action
+        ? "Recommended next action: " + result.recommended_action
+        : "";
+
+      const dataNeeded = Array.isArray(result?.data_needed) ? result.data_needed : [];
+      assistantData.hidden = dataNeeded.length === 0;
+      assistantData.textContent = dataNeeded.length
+        ? "Narleo could be more specific with: " + dataNeeded.join(" · ")
+        : "";
+
+      const followUps = Array.isArray(result?.suggested_follow_ups)
+        ? result.suggested_follow_ups
+        : [];
+      assistantFollowups.hidden = followUps.length === 0;
+      assistantFollowups.replaceChildren();
+      if (followUps.length) {
+        const label = documentImpl.createElement("strong");
+        label.textContent = "Try asking next";
+        assistantFollowups.append(label);
+        for (const suggestion of followUps) {
+          const button = documentImpl.createElement("button");
+          button.type = "button";
+          button.className = "button secondary";
+          button.style.marginTop = "7px";
+          button.textContent = suggestion;
+          button.addEventListener("click", () => {
+            assistantQuestion.value = suggestion;
+            assistantQuestion.focus();
+          });
+          assistantFollowups.append(button);
+        }
+      }
+    }
+
     const channelEligible = featureAccess.unified_inbox === true;
     channelsCard.hidden = !channelEligible;
     if (channelEligible) {
@@ -1414,11 +1594,39 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   channelsOpen?.addEventListener("click", () => controller.openConnectorSetup());
   function updateFirstWinTaskUI() {
     const social = firstWinTask?.value !== "customer_reply";
+    const businessType = controller.getState().profile?.business_type || "other";
+    const examples = {
+      retail: {
+        social: "Example: Feature a new fall hat display and invite customers to stop in.",
+        reply: "Example: Do you have this style in black and what is the price?",
+        assistant: "Example: What should I promote this week?",
+      },
+      bakery_food: {
+        social: "Example: Fall royal icing cookies are available for seasonal orders.",
+        reply: "Example: Can I order 30 cookies for Saturday and what will it cost?",
+        assistant: "Example: Which seasonal item should I promote next?",
+      },
+      auto_dealer: {
+        social: "Example: Feature a 2021 Honda Accord Sport that just arrived.",
+        reply: "Example: Is the Accord still available and can I come see it Saturday?",
+        assistant: "Example: Which vehicles should I feature more heavily this week?",
+      },
+      service: {
+        social: "Example: We have a few appointment openings next week for new customers.",
+        reply: "Example: Do you have an opening Friday and how does scheduling work?",
+        assistant: "Example: How can I turn more inquiries into booked appointments?",
+      },
+      other: {
+        social: "Example: Promote one product, service, event, or offer you want customers to notice.",
+        reply: "Example: Paste a real customer question you want help answering.",
+        assistant: "Example: What should I focus on this week to grow the business?",
+      },
+    };
+    const example = examples[businessType] || examples.other;
     firstWinImageField.hidden = !social;
     firstWinPromptLabel.textContent = social ? "What are you promoting?" : "What did the customer ask?";
-    firstWinPrompt.placeholder = social
-      ? "Example: Fall royal icing cookies are available for seasonal orders."
-      : "Example: Can I order 30 cookies for Saturday and what will it cost?";
+    firstWinPrompt.placeholder = social ? example.social : example.reply;
+    if (assistantQuestion && !assistantQuestion.value) assistantQuestion.placeholder = example.assistant;
     if (!social) {
       firstWinImageDataUrl = "";
       if (firstWinImage) firstWinImage.value = "";
@@ -1453,6 +1661,14 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
       firstWinStatus.textContent = "";
     };
     reader.readAsDataURL(file);
+  });
+
+  assistantForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const data = new FormData(assistantForm);
+    const question = String(data.get("question") || "").trim();
+    const ok = await controller.askNarleo(question);
+    if (ok && assistantQuestion) assistantQuestion.value = "";
   });
 
   firstWinForm?.addEventListener("submit", async (event) => {

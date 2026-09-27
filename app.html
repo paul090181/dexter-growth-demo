@@ -107,6 +107,23 @@
       </div>
     </section>
 
+    <section class="card" id="workspace-assistant-card" hidden>
+      <div class="eyebrow">Ask Narleo</div>
+      <h2>Your business assistant, right inside the workspace.</h2>
+      <p>Ask about marketing, promotions, customer follow-up, operations, or what to work on next. Narleo will tell you when it needs more business data instead of guessing.</p>
+      <div id="workspace-assistant-thread" style="display:grid;gap:10px;margin:14px 0"></div>
+      <form id="workspace-assistant-form">
+        <label class="field">What do you want help with?
+          <textarea id="workspace-assistant-question" name="question" maxlength="4000" placeholder="Example: What should I promote this week?" required></textarea>
+        </label>
+        <button class="button" id="workspace-assistant-submit" type="submit">Ask Narleo</button>
+      </form>
+      <div id="workspace-assistant-status" class="status" hidden></div>
+      <div id="workspace-assistant-action" class="insight-note" hidden></div>
+      <div id="workspace-assistant-data" class="followup" hidden></div>
+      <div id="workspace-assistant-followups" class="followup" hidden></div>
+    </section>
+
     <section class="card" id="workspace-plan-controls" hidden>
       <div class="eyebrow">Plan options</div>
       <h2>Change your subscription</h2>

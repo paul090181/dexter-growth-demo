@@ -733,6 +733,102 @@ test("active tenant can get a first useful Narleo result before connecting any p
   assert.equal(calls.every((call) => !call.url.includes(TENANT_KEY)), true);
 });
 
+test("active tenant can ask Narleo from inside the workspace without an admin key", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  const calls = [];
+  const tracked = [];
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    trackEvent: async (eventName) => { tracked.push(eventName); return true; },
+    fetchImpl: async (url, init = {}) => {
+      calls.push({ url, init });
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          business_name: "North Star Books",
+          business_type: "retail",
+        });
+      }
+      if (url.startsWith("/.netlify/functions/subscription-status?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          access_source: "stripe",
+          plan_key: "starter_monthly",
+          status: "active",
+          access_granted: true,
+          feature_access: {
+            inventory_connection: false,
+            unified_inbox: false,
+            automated_publishing: false,
+            ai_business_assistant: true,
+          },
+        });
+      }
+      if (url === "/.netlify/functions/tenant-business-assistant") {
+        assert.equal(init.headers["X-GrowthWise-Tenant-Key"], TENANT_KEY);
+        assert.equal(Object.hasOwn(init.headers, "X-GrowthWise-Key"), false);
+        assert.deepEqual(JSON.parse(init.body), {
+          business_id: BUSINESS_ID,
+          question: "What should I promote this week?",
+          history: [],
+        });
+        return response({
+          ok: true,
+          business_id: BUSINESS_ID,
+          business_type: "retail",
+          answer: "Feature one strong category with a clear reason to visit.",
+          recommended_action: "Pick one display and build a focused post around it.",
+          context_status: "needs_more_business_data",
+          data_needed: ["Recent category sales"],
+          suggested_follow_ups: ["Which category should I choose?"],
+        });
+      }
+      throw new Error(`unexpected URL ${url}`);
+    },
+  });
+
+  await controller.restore();
+  assert.equal(await controller.askNarleo("What should I promote this week?"), true);
+  const state = controller.getState();
+  assert.equal(state.assistant.messages.length, 2);
+  assert.equal(state.assistant.messages[0].role, "user");
+  assert.equal(state.assistant.messages[1].role, "assistant");
+  assert.equal(state.assistant.result.data_needed[0], "Recent category sales");
+  assert.equal(tracked.includes("ai_workflow_used"), true);
+  assert.equal(calls.every((call) => !call.url.includes(TENANT_KEY)), true);
+});
+
+test("locked tenant cannot call Narleo business assistant", async () => {
+  const s = storage();
+  saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
+  let assistantCalls = 0;
+  const controller = createTenantWorkspaceController({
+    storage: s,
+    fetchImpl: async (url) => {
+      if (url.startsWith("/.netlify/functions/tenant-profile?")) {
+        return response({ business_id: BUSINESS_ID, business_name: "North Star Books" });
+      }
+      if (url.startsWith("/.netlify/functions/subscription-status?")) {
+        return response({
+          business_id: BUSINESS_ID,
+          access_source: "stripe",
+          plan_key: "starter_monthly",
+          status: "past_due",
+          access_granted: false,
+          feature_access: { ai_business_assistant: false },
+        });
+      }
+      assistantCalls += 1;
+      return response({});
+    },
+  });
+
+  await controller.restore();
+  assert.equal(await controller.askNarleo("Help me"), false);
+  assert.equal(assistantCalls, 0);
+});
+
 test("publishing-enabled tenant loads only its own Facebook Page and publishes only after review", async () => {
   const s = storage();
   saveWorkspaceCredentials({ businessId: BUSINESS_ID, tenantKey: TENANT_KEY }, s);
@@ -945,6 +1041,10 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /id="workspace-first-win-card"/);
   assert.match(html, /id="workspace-first-win-form"/);
   assert.match(html, /id="workspace-first-win-task"/);
+  assert.match(html, /id="workspace-assistant-card"/);
+  assert.match(html, /id="workspace-assistant-form"/);
+  assert.match(html, /id="workspace-assistant-thread"/);
+  assert.match(html, /Ask Narleo/);
   assert.match(html, /Create my first result/);
   assert.match(html, /id="workspace-facebook-card"/);
   assert.match(html, /id="workspace-facebook-form"/);
@@ -968,6 +1068,8 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /refresh-insights/);
   assert.match(js, /tenant-connector-session-start/);
   assert.match(js, /tenant-first-win/);
+  assert.match(js, /tenant-business-assistant/);
+  assert.match(js, /askNarleo/);
   assert.match(js, /createFirstWin/);
   assert.match(js, /growthwise_first_win/);
   assert.match(js, /openConnectorSetup/);
