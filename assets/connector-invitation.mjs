@@ -6,6 +6,7 @@ const INVITATION_PATTERN = /^gw_inv_[A-Za-z0-9_-]{43}$/;
 const INSTAGRAM_STATES = new Set(["Not Connected", "Connected", "Needs Attention"]);
 const EMAIL_STATES = new Set(["Not Connected", "Connected", "Needs Attention"]);
 const FACEBOOK_STATES = new Set(["Not Connected", "Connected", "Needs Attention"]);
+const FACEBOOK_RETURN_HINTS = new Set(["connected", "cancelled", "attention", "select", "no-page"]);
 const FACEBOOK_SELECTION_PATTERN = /^gw_fbsel_[A-Za-z0-9_-]{43}$/;
 
 function safePath(url) { return `${url.pathname}${url.search}`; }
@@ -79,7 +80,7 @@ export function consumeFacebookReturnHint({ href = globalThis.location.href, his
     url.searchParams.delete("facebook");
     historyImpl.replaceState(null, "", safePath(url));
   }
-  return new Set(["connected", "cancelled", "attention", "select", "no-page"]).has(hint)
+  return FACEBOOK_RETURN_HINTS.has(hint)
     ? hint : null;
 }
 
@@ -89,6 +90,13 @@ export function consumeFacebookSelectionToken({
 } = {}) {
   const url = new URL(href, globalThis.location?.origin);
   if (!url.hash) return null;
+  const facebookHints = url.searchParams.getAll("facebook");
+  if (url.hash === "#_=_" && url.searchParams.size === 1 && facebookHints.length === 1
+    && FACEBOOK_RETURN_HINTS.has(facebookHints[0])) {
+    url.hash = "";
+    historyImpl.replaceState(null, "", safePath(url));
+    return null;
+  }
   const params = new URLSearchParams(url.hash.slice(1));
   const values = params.getAll("facebook_selection");
   if (params.size !== 1 || values.length !== 1 || !FACEBOOK_SELECTION_PATTERN.test(values[0])) {
