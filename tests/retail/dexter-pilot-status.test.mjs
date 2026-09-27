@@ -72,6 +72,7 @@ test("Dexter pilot status summarizes milestones without feedback notes or conten
   assert.equal(status.business_id, "dexters-hats");
   assert.equal(status.stage, "completed_with_feedback");
   assert.equal(status.stage_label, "Dexter completed the pilot and left feedback");
+  assert.match(status.recommended_follow_up, /next workflow/i);
   assert.equal(status.invitation.state, "opened");
   assert.equal(status.session.state, "active");
   assert.equal(status.activity.total_events, 5);
@@ -98,6 +99,7 @@ test("Dexter pilot status distinguishes waiting, opened, draft, and publish-atte
   }));
   assert.equal(waiting.stage, "invited");
   assert.equal(waiting.invitation.state, "waiting_to_open");
+  assert.match(waiting.recommended_follow_up, /Give Dexter time/i);
 
   const opened = summarizeDexterPilotStatus(raw({
     events: [{
@@ -118,6 +120,7 @@ test("Dexter pilot status distinguishes waiting, opened, draft, and publish-atte
     feedback: [],
   }));
   assert.equal(draft.stage, "draft_ready");
+  assert.match(draft.recommended_follow_up, /hesitate before publishing/i);
 
   const attention = summarizeDexterPilotStatus(raw({
     events: [
@@ -127,6 +130,7 @@ test("Dexter pilot status distinguishes waiting, opened, draft, and publish-atte
     feedback: [],
   }));
   assert.equal(attention.stage, "publish_attention");
+  assert.match(attention.recommended_follow_up, /troubleshoot/i);
 });
 
 test("Dexter pilot status endpoint is preview-only and admin-gated", async () => {

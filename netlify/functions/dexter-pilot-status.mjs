@@ -120,6 +120,17 @@ export function summarizeDexterPilotStatus(raw) {
     if (stage === "completed_with_feedback") stageLabel = "Dexter completed the pilot and left feedback";
   }
 
+  const followUps = {
+    not_invited: "Create a fresh pilot link only when you are ready to start the test.",
+    invited: "The link has not been opened yet. Give Dexter time unless he says the link is not working.",
+    opened: "Dexter opened the pilot. If he stops here, ask whether the first screen and next step were clear.",
+    photo_selected: "Dexter selected a photo. If he stops here, ask whether creating the draft was clear.",
+    draft_ready: "Dexter reached a draft but has not completed a post. Ask what, if anything, made him hesitate before publishing.",
+    publish_attention: "A publish attempt needs attention. Offer to troubleshoot the Instagram connection instead of asking him to retry repeatedly.",
+    published: "Dexter completed a post. Ask how easy it felt and what task he would want Narleo to handle next.",
+    completed_with_feedback: "Review his feedback signal, then ask one specific follow-up about the next workflow he would value.",
+  };
+
   const feedbackLast = (raw?.feedback || [])
     .map((row) => ({
       result: String(row?.result || ""),
@@ -133,6 +144,7 @@ export function summarizeDexterPilotStatus(raw) {
     checked_at: checkedAt.toISOString(),
     stage,
     stage_label: stageLabel,
+    recommended_follow_up: followUps[stage] || "",
     invitation: {
       state: invitationState(raw?.invitation, checkedAt),
       created_at: iso(raw?.invitation?.created_at),

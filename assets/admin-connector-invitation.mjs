@@ -381,6 +381,7 @@ export function createDexterPilotInvitationController({
       || body?.business_id !== DEXTER_BUSINESS_ID
       || typeof body?.stage !== "string"
       || typeof body?.stage_label !== "string"
+      || typeof body?.recommended_follow_up !== "string"
       || typeof body?.invitation?.state !== "string"
       || typeof body?.session?.state !== "string"
       || !body?.activity
@@ -415,9 +416,10 @@ export function mountDexterPilotInvitation({
   const activityStage = documentImpl?.getElementById("dexterPilotActivityStage");
   const activityTimeline = documentImpl?.getElementById("dexterPilotActivityTimeline");
   const activityFeedback = documentImpl?.getElementById("dexterPilotActivityFeedback");
+  const activityFollowUp = documentImpl?.getElementById("dexterPilotActivityFollowUp");
   if (!card || !createButton || !copyButton || !linkInput || !status
     || !activityButton || !activityStatus || !activityDetails
-    || !activityStage || !activityTimeline || !activityFeedback) return null;
+    || !activityStage || !activityTimeline || !activityFeedback || !activityFollowUp) return null;
 
   const controller = createDexterPilotInvitationController({
     fetchImpl: windowImpl.fetch.bind(windowImpl),
@@ -472,6 +474,9 @@ export function mountDexterPilotInvitation({
       activityFeedback.textContent = data.feedback?.total
         ? `Feedback: ${Number(data.feedback.worked || 0)} worked · ${Number(data.feedback.needs_improvement || 0)} needs improvement`
         : "Feedback: none yet";
+      activityFollowUp.textContent = data.recommended_follow_up
+        ? "Suggested follow-up: " + data.recommended_follow_up
+        : "";
     },
   });
 
@@ -488,6 +493,7 @@ export function mountDexterPilotInvitation({
       activityStage.textContent = "";
       activityTimeline.textContent = "";
       activityFeedback.textContent = "";
+      activityFollowUp.textContent = "";
     }
   }
 

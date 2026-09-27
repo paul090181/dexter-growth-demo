@@ -165,6 +165,7 @@ test("Dexter pilot activity controller reads only the admin-gated summary endpoi
         business_id: "dexters-hats",
         stage: "draft_ready",
         stage_label: "Dexter created an Instagram draft",
+        recommended_follow_up: "Ask what, if anything, made him hesitate before publishing.",
         invitation: { state: "opened" },
         session: { state: "active" },
         activity: {
@@ -202,6 +203,7 @@ test("Dexter pilot activity controller reads only the admin-gated summary endpoi
   assert.equal(calls[0].init.method, "GET");
   assert.equal(calls[0].init.headers["X-GrowthWise-Key"], "saved-admin-key");
   assert.equal(states.at(-1).data.business_id, "dexters-hats");
+  assert.match(states.at(-1).data.recommended_follow_up, /hesitate/i);
 });
 
 test("Dexter pilot activity controller clears a stale admin key on 401", async () => {
@@ -300,6 +302,7 @@ test("operator UI is admin-gated and keeps acceptance controls fixed to growthwi
   assert.match(html, /id="dexterPilotActivityStage"/);
   assert.match(html, /id="dexterPilotActivityTimeline"/);
   assert.match(html, /id="dexterPilotActivityFeedback"/);
+  assert.match(html, /id="dexterPilotActivityFollowUp"/);
   assert.match(html, /assets\/admin-connector-invitation\.mjs/);
   assert.doesNotMatch(html, /id="emailAcceptanceInvitationUrl"/);
   assert.doesNotMatch(html, /id="facebookAcceptanceInvitationUrl"/);
