@@ -21,6 +21,13 @@ function connectorAllowed(){
   };
 }
 function connectorDenied(){return async()=>({ok:false,businessId:null,connectors:[]});}
+function sessionBoundFacebookAllowed(){
+  return async (_request,{businessId,connector})=>{
+    assert.equal(businessId,undefined);
+    assert.equal(connector,"facebook");
+    return {ok:true,businessId:BUSINESS_ID,connectors:["facebook"]};
+  };
+}
 
 test("Facebook OAuth start is tenant-bound and returns only a validated Meta authorization URL",async()=>{
   let stored=null;
@@ -154,7 +161,7 @@ test("Facebook Page options return only Page ids and names from the tenant-bound
   const selectionToken=`gw_fbsel_${"T".repeat(43)}`;
   const handler=createFacebookPageOptionsHandler({
     connectorStore:{},
-    connectorAuthorize:connectorAllowed(),
+    connectorAuthorize:sessionBoundFacebookAllowed(),
     now:()=>NOW,
     crypto:{},
     store:{
@@ -186,7 +193,7 @@ test("Facebook Page selection verifies the chosen Page and consumes only that te
   let connected=null;
   const handler=createFacebookPageSelectHandler({
     connectorStore:{},
-    connectorAuthorize:connectorAllowed(),
+    connectorAuthorize:sessionBoundFacebookAllowed(),
     now:()=>NOW,
     crypto:{},
     store:{
