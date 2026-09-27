@@ -243,9 +243,11 @@ export function prioritizeInboxLeads(leads = []) {
   const rows = Array.isArray(leads) ? leads : [];
   return [...rows].sort((a, b) => {
     const rank = (lead) => {
-      if (String(lead?.status || "") === "follow-up") return 3;
-      if (lead?.unread === true) return 2;
-      return 1;
+      const status = String(lead?.status || "new");
+      if (status === "follow-up") return 3;
+      if (lead?.unread === true && status !== "closed") return 2;
+      if (status === "new") return 1;
+      return 0;
     };
     const difference = rank(b) - rank(a);
     if (difference) return difference;
