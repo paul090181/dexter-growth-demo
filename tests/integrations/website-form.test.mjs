@@ -264,6 +264,10 @@ test("hosted website form is no-store, self-contained, and does not expose tenan
     "../../netlify/database/migrations/20260927200000_website-lead-forms/migration.sql",
     import.meta.url,
   ), "utf8");
+  const pilotMigration = await readFile(new URL(
+    "../../netlify/database/migrations/20260927203000_website-form-pilot-support/migration.sql",
+    import.meta.url,
+  ), "utf8");
 
   assert.match(html, /id="contact-form"/);
   assert.match(html, /Powered by Narleo/);
@@ -276,4 +280,7 @@ test("hosted website form is no-store, self-contained, and does not expose tenan
   assert.match(migration, /cardinality\(connectors\) BETWEEN 1 AND 4/);
   assert.match(migration, /'website'/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS growthwise_website_forms/);
+  assert.match(pilotMigration, /growthwise_website_forms/);
+  assert.match(pilotMigration, /contype = 'f'/);
+  assert.match(pilotMigration, /built-in pilots/i);
 });
