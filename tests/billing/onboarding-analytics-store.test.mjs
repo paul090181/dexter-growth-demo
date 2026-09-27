@@ -43,6 +43,8 @@ test("onboarding analytics store records only approved milestone names", async (
     /INVALID_ONBOARDING_EVENT/,
   );
   assert.equal(ALLOWED_EVENTS.has("first_win_created"), true);
+  assert.equal(ALLOWED_EVENTS.has("first_win_helpful"), true);
+  assert.equal(ALLOWED_EVENTS.has("first_win_needs_improvement"), true);
   assert.equal(ALLOWED_EVENTS.has("customer_message_text"), false);
 });
 
@@ -57,6 +59,8 @@ test("onboarding analytics store reads funnel rows joined to attribution and sub
   assert.match(db.calls[0].sql, /returned_after_first_value/);
   assert.match(db.calls[0].sql, /business_pulse_loaded/);
   assert.match(db.calls[0].sql, /first_win_created/);
+  assert.match(db.calls[0].sql, /first_win_helpful/);
+  assert.match(db.calls[0].sql, /first_win_needs_improvement/);
   assert.match(db.calls[0].sql, /first_values/);
   assert.match(db.calls[0].sql, /ai_workflow_used/);
 });

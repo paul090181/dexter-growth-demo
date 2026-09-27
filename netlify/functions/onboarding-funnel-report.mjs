@@ -60,6 +60,10 @@ function summarize(rows) {
     first_value_reached: firstValueRows.length,
     first_win_reached: firstWinRows.length,
     first_win_within_2_minutes: firstWinWithinTwoMinutes,
+    first_win_feedback_received: tenants.filter((row) =>
+      Boolean(row.first_win_helpful_at) || Boolean(row.first_win_needs_improvement_at)).length,
+    first_win_helpful: tenants.filter((row) => Boolean(row.first_win_helpful_at)).length,
+    first_win_needs_improvement: tenants.filter((row) => Boolean(row.first_win_needs_improvement_at)).length,
     returned_after_first_value: tenants.filter((row) => row.returned_after_first_value === true).length,
     time_to_first_value_minutes: {
       median,
@@ -118,6 +122,8 @@ export function createOnboardingFunnelReportHandler({
         square_connected_at: iso(row.square_connected_at),
         business_pulse_loaded_at: iso(row.business_pulse_loaded_at),
         first_win_created_at: iso(row.first_win_created_at),
+        first_win_helpful_at: iso(row.first_win_helpful_at),
+        first_win_needs_improvement_at: iso(row.first_win_needs_improvement_at),
         ai_workflow_used_at: iso(row.ai_workflow_used_at),
         first_value_at: iso(row.first_value_at),
         time_to_first_win_minutes: durationMinutes(

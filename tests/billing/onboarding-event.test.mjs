@@ -79,6 +79,34 @@ test("tenant can record the instant first-win milestone without content payloads
   assert.equal(calls[0].eventName, "first_win_created");
 });
 
+test("tenant can record first-win usefulness without sending result content", async () => {
+  const calls = [];
+  const handler = createOnboardingEventHandler({
+    tenantStore: {},
+    authorize: async (_request, { businessId }) => ({
+      ok: businessId === BUSINESS_ID,
+      businessId,
+      via: "tenant",
+    }),
+    analyticsStore: {
+      recordEvent: async (input) => {
+        calls.push(input);
+        return input;
+      },
+    },
+    now: () => new Date("2026-09-25T20:03:00.000Z"),
+  });
+
+  const response = await handler(request({
+    business_id: BUSINESS_ID,
+    event_name: "first_win_helpful",
+  }));
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).event_name, "first_win_helpful");
+  assert.equal(calls.length, 1);
+  assert.deepEqual(Object.keys(calls[0]).sort(), ["businessId", "eventName", "occurredAt"].sort());
+});
+
 test("one tenant cannot record another tenant's milestone", async () => {
   let writes = 0;
   const handler = createOnboardingEventHandler({

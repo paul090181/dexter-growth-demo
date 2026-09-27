@@ -822,6 +822,10 @@ test("active tenant can get a first useful Narleo result before connecting any p
   assert.equal(s.getItem(`growthwise_first_win:${BUSINESS_ID}`), "1");
   assert.equal(tracked.includes("first_win_created"), true);
   assert.equal(tracked.includes("ai_workflow_used"), true);
+  assert.equal(await controller.rateFirstWin("helpful"), true);
+  assert.equal(controller.getState().firstWin.feedback, "helpful");
+  assert.equal(s.getItem(`growthwise_first_win_feedback:${BUSINESS_ID}`), "helpful");
+  assert.equal(tracked.includes("first_win_helpful"), true);
   assert.equal(calls.every((call) => !call.url.includes(TENANT_KEY)), true);
 });
 
@@ -1186,6 +1190,10 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(html, /id="workspace-first-win-copy-secondary"/);
   assert.match(html, /id="workspace-first-win-use-facebook"/);
   assert.match(html, /id="workspace-first-win-use-instagram"/);
+  assert.match(html, /id="workspace-first-win-feedback"/);
+  assert.match(html, /id="workspace-first-win-helpful"/);
+  assert.match(html, /id="workspace-first-win-needs-improvement"/);
+  assert.match(html, /id="workspace-first-win-feedback-status"/);
   assert.match(html, /id="workspace-facebook-message"/);
   assert.match(html, /id="workspace-instagram-caption"/);
   assert.match(html, /id="workspace-instagram-image"[^>]*accept="image\/jpeg"/);
@@ -1227,6 +1235,10 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /businessStarterKit/);
   assert.match(js, /data-starter-kind|starterKind/);
   assert.match(js, /createFirstWin/);
+  assert.match(js, /rateFirstWin/);
+  assert.match(js, /first_win_helpful/);
+  assert.match(js, /first_win_needs_improvement/);
+  assert.match(js, /growthwise_first_win_feedback/);
   assert.match(js, /growthwise_first_win/);
   assert.match(js, /facebookMessage\.value = result\.primary_text/);
   assert.match(js, /facebookReviewed\.checked = false/);

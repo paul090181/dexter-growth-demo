@@ -20,6 +20,8 @@ const rows = [
     square_connected_at: "2026-09-25T10:08:00.000Z",
     business_pulse_loaded_at: "2026-09-25T10:09:00.000Z",
     first_win_created_at: null,
+    first_win_helpful_at: null,
+    first_win_needs_improvement_at: null,
     ai_workflow_used_at: null,
     first_value_at: "2026-09-25T10:09:00.000Z",
     workspace_open_days: 2,
@@ -40,6 +42,8 @@ const rows = [
     square_connected_at: null,
     business_pulse_loaded_at: null,
     first_win_created_at: "2026-09-25T11:02:00.000Z",
+    first_win_helpful_at: "2026-09-25T11:03:00.000Z",
+    first_win_needs_improvement_at: null,
     ai_workflow_used_at: "2026-09-25T11:15:00.000Z",
     first_value_at: "2026-09-25T11:02:00.000Z",
     workspace_open_days: 1,
@@ -79,6 +83,9 @@ test("onboarding funnel report summarizes conversion, attribution, return, and t
   assert.equal(body.overall.first_value_reached, 2);
   assert.equal(body.overall.first_win_reached, 1);
   assert.equal(body.overall.first_win_within_2_minutes, 1);
+  assert.equal(body.overall.first_win_feedback_received, 1);
+  assert.equal(body.overall.first_win_helpful, 1);
+  assert.equal(body.overall.first_win_needs_improvement, 0);
   assert.equal(body.overall.returned_after_first_value, 1);
   assert.equal(body.overall.time_to_first_value_minutes.minimum, 2);
   assert.equal(body.overall.time_to_first_value_minutes.maximum, 9);
@@ -94,6 +101,7 @@ test("onboarding funnel report summarizes conversion, attribution, return, and t
 
   assert.equal(body.tenants[0].time_to_first_value_minutes, 9);
   assert.equal(body.tenants[1].time_to_first_win_minutes, 2);
+  assert.equal(body.tenants[1].first_win_helpful_at, "2026-09-25T11:03:00.000Z");
   assert.equal(body.tenants[0].returned_after_first_value, true);
   assert.match(body.privacy_note, /no customer message text/i);
 });

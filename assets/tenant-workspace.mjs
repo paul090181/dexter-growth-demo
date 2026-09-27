@@ -273,6 +273,7 @@ export function createTenantWorkspaceController({
       loading: false,
       error: "",
       result: null,
+      feedback: "",
     },
     assistant: {
       loading: false,
@@ -533,6 +534,7 @@ export function createTenantWorkspaceController({
       if (persist) saveWorkspaceCredentials({ businessId: id, tenantKey: key }, storage);
       else if (sessionAuth) saveWorkspaceCredentials({ businessId: id, tenantKey: "" }, storage);
       const firstWinCompleted = storage?.getItem(`growthwise_first_win:${id}`) === "1";
+      const firstWinFeedback = storage?.getItem(`growthwise_first_win_feedback:${id}`) || "";
       return publish({
         loading: false,
         signedIn: true,
@@ -548,6 +550,7 @@ export function createTenantWorkspaceController({
           loading: false,
           error: "",
           result: null,
+          feedback: firstWinFeedback,
         },
         assistant: {
           loading: false,
@@ -589,6 +592,7 @@ export function createTenantWorkspaceController({
           loading: false,
           error: "",
           result: null,
+          feedback: "",
         },
         assistant: {
           loading: false,
@@ -1038,6 +1042,40 @@ export function createTenantWorkspaceController({
     }
   }
 
+  async function rateFirstWin(outcome) {
+    const { businessId, tenantKey } = readWorkspaceCredentials(storage);
+    const normalized = outcome === "helpful"
+      ? "helpful"
+      : outcome === "needs_improvement"
+        ? "needs_improvement"
+        : "";
+    if (!state.signedIn || !businessId || !normalized || !state.firstWin?.result) return false;
+
+    const eventName = normalized === "helpful"
+      ? "first_win_helpful"
+      : "first_win_needs_improvement";
+    const recorded = await trackEvent(eventName, { businessId, tenantKey });
+    if (recorded !== true) {
+      publish({
+        firstWin: {
+          ...state.firstWin,
+          error: "Feedback could not be saved right now.",
+        },
+      });
+      return false;
+    }
+
+    storage?.setItem(`growthwise_first_win_feedback:${businessId}`, normalized);
+    publish({
+      firstWin: {
+        ...state.firstWin,
+        error: "",
+        feedback: normalized,
+      },
+    });
+    return true;
+  }
+
   async function refreshFacebookStatus() {
     const { businessId, tenantKey } = readWorkspaceCredentials(storage);
     if (!state.signedIn
@@ -1403,6 +1441,7 @@ export function createTenantWorkspaceController({
     openConnectorSetup,
     askNarleo,
     createFirstWin,
+    rateFirstWin,
     refreshFacebookStatus,
     publishFacebook,
     refreshInstagramStatus,
@@ -1469,6 +1508,10 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
   const firstWinUseInstagram = documentImpl.getElementById("workspace-first-win-use-instagram");
   const firstWinNote = documentImpl.getElementById("workspace-first-win-note");
   const firstWinNext = documentImpl.getElementById("workspace-first-win-next");
+  const firstWinFeedback = documentImpl.getElementById("workspace-first-win-feedback");
+  const firstWinHelpful = documentImpl.getElementById("workspace-first-win-helpful");
+  const firstWinNeedsImprovement = documentImpl.getElementById("workspace-first-win-needs-improvement");
+  const firstWinFeedbackStatus = documentImpl.getElementById("workspace-first-win-feedback-status");
   const assistantCard = documentImpl.getElementById("workspace-assistant-card");
   const assistantThread = documentImpl.getElementById("workspace-assistant-thread");
   const assistantForm = documentImpl.getElementById("workspace-assistant-form");
@@ -1741,6 +1784,16 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
         firstWinUseInstagram.hidden = !(socialResult && featureAccess.automated_publishing === true && secondary);
         firstWinNote.textContent = view.firstWin.result.note || "";
         firstWinNext.textContent = view.firstWin.result.next_step || "";
+        firstWinFeedback.hidden = false;
+        const feedbackSaved = view.firstWin.feedback === "helpful"
+          || view.firstWin.feedback === "needs_improvement";
+        firstWinHelpful.disabled = feedbackSaved;
+        firstWinNeedsImprovement.disabled = feedbackSaved;
+        firstWinFeedbackStatus.textContent = view.firstWin.feedback === "helpful"
+          ? "Thanks — Narleo saved that this result was useful."
+          : view.firstWin.feedback === "needs_improvement"
+            ? "Thanks — Narleo saved that this result needs improvement."
+            : "";
       }
     }
 
@@ -2111,6 +2164,14 @@ export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}
       instagramPublishStatus.textContent = "";
       instagramCaption?.focus?.();
     }
+  });
+
+  firstWinHelpful?.addEventListener("click", async () => {
+    await controller.rateFirstWin("helpful");
+  });
+
+  firstWinNeedsImprovement?.addEventListener("click", async () => {
+    await controller.rateFirstWin("needs_improvement");
   });
 
   firstWinForm?.addEventListener("submit", async (event) => {

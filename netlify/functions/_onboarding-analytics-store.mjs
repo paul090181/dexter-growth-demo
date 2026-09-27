@@ -7,6 +7,8 @@ const ALLOWED_EVENTS = new Set([
   "square_connected",
   "business_pulse_loaded",
   "first_win_created",
+  "first_win_helpful",
+  "first_win_needs_improvement",
   "ai_workflow_used",
 ]);
 
@@ -58,6 +60,8 @@ export function createOnboardingAnalyticsStore({ getPool = netlifyPool } = {}) {
           MIN(occurred_at) FILTER (WHERE event_name = 'square_connected') AS square_connected_at,
           MIN(occurred_at) FILTER (WHERE event_name = 'business_pulse_loaded') AS business_pulse_loaded_at,
           MIN(occurred_at) FILTER (WHERE event_name = 'first_win_created') AS first_win_created_at,
+          MIN(occurred_at) FILTER (WHERE event_name = 'first_win_helpful') AS first_win_helpful_at,
+          MIN(occurred_at) FILTER (WHERE event_name = 'first_win_needs_improvement') AS first_win_needs_improvement_at,
           MIN(occurred_at) FILTER (WHERE event_name = 'ai_workflow_used') AS ai_workflow_used_at,
           COUNT(DISTINCT occurred_on) FILTER (WHERE event_name = 'workspace_opened')::int AS workspace_open_days
         FROM growthwise_onboarding_events
