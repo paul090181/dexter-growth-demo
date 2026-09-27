@@ -51,6 +51,34 @@ test("tenant can record an approved onboarding milestone only for itself", async
   assert.equal(calls[0].eventName, "business_pulse_loaded");
 });
 
+test("tenant can record the instant first-win milestone without content payloads", async () => {
+  const calls = [];
+  const handler = createOnboardingEventHandler({
+    tenantStore: {},
+    authorize: async (_request, { businessId }) => ({
+      ok: businessId === BUSINESS_ID,
+      businessId,
+      via: "tenant",
+    }),
+    analyticsStore: {
+      recordEvent: async (input) => {
+        calls.push(input);
+        return input;
+      },
+    },
+    now: () => new Date("2026-09-25T20:02:00.000Z"),
+  });
+
+  const response = await handler(request({
+    business_id: BUSINESS_ID,
+    event_name: "first_win_created",
+  }));
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).event_name, "first_win_created");
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].eventName, "first_win_created");
+});
+
 test("one tenant cannot record another tenant's milestone", async () => {
   let writes = 0;
   const handler = createOnboardingEventHandler({

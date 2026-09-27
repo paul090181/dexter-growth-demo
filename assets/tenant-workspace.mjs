@@ -947,6 +947,7 @@ export function createTenantWorkspaceController({
           result,
         },
       });
+      await trackEvent("first_win_created", { businessId, tenantKey });
       await trackEvent("ai_workflow_used", { businessId, tenantKey });
       return true;
     } catch (error) {

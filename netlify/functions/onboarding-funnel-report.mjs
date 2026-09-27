@@ -9,6 +9,7 @@ const STAGES = [
   ["square_connect_started", "square_connect_started_at"],
   ["square_connected", "square_connected_at"],
   ["business_pulse_loaded", "business_pulse_loaded_at"],
+  ["first_win_created", "first_win_created_at"],
   ["ai_workflow_used", "ai_workflow_used_at"],
 ];
 
@@ -44,10 +45,21 @@ function summarize(rows) {
       : Math.round((sorted[(sorted.length / 2) - 1] + sorted[sorted.length / 2]) / 2)
     : null;
 
+  const firstWinRows = tenants.filter((row) => Boolean(row.first_win_created_at));
+  const firstWinDurations = firstWinRows
+    .map((row) => durationMinutes(
+      row.workspace_created_at || row.workspace_opened_at,
+      row.first_win_created_at,
+    ))
+    .filter((value) => Number.isFinite(value));
+  const firstWinWithinTwoMinutes = firstWinDurations.filter((value) => value <= 2).length;
+
   return {
     tenants_observed: tenants.length,
     stages: stageCounts,
     first_value_reached: firstValueRows.length,
+    first_win_reached: firstWinRows.length,
+    first_win_within_2_minutes: firstWinWithinTwoMinutes,
     returned_after_first_value: tenants.filter((row) => row.returned_after_first_value === true).length,
     time_to_first_value_minutes: {
       median,
@@ -105,8 +117,13 @@ export function createOnboardingFunnelReportHandler({
         square_connect_started_at: iso(row.square_connect_started_at),
         square_connected_at: iso(row.square_connected_at),
         business_pulse_loaded_at: iso(row.business_pulse_loaded_at),
+        first_win_created_at: iso(row.first_win_created_at),
         ai_workflow_used_at: iso(row.ai_workflow_used_at),
         first_value_at: iso(row.first_value_at),
+        time_to_first_win_minutes: durationMinutes(
+          row.workspace_created_at || row.workspace_opened_at,
+          row.first_win_created_at,
+        ),
         time_to_first_value_minutes: durationMinutes(
           row.workspace_created_at || row.workspace_opened_at,
           row.first_value_at,

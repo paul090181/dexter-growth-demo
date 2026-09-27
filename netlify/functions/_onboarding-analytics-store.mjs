@@ -6,6 +6,7 @@ const ALLOWED_EVENTS = new Set([
   "square_connect_started",
   "square_connected",
   "business_pulse_loaded",
+  "first_win_created",
   "ai_workflow_used",
 ]);
 
@@ -56,6 +57,7 @@ export function createOnboardingAnalyticsStore({ getPool = netlifyPool } = {}) {
           MIN(occurred_at) FILTER (WHERE event_name = 'square_connect_started') AS square_connect_started_at,
           MIN(occurred_at) FILTER (WHERE event_name = 'square_connected') AS square_connected_at,
           MIN(occurred_at) FILTER (WHERE event_name = 'business_pulse_loaded') AS business_pulse_loaded_at,
+          MIN(occurred_at) FILTER (WHERE event_name = 'first_win_created') AS first_win_created_at,
           MIN(occurred_at) FILTER (WHERE event_name = 'ai_workflow_used') AS ai_workflow_used_at,
           COUNT(DISTINCT occurred_on) FILTER (WHERE event_name = 'workspace_opened')::int AS workspace_open_days
         FROM growthwise_onboarding_events
@@ -64,11 +66,15 @@ export function createOnboardingAnalyticsStore({ getPool = netlifyPool } = {}) {
       derived AS (
         SELECT
           e.*,
-          CASE
-            WHEN e.business_pulse_loaded_at IS NULL THEN e.ai_workflow_used_at
-            WHEN e.ai_workflow_used_at IS NULL THEN e.business_pulse_loaded_at
-            ELSE LEAST(e.business_pulse_loaded_at, e.ai_workflow_used_at)
-          END AS first_value_at
+          (
+            SELECT MIN(value_at)
+              FROM (VALUES
+                (e.business_pulse_loaded_at),
+                (e.first_win_created_at),
+                (e.ai_workflow_used_at)
+              ) AS first_values(value_at)
+             WHERE value_at IS NOT NULL
+          ) AS first_value_at
         FROM event_rollup e
       )
       SELECT

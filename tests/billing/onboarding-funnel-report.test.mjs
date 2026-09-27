@@ -19,6 +19,7 @@ const rows = [
     square_connect_started_at: "2026-09-25T10:06:00.000Z",
     square_connected_at: "2026-09-25T10:08:00.000Z",
     business_pulse_loaded_at: "2026-09-25T10:09:00.000Z",
+    first_win_created_at: null,
     ai_workflow_used_at: null,
     first_value_at: "2026-09-25T10:09:00.000Z",
     workspace_open_days: 2,
@@ -38,8 +39,9 @@ const rows = [
     square_connect_started_at: null,
     square_connected_at: null,
     business_pulse_loaded_at: null,
+    first_win_created_at: "2026-09-25T11:02:00.000Z",
     ai_workflow_used_at: "2026-09-25T11:15:00.000Z",
-    first_value_at: "2026-09-25T11:15:00.000Z",
+    first_value_at: "2026-09-25T11:02:00.000Z",
     workspace_open_days: 1,
     returned_after_first_value: false,
     campaign_code: null,
@@ -72,12 +74,15 @@ test("onboarding funnel report summarizes conversion, attribution, return, and t
   assert.equal(body.overall.stages.workspace_created, 2);
   assert.equal(body.overall.stages.checkout_completed, 1);
   assert.equal(body.overall.stages.business_pulse_loaded, 1);
+  assert.equal(body.overall.stages.first_win_created, 1);
   assert.equal(body.overall.stages.ai_workflow_used, 1);
   assert.equal(body.overall.first_value_reached, 2);
+  assert.equal(body.overall.first_win_reached, 1);
+  assert.equal(body.overall.first_win_within_2_minutes, 1);
   assert.equal(body.overall.returned_after_first_value, 1);
-  assert.equal(body.overall.time_to_first_value_minutes.minimum, 9);
-  assert.equal(body.overall.time_to_first_value_minutes.maximum, 15);
-  assert.equal(body.overall.time_to_first_value_minutes.median, 12);
+  assert.equal(body.overall.time_to_first_value_minutes.minimum, 2);
+  assert.equal(body.overall.time_to_first_value_minutes.maximum, 9);
+  assert.equal(body.overall.time_to_first_value_minutes.median, 6);
 
   const launch = body.campaigns.find((row) => row.campaign_code === "LAUNCH20");
   assert.equal(launch.tenants_observed, 1);
@@ -88,6 +93,7 @@ test("onboarding funnel report summarizes conversion, attribution, return, and t
   assert.equal(unattributed.tenants_observed, 1);
 
   assert.equal(body.tenants[0].time_to_first_value_minutes, 9);
+  assert.equal(body.tenants[1].time_to_first_win_minutes, 2);
   assert.equal(body.tenants[0].returned_after_first_value, true);
   assert.match(body.privacy_note, /no customer message text/i);
 });

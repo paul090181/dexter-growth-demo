@@ -820,6 +820,7 @@ test("active tenant can get a first useful Narleo result before connecting any p
   assert.equal(state.firstWin.completed, true);
   assert.equal(state.firstWin.result.title, "Mystery shelf spotlight");
   assert.equal(s.getItem(`growthwise_first_win:${BUSINESS_ID}`), "1");
+  assert.equal(tracked.includes("first_win_created"), true);
   assert.equal(tracked.includes("ai_workflow_used"), true);
   assert.equal(calls.every((call) => !call.url.includes(TENANT_KEY)), true);
 });
