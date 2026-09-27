@@ -106,6 +106,30 @@
       </div>
     </section>
 
+    <section class="card" aria-labelledby="website-title">
+      <div class="row">
+        <div>
+          <h2 id="website-title">Website inquiries</h2>
+          <p id="website-status" class="status">Checking…</p>
+          <p id="website-detail" class="detail">Create a hosted contact form that sends inquiries into your Narleo inbox.</p>
+        </div>
+        <div>
+          <button id="website-create" type="button" hidden>Create website form</button>
+          <button id="website-disconnect" class="secondary" type="button" hidden>Disable</button>
+        </div>
+      </div>
+      <div id="website-link-panel" class="email-warning" hidden>
+        <strong>Your website form link</strong>
+        <p>Share this link from your website, social profile, or QR code. Messages appear in your Narleo inbox.</p>
+        <input id="website-form-link" type="text" readonly style="display:block;width:100%;margin-top:10px;padding:11px;border:1px solid #cbd5e1;border-radius:10px;background:#fff">
+        <div class="row" style="margin-top:10px">
+          <button id="website-copy" type="button">Copy link</button>
+          <button id="website-open" class="secondary" type="button">Preview form</button>
+        </div>
+        <p id="website-copy-status" class="detail" style="margin-top:8px"></p>
+      </div>
+    </section>
+
     <a class="back-link" href="./app.html">← Back to business workspace</a>
 
     <section class="card" aria-labelledby="connector-inbox-title">

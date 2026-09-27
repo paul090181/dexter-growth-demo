@@ -6,10 +6,23 @@ const INVITATION_PATTERN = /^gw_inv_[A-Za-z0-9_-]{43}$/;
 const INSTAGRAM_STATES = new Set(["Not Connected", "Connected", "Needs Attention"]);
 const EMAIL_STATES = new Set(["Not Connected", "Connected", "Needs Attention"]);
 const FACEBOOK_STATES = new Set(["Not Connected", "Connected", "Needs Attention"]);
+const WEBSITE_STATES = new Set(["Not Connected", "Connected"]);
+const WEBSITE_FORM_PATTERN = /^#form=gwf_[A-Za-z0-9_-]{22}$/;
 const FACEBOOK_RETURN_HINTS = new Set(["connected", "cancelled", "attention", "select", "no-page"]);
 const FACEBOOK_SELECTION_PATTERN = /^gw_fbsel_[A-Za-z0-9_-]{43}$/;
 
 function safePath(url) { return `${url.pathname}${url.search}`; }
+
+export function normalizeWebsiteFormUrl(value, origin = globalThis.location?.origin) {
+  try {
+    const target = new URL(String(value || ""), origin);
+    if (!origin || target.origin !== origin || target.pathname !== "/website-contact.html"
+      || target.search || !WEBSITE_FORM_PATTERN.test(target.hash)) return "";
+    return target.toString();
+  } catch {
+    return "";
+  }
+}
 
 export async function bootstrapConnectorInvitation({
   href = globalThis.location.href,
@@ -110,6 +123,7 @@ export function consumeFacebookSelectionToken({
 export function createCustomerConnectorController({
   fetchImpl = globalThis.fetch,
   navigate = (url) => globalThis.location.assign(url),
+  origin = globalThis.location?.origin,
   onChange = () => {},
 } = {}) {
   let state = {
@@ -139,6 +153,14 @@ export function createCustomerConnectorController({
       selectionToken: "",
       pageOptions: [],
       selecting: false,
+    },
+    website: {
+      state: "Not Connected",
+      action: "Create a hosted contact form link for this business.",
+      available: false,
+      allowed: false,
+      working: false,
+      formUrl: "",
     },
   };
   let connectPromise = null;
@@ -244,6 +266,37 @@ export function createCustomerConnectorController({
             ? { pageName: health.account.page_name } : null,
         };
       }
+
+      const websiteAllowed = session.connectors?.website?.allowed === true;
+      const websiteAvailable = websiteAllowed && session.connectors?.website?.available === true;
+      let website = {
+        state: websiteAvailable ? "Not Connected" : "Setup unavailable",
+        action: websiteAvailable
+          ? "Create a hosted contact form link for this business."
+          : "Website inquiry forms are not available for this session.",
+        available: websiteAvailable,
+        allowed: websiteAllowed,
+        working: false,
+        formUrl: "",
+      };
+      if (websiteAvailable) {
+        const formResponse = await fetchImpl(`${ENDPOINT}/website-form-config`, {
+          method: "GET", credentials: "same-origin", cache: "no-store",
+        });
+        const form = await formResponse.json();
+        if (!formResponse.ok || form.business_id !== session.business_id || !WEBSITE_STATES.has(form.state)) {
+          throw new Error("website_form_status_failed");
+        }
+        website = {
+          ...website,
+          state: form.state,
+          action: typeof form.action === "string" ? form.action : "",
+          formUrl: form.state === "Connected"
+            ? normalizeWebsiteFormUrl(form.form_url, origin) : "",
+        };
+        if (form.state === "Connected" && !website.formUrl) throw new Error("website_form_url_invalid");
+      }
+
       return publish({
         businessId: session.business_id,
         businessName: session.business_name,
@@ -251,6 +304,7 @@ export function createCustomerConnectorController({
         instagram,
         email,
         facebook,
+        website,
       });
     } catch {
       return publish({ loading: false, error: "This connection session is invalid or expired." });
@@ -528,8 +582,78 @@ export function createCustomerConnectorController({
     }
   }
 
+  async function createWebsiteForm() {
+    if (!state.businessId || !state.website.allowed || !state.website.available || state.website.working) return false;
+    publish({ website: { ...state.website, working: true } });
+    try {
+      const response = await fetchImpl(`${ENDPOINT}/website-form-config`, {
+        method: "POST",
+        credentials: "same-origin",
+      });
+      const body = await response.json().catch(() => ({}));
+      const formUrl = normalizeWebsiteFormUrl(body?.form_url, origin);
+      if (!response.ok || body?.ok !== true || body.business_id !== state.businessId
+        || body.state !== "Connected" || !formUrl) throw new Error("website_form_create_failed");
+      publish({
+        website: {
+          ...state.website,
+          state: "Connected",
+          action: typeof body.action === "string" ? body.action : "",
+          working: false,
+          formUrl,
+        },
+      });
+      return true;
+    } catch {
+      publish({
+        website: {
+          ...state.website,
+          working: false,
+          action: "Website form could not be created right now.",
+        },
+      });
+      return false;
+    }
+  }
+
+  async function disconnectWebsiteForm() {
+    if (!state.businessId || !state.website.allowed || !state.website.available
+      || state.website.state !== "Connected" || state.website.working) return false;
+    publish({ website: { ...state.website, working: true } });
+    try {
+      const response = await fetchImpl(`${ENDPOINT}/website-form-config`, {
+        method: "DELETE",
+        credentials: "same-origin",
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || body?.ok !== true || body.business_id !== state.businessId
+        || body.state !== "Not Connected") throw new Error("website_form_disable_failed");
+      publish({
+        website: {
+          ...state.website,
+          state: "Not Connected",
+          action: "Create a hosted contact form link for this business.",
+          working: false,
+          formUrl: "",
+        },
+      });
+      return true;
+    } catch {
+      publish({
+        website: {
+          ...state.website,
+          working: false,
+          action: "Website form could not be disabled right now.",
+        },
+      });
+      return false;
+    }
+  }
+
   return {
     load,
+    createWebsiteForm,
+    disconnectWebsiteForm,
     connectInstagram,
     connectEmail,
     disconnectEmail,
@@ -675,6 +799,15 @@ export function mountCustomerConnectorPage({
   const facebookPicker = documentImpl.getElementById("facebook-page-picker");
   const facebookChoice = documentImpl.getElementById("facebook-page-choice");
   const facebookConfirm = documentImpl.getElementById("facebook-page-confirm");
+  const websiteStatus = documentImpl.getElementById("website-status");
+  const websiteDetail = documentImpl.getElementById("website-detail");
+  const websiteCreate = documentImpl.getElementById("website-create");
+  const websiteDisconnect = documentImpl.getElementById("website-disconnect");
+  const websiteLinkPanel = documentImpl.getElementById("website-link-panel");
+  const websiteFormLink = documentImpl.getElementById("website-form-link");
+  const websiteCopy = documentImpl.getElementById("website-copy");
+  const websiteOpen = documentImpl.getElementById("website-open");
+  const websiteCopyStatus = documentImpl.getElementById("website-copy-status");
   const render = (view) => {
     businessName.textContent = view.businessName;
     error.textContent = view.error;
@@ -729,6 +862,18 @@ export function mountCustomerConnectorPage({
       facebookConfirm.disabled = view.facebook.selecting;
       facebookConfirm.textContent = view.facebook.selecting ? "Connecting…" : "Use this Page";
     }
+
+    websiteStatus.textContent = view.loading ? "Checking…" : view.website.state;
+    websiteDetail.textContent = view.website.action;
+    websiteCreate.hidden = !view.website.available || view.website.state === "Connected";
+    websiteCreate.disabled = view.loading || view.website.working;
+    websiteCreate.textContent = view.website.working ? "Creating…" : "Create website form";
+    websiteDisconnect.hidden = !view.website.available || view.website.state !== "Connected";
+    websiteDisconnect.disabled = view.loading || view.website.working;
+    websiteLinkPanel.hidden = view.website.state !== "Connected" || !view.website.formUrl;
+    websiteFormLink.value = view.website.formUrl || "";
+    websiteOpen.disabled = !view.website.formUrl;
+    websiteCopy.disabled = !view.website.formUrl;
   };
   const controller = createCustomerConnectorController({ onChange: render });
   instagramButton.addEventListener("click", () => controller.connectInstagram());
@@ -737,6 +882,22 @@ export function mountCustomerConnectorPage({
   facebookButton.addEventListener("click", () => controller.connectFacebook());
   facebookDisconnect.addEventListener("click", () => controller.disconnectFacebook());
   facebookConfirm.addEventListener("click", () => controller.selectFacebookPage(facebookChoice.value));
+  websiteCreate.addEventListener("click", () => controller.createWebsiteForm());
+  websiteDisconnect.addEventListener("click", () => controller.disconnectWebsiteForm());
+  websiteCopy.addEventListener("click", async () => {
+    const value = controller.getState().website.formUrl || "";
+    if (!value) return;
+    try {
+      await globalThis.navigator?.clipboard?.writeText(value);
+      websiteCopyStatus.textContent = "Link copied.";
+    } catch {
+      websiteCopyStatus.textContent = "Copy is unavailable in this browser. Select the link above to copy it.";
+    }
+  });
+  websiteOpen.addEventListener("click", () => {
+    const value = controller.getState().website.formUrl || "";
+    if (value) globalThis.open?.(value, "_blank", "noopener,noreferrer");
+  });
   for (const choice of emailChoices) {
     choice.addEventListener("change", () => controller.setEmailMailboxContext(choice.value));
   }

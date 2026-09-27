@@ -7,7 +7,7 @@ import { resolveGrowthWisePublicOrigin } from "./_public-origin.mjs";
 import { createTenantStore } from "./_tenant-store.mjs";
 
 const INVITATION_TTL_MS = 24 * 60 * 60 * 1000;
-const ALLOWED = new Set(["email", "facebook", "instagram"]);
+const ALLOWED = new Set(["email", "facebook", "instagram", "website"]);
 
 function configuredOrigin(requestUrl) {
   return resolveGrowthWisePublicOrigin(

@@ -81,12 +81,12 @@ test("invitation creation is admin-only and accepts pilot tenants without billin
   assert.equal(unauthorized.status, 401);
   assert.equal(fixture.store.invitations.size, 0);
 
-  const response = await fixture.create(createRequest({ business_id: "dexters-hats", connectors: ["instagram", "facebook", "email"] }));
+  const response = await fixture.create(createRequest({ business_id: "dexters-hats", connectors: ["instagram", "facebook", "email", "website"] }));
   assert.equal(response.status, 201);
   const body = await response.json();
   assert.equal(body.expires_at, "2026-09-24T12:00:00.000Z");
   assert.equal(body.business_id, "dexters-hats");
-  assert.equal(body.connectors.join(","), "email,facebook,instagram");
+  assert.equal(body.connectors.join(","), "email,facebook,instagram,website");
 });
 
 test("database-backed tenants use the same invitation path without Stripe status", async () => {
@@ -225,7 +225,33 @@ test("session metadata comes only from the cookie-bound tenant and keeps Faceboo
       facebook: { allowed: true, available: false, state: "Setup unavailable" },
       instagram: { allowed: true, available: true },
       email: { allowed: true, available: false, state: "Setup unavailable" },
+      website: { allowed: false, available: false, state: "Setup unavailable" },
     },
+  });
+});
+
+test("session metadata exposes hosted website forms without an external provider", async () => {
+  const fixture = createFixture();
+  const created = await (await fixture.create(createRequest({
+    business_id: "dexters-hats",
+    connectors: ["website"],
+  }))).json();
+  const token = new URL(created.invitation_url).hash.slice("#invite=".length);
+  const exchange = await fixture.exchange(createRequest(
+    { invitation_token: token },
+    { key: "", path: "connector-invitation-exchange" },
+  ));
+  const cookie = exchange.headers.get("set-cookie").split(";", 1)[0];
+  const response = await fixture.session(new Request(
+    `${ORIGIN}/.netlify/functions/connector-session`,
+    { headers: { cookie } },
+  ));
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.deepEqual(body.connectors.website, {
+    allowed: true,
+    available: true,
+    state: "Not Connected",
   });
 });
 

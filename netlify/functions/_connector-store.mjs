@@ -1,4 +1,4 @@
-const ALLOWED_CONNECTORS = new Set(["email", "facebook", "instagram"]);
+const ALLOWED_CONNECTORS = new Set(["email", "facebook", "instagram", "website"]);
 export const CONNECTOR_SESSION_TTL_MS = 30 * 60 * 1000;
 
 const INSERT_INVITATION = `

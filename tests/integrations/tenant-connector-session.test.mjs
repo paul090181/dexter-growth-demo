@@ -74,7 +74,7 @@ test("eligible tenant creates its own short-lived connector session without an i
   });
   assert.equal(creates.length, 1);
   assert.equal(creates[0].businessId, BUSINESS_ID);
-  assert.deepEqual(creates[0].connectors, ["email", "facebook", "instagram"]);
+  assert.deepEqual(creates[0].connectors, ["email", "facebook", "instagram", "website"]);
   assert.match(creates[0].sessionHash, /^[a-f0-9]{64}$/);
   assert.equal(creates[0].expiresAt.toISOString(), "2026-09-25T23:00:00.000Z");
 

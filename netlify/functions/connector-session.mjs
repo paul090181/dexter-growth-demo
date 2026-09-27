@@ -74,6 +74,9 @@ export function createConnectorSessionHandler({
               };
             })()
           : { allowed: false, available: false, state: "Setup unavailable" },
+        website: auth.connectors.includes("website")
+          ? { allowed: true, available: true, state: "Not Connected" }
+          : { allowed: false, available: false, state: "Setup unavailable" },
       },
     });
   };

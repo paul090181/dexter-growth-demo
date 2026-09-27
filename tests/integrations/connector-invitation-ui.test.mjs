@@ -6,6 +6,7 @@ import {
   bootstrapConnectorInvitation,
   connectorInvitationAllowsPageStart,
   createCustomerConnectorController,
+  normalizeWebsiteFormUrl,
 } from "../../assets/connector-invitation.mjs";
 
 const ORIGIN = "https://preview.example";
@@ -177,6 +178,10 @@ test("the static page is no-store, self-contained, credential-free, and contains
   assert.match(html, /Facebook Page/);
   assert.match(html, /id="facebook-page-picker"/);
   assert.match(html, /id="facebook-page-choice"/);
+  assert.match(html, /id="website-status"/);
+  assert.match(html, /id="website-create"/);
+  assert.match(html, /id="website-form-link"/);
+  assert.match(html, /Website inquiries/);
   assert.match(html, /Referrer-Policy/i);
   assert.match(html, /Cache-Control/i);
   assert.match(html, /Content-Security-Policy/i);
@@ -186,6 +191,72 @@ test("the static page is no-store, self-contained, credential-free, and contains
   assert.match(headers, /Referrer-Policy: no-referrer/);
 });
 
+
+test("website form setup is tenant-session bound and returns only a same-origin hosted form link", async () => {
+  const calls = [];
+  const controller = createCustomerConnectorController({
+    origin: ORIGIN,
+    fetchImpl: async (url, init = {}) => {
+      calls.push({ url, init });
+      if (url.endsWith("/connector-session")) return response({
+        business_id: "tierney-town-treats",
+        business_name: "Tierney Town Treats",
+        connectors: {
+          facebook: { allowed: false, available: false, state: "Setup unavailable" },
+          instagram: { allowed: false, available: false },
+          email: { allowed: false, available: false, state: "Setup unavailable" },
+          website: { allowed: true, available: true, state: "Not Connected" },
+        },
+      });
+      if (url.endsWith("/website-form-config") && init.method === "GET") return response({
+        business_id: "tierney-town-treats",
+        state: "Not Connected",
+        form_url: null,
+        action: "Create a hosted contact form link for this business.",
+      });
+      if (url.endsWith("/website-form-config") && init.method === "POST") return response({
+        ok: true,
+        business_id: "tierney-town-treats",
+        state: "Connected",
+        form_url: ORIGIN + "/website-contact.html#form=gwf_" + "A".repeat(22),
+        action: "Website inquiries will flow into this business's Narleo inbox.",
+      });
+      if (url.endsWith("/website-form-config") && init.method === "DELETE") return response({
+        ok: true,
+        business_id: "tierney-town-treats",
+        state: "Not Connected",
+      });
+      return response({});
+    },
+  });
+
+  const state = await controller.load();
+  assert.equal(state.website.state, "Not Connected");
+  assert.equal(state.website.allowed, true);
+  assert.equal(await controller.createWebsiteForm(), true);
+  assert.equal(
+    controller.getState().website.formUrl,
+    ORIGIN + "/website-contact.html#form=gwf_" + "A".repeat(22),
+  );
+  assert.equal(await controller.disconnectWebsiteForm(), true);
+  assert.equal(controller.getState().website.state, "Not Connected");
+  assert.equal(controller.getState().website.formUrl, "");
+  assert.equal(calls.some((call) => call.url.endsWith("/website-form-config")
+    && call.init.method === "POST"), true);
+  assert.equal(calls.some((call) => call.url.endsWith("/website-form-config")
+    && call.init.method === "DELETE"), true);
+});
+
+test("website form URL validation rejects cross-origin and malformed destinations", () => {
+  const valid = ORIGIN + "/website-contact.html#form=gwf_" + "B".repeat(22);
+  assert.equal(normalizeWebsiteFormUrl(valid, ORIGIN), valid);
+  assert.equal(normalizeWebsiteFormUrl(
+    "https://evil.example/website-contact.html#form=gwf_" + "B".repeat(22),
+    ORIGIN,
+  ), "");
+  assert.equal(normalizeWebsiteFormUrl(ORIGIN + "/app.html#form=gwf_" + "B".repeat(22), ORIGIN), "");
+  assert.equal(normalizeWebsiteFormUrl(ORIGIN + "/website-contact.html?x=1#form=gwf_" + "B".repeat(22), ORIGIN), "");
+});
 
 test("email connect requires explicit mailbox-context acknowledgement before OAuth start", async () => {
   const calls = [];
