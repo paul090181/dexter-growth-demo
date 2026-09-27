@@ -15,7 +15,7 @@ export class FacebookPublishingError extends Error {
 
 function safeGraphVersion(value) {
   const clean = String(value || "").trim();
-  return /^v\\d+\\.\\d+$/.test(clean) ? clean : DEFAULT_GRAPH_VERSION;
+  return /^v\d+\.\d+$/.test(clean) ? clean : DEFAULT_GRAPH_VERSION;
 }
 
 function cleanPageId(value) {
@@ -27,7 +27,7 @@ function cleanPageId(value) {
 }
 
 function parseDataUrl(dataUrl) {
-  const match = /^data:(image\\/(?:png|jpeg));base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || ""));
+  const match = /^data:(image\/(?:png|jpeg));base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || ""));
   if (!match) {
     throw new FacebookPublishingError("FACEBOOK_INVALID_IMAGE", "Facebook photos must be JPG or PNG images.", { httpStatus: 400 });
   }
