@@ -770,9 +770,7 @@ export function mountConnectorInbox({ documentImpl = globalThis.document, fetchI
 
   const controller = createConnectorInboxController({ fetchImpl, onChange: render });
   render(controller.getState());
-  controller.load().then(() => {
-    if (facebookSelectionToken) controller.loadFacebookPageOptions(facebookSelectionToken);
-  });
+  controller.load();
   return controller;
 }
 
@@ -910,7 +908,9 @@ export function mountCustomerConnectorPage({
     choice.addEventListener("change", () => controller.setEmailMailboxContext(choice.value));
   }
   render(controller.getState());
-  controller.load();
+  controller.load().then(() => {
+    if (facebookSelectionToken) controller.loadFacebookPageOptions(facebookSelectionToken);
+  });
   return controller;
 }
 
