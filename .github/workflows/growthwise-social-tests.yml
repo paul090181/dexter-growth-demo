@@ -3,11 +3,13 @@ name: GrowthWise social tests
 on:
   push:
     branches:
+      - main
       - platform-v1
       - "feat/**"
       - "codex/**"
   pull_request:
     branches:
+      - main
       - platform-v1
 
 permissions:
