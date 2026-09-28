@@ -56,7 +56,7 @@ export function createFacebookConnectionHandler(options={}){
         return connectorJson(200,{
           business_id:businessId,state:"Needs Attention",checked_at:checkedAt.toISOString(),
           account:{page_name:row.page_name||"Facebook Page"},
-          action:"Reconnect Facebook so GrowthWise can verify this Page.",
+          action:"Reconnect Facebook so Narleo can verify this Page.",
         });
       }
       let payload;
@@ -74,7 +74,7 @@ export function createFacebookConnectionHandler(options={}){
         return connectorJson(200,{
           business_id:businessId,state:"Needs Attention",checked_at:checkedAt.toISOString(),
           account:{page_name:row.page_name||"Facebook Page"},
-          action:"Reconnect Facebook so GrowthWise can restore this Page.",
+          action:"Reconnect Facebook so Narleo can restore this Page.",
         });
       }
       if(typeof payload?.page_id!=="string"||!payload.page_id
@@ -82,7 +82,7 @@ export function createFacebookConnectionHandler(options={}){
         return connectorJson(200,{
           business_id:businessId,state:"Needs Attention",checked_at:checkedAt.toISOString(),
           account:{page_name:row.page_name||"Facebook Page"},
-          action:"Reconnect Facebook so GrowthWise can restore this Page.",
+          action:"Reconnect Facebook so Narleo can restore this Page.",
         });
       }
       let identity;
@@ -99,7 +99,7 @@ export function createFacebookConnectionHandler(options={}){
         return connectorJson(200,{
           business_id:businessId,state:"Needs Attention",checked_at:checkedAt.toISOString(),
           account:{page_name:row.page_name||"Facebook Page"},
-          action:"Reconnect Facebook so GrowthWise can verify Page access.",
+          action:"Reconnect Facebook so Narleo can verify Page access.",
         });
       }
       await store.updateCredentialHealth({

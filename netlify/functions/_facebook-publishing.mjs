@@ -158,7 +158,7 @@ export async function publishFacebookPagePost({
     throw new FacebookPublishingError("FACEBOOK_MESSAGE_REQUIRED", "Review and enter the Facebook post copy first.", { httpStatus: 400 });
   }
   if (text.length > 5000) {
-    throw new FacebookPublishingError("FACEBOOK_MESSAGE_TOO_LONG", "Facebook post copy is too long for this GrowthWise beta.", { httpStatus: 400 });
+    throw new FacebookPublishingError("FACEBOOK_MESSAGE_TOO_LONG", "Facebook post copy is too long for this Narleo beta.", { httpStatus: 400 });
   }
   const images = normalizeImages({ imageDataUrl, imageDataUrls });
 

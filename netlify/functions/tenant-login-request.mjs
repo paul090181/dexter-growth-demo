@@ -80,7 +80,7 @@ export function createTenantLoginRequestHandler(options = {}) {
     } catch {
       return connectorJson(200, {
         ok: true,
-        message: "If that email belongs to a GrowthWise workspace, a secure sign-in link will arrive shortly.",
+        message: "If that email belongs to a Narleo workspace, a secure sign-in link will arrive shortly.",
       });
     }
 
@@ -120,7 +120,7 @@ export function createTenantLoginRequestHandler(options = {}) {
 
     return connectorJson(200, {
       ok: true,
-      message: "If that email belongs to a GrowthWise workspace, a secure sign-in link will arrive shortly.",
+      message: "If that email belongs to a Narleo workspace, a secure sign-in link will arrive shortly.",
     });
   };
 }

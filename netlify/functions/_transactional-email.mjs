@@ -63,7 +63,7 @@ export async function sendTenantMagicLinks({
       body: JSON.stringify({
         from: config.from,
         to: [recipient],
-        subject: "Your secure GrowthWise sign-in link",
+        subject: "Your secure Narleo sign-in link",
         html: `<p>Use the secure link below to open your business workspace. The link expires in 15 minutes and can be used once.</p>${rows}<p>If you did not request this email, you can ignore it.</p>`,
       }),
       signal: AbortSignal.timeout(TIMEOUT_MS),

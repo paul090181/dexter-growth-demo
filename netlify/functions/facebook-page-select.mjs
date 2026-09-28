@@ -64,7 +64,7 @@ export function createFacebookPageSelectHandler(options={}){
     }catch{}
     if(!selection)return connectorJson(401,{error:"Page selection is invalid or expired."});
     const selected=selection.pages.find((page)=>page.id===body.page_id.trim());
-    if(!selected)return connectorJson(400,{error:"Choose one of the Pages shown by GrowthWise."});
+    if(!selected)return connectorJson(400,{error:"Choose one of the Pages shown by Narleo."});
 
     let identity;
     try{
@@ -74,7 +74,7 @@ export function createFacebookPageSelectHandler(options={}){
         graphVersion:env("FACEBOOK_GRAPH_VERSION")||"v26.0",
       });
     }catch{
-      return connectorJson(503,{error:"GrowthWise could not verify that Facebook Page. Try connecting Facebook again."});
+      return connectorJson(503,{error:"Narleo could not verify that Facebook Page. Try connecting Facebook again."});
     }
 
     try{
@@ -93,7 +93,7 @@ export function createFacebookPageSelectHandler(options={}){
       });
     }catch(error){
       if(error?.message==="PAGE_REBIND_FORBIDDEN"){
-        return connectorJson(409,{error:"That Facebook Page is already connected to another GrowthWise business."});
+        return connectorJson(409,{error:"That Facebook Page is already connected to another Narleo business."});
       }
       return connectorJson(401,{error:"Page selection is invalid or expired."});
     }

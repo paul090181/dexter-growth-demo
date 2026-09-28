@@ -56,7 +56,7 @@ export function createDexterInstagramPhotoDraftHandler({
 
     const openaiKey = env("OPENAI_API_KEY");
     const model = env("OPENAI_MARKETING_MODEL") || env("OPENAI_PRODUCT_MODEL") || "gpt-5.6-luna";
-    if (!openaiKey) return json(503, { error: "GrowthWise AI is temporarily unavailable." });
+    if (!openaiKey) return json(503, { error: "Narleo AI is temporarily unavailable." });
 
     const response = await fetchImpl(OPENAI_URL, {
       method: "POST",
@@ -66,7 +66,7 @@ export function createDexterInstagramPhotoDraftHandler({
         store: false,
         reasoning: { effort: "none" },
         instructions:
-          "You are GrowthWise, creating an Instagram post for Dexter's Hats & Caps. " +
+          "You are Narleo, creating an Instagram post for Dexter's Hats & Caps. " +
           "Analyze ONE product photo conservatively. Never invent a brand, model, material, price, size, stock level, discount, rarity, event, or feature that is not clearly visible. " +
           "If exact product identity is uncertain, use generic visible wording instead of guessing. " +
           "Write a natural Instagram caption that sounds like a real independent hat store. " +
@@ -102,11 +102,11 @@ export function createDexterInstagramPhotoDraftHandler({
     });
 
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) return json(502, { error: "GrowthWise could not create the Instagram draft." });
+    if (!response.ok) return json(502, { error: "Narleo could not create the Instagram draft." });
     const output = extractOutputText(data);
     let result;
     try { result = JSON.parse(output); }
-    catch { return json(502, { error: "GrowthWise returned an unreadable Instagram draft." }); }
+    catch { return json(502, { error: "Narleo returned an unreadable Instagram draft." }); }
 
     return json(200, {
       ok: true,
