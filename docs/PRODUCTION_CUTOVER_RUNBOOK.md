@@ -15,9 +15,12 @@ This runbook is for the first Narleo platform release to the existing Netlify Pr
 - TLS: verified
 - Current Production application is still the pre-Narleo/main application.
 - Current Production deploy has no Netlify Database branch attached yet.
+- Current Production commit contains no `netlify/database/` tree and no `package.json`; the old Production application does not use Netlify Database.
 - Preview #17/Dexter must remain untouched.
 
 Netlify Database is provisioned automatically when code using `@netlify/database` is deployed. Production deploys use the main database. Migrations in `netlify/database/migrations/` are applied immediately before a Production deploy is published; a failed migration blocks publication.
+
+Because this is the first Production database cutover, there is no pre-existing Production database to snapshot before the first migration run. After the first successful Production database publish, Netlify automatically creates an on-publish backup, and subsequent backups can be restored from the Database dashboard.
 
 ## Git topology
 
@@ -136,14 +139,15 @@ Before the separate `platform-v1 -> main` release PR is merged:
 
 1. Reconfirm current Production commit and that no unexpected Production deploy occurred.
 2. Reconfirm PR #18 / `platform-v1` CI is green.
-3. Confirm the Production database restore/rollback mechanism available in the Netlify UI at that time.
-4. Do not manually initialize or manually apply the 29 migrations just to test Production.
-5. Let the Production deploy provision/use the main database and own migration ordering.
-6. If any migration fails, stop. Do not bypass, mark-applied, or manually alter the schema to force publication.
-7. Confirm Stripe launch mode:
+3. Confirm the Netlify Database dashboard/backup controls are available to the account role that will own Production after first publish.
+4. Do not try to create a pre-cutover database snapshot: no Production database exists yet.
+5. Do not manually initialize or manually apply the 29 migrations just to test Production.
+6. Let the Production deploy provision the main database and own migration ordering.
+7. If any migration fails, stop. Netlify should block publication; do not bypass, mark-applied, or manually alter the schema to force publication.
+8. Confirm Stripe launch mode:
    - either Live Stripe is fully configured and accepted; or
    - public paid self-service remains explicitly out of launch scope.
-8. Obtain explicit approval before merging the release PR.
+9. Obtain explicit approval before merging the release PR.
 
 ## Release sequence
 
@@ -191,10 +195,11 @@ Only after all gates pass:
 - Do not bypass the failed migration.
 - Preserve logs and diagnose on a non-Production branch.
 
-### Application failure after successful migrations
+### Application failure after successful first database publish
+- The old Production application does not use Netlify Database, so rolling application code back to the old `main` baseline can leave the newly provisioned database idle.
 - Do not assume a code rollback reverses schema changes.
-- Use the confirmed database restore mechanism if schema/data rollback is required.
-- Re-deploy the last known-good application only when it is compatible with the migrated schema.
+- Netlify creates an on-publish backup after a successful Production database publish; use the Database dashboard restore flow only if schema/data rollback is actually required.
+- A restore replaces the Production database contents with the selected backup, so consider any post-backup data before restoring.
 
 ### Provider failure
 - Disable a newly configured webhook only if needed to stop unsafe traffic.
