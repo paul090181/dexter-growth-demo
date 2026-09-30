@@ -200,10 +200,11 @@ The release includes 29 Netlify Database migrations relative to current `main`.
 Before the Production release PR is merged:
 
 1. Confirm Production database state and migration baseline.
-2. Confirm Netlify will create/use the main Production database.
-3. Confirm a Production backup/snapshot/restore point is available.
-4. Review migration order.
-5. Specifically re-confirm:
+2. Confirm the current Production baseline still has no Netlify Database attached.
+3. Confirm Netlify will automatically provision/use the main Production database on the first Narleo database deploy.
+4. Because no Production database exists yet, do not require or fabricate a pre-cutover database snapshot. Confirm backup/restore controls for use after first successful publish.
+5. Review migration order.
+6. Specifically re-confirm:
    - subscription plan-start backfill / NOT NULL change
    - connector allowed-list constraint changes
    - Facebook Page OAuth/Page-selection schema
@@ -211,9 +212,10 @@ Before the Production release PR is merged:
    - website-form schema
    - website-form pilot-support foreign-key removal
    - lead `won` status constraint
-6. Do not manually apply preview migrations to Production.
-7. Let the Production deploy own the migration transaction/order.
-8. If a migration fails, do not bypass it to force publication.
+7. Do not manually apply preview migrations to Production.
+8. Let the Production deploy own database provisioning and migration order.
+9. If a migration fails, Netlify should block publication; do not bypass it to force publication.
+10. After the first successful Production database publish, verify the automatic on-publish backup is visible in the Database dashboard.
 
 ## 8. Production release gate
 
