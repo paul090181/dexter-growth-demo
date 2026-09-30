@@ -105,6 +105,8 @@ Planned sender:
 
 All must belong to the live Stripe environment. Never use sandbox Price IDs, webhook secrets, or secret keys in Production.
 
+Production self-service signup is fail-closed until the minimum live billing set is present: live Stripe secret key, Founding plan Price ID, live webhook signing secret, and Customer Portal configuration. The endpoint must reject signup before a tenant row is created when that readiness gate is not satisfied.
+
 ### Facebook self-service
 
 - `GROWTHWISE_FACEBOOK_APP_ID`
