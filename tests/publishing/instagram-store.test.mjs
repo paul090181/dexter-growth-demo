@@ -79,10 +79,12 @@ function credentialPool({ failWrite = false, failCommit = false } = {}) {
       calls.push({ text, values });
       if (/account_binding_key = ANY/.test(text)) {
         const bindingKeys = values[0];
-        const businessIds = new Set(values[1]);
+        const businessIds = values[1] ? new Set(values[1]) : null;
         return {
           rows: [...rows.values()]
-            .filter((row) => bindingKeys.includes(row.account_binding_key) && row.status === "active" && businessIds.has(row.business_id))
+            .filter((row) => bindingKeys.includes(row.account_binding_key)
+              && row.status === "active"
+              && (!businessIds || businessIds.has(row.business_id)))
             .sort((a, b) => a.business_id.localeCompare(b.business_id))
             .slice(0, 2)
             .map((row) => ({ business_id: row.business_id, account_binding_key: row.account_binding_key })),
@@ -231,6 +233,10 @@ test("webhook account resolution uses secure bindings and fails closed on ambigu
   const database = credentialStore(pool);
   await database.connectCredential(credentialInput("tenant-a", "ig-123", "TOKEN_A"));
   assert.equal(
+    await database.resolveBusinessByAccountId({ accountId: "ig-123" }),
+    "tenant-a",
+  );
+  assert.equal(
     await database.resolveBusinessByAccountId({ accountId: "ig-123", businessIds: ["tenant-a"] }),
     "tenant-a",
   );
@@ -239,6 +245,10 @@ test("webhook account resolution uses secure bindings and fails closed on ambigu
     null,
   );
   await database.connectCredential(credentialInput("tenant-b", "ig-123", "TOKEN_B"));
+  assert.equal(
+    await database.resolveBusinessByAccountId({ accountId: "ig-123" }),
+    null,
+  );
   assert.equal(
     await database.resolveBusinessByAccountId({ accountId: "ig-123", businessIds: ["tenant-a", "tenant-b"] }),
     null,
