@@ -195,6 +195,40 @@ test("tenant Facebook status exposes Page name but never stored credentials", as
   assert.equal(JSON.stringify(body).includes("SECRET_CIPHERTEXT"), false);
 });
 
+test("tenant Facebook publish rejects non-JSON and oversized requests before authorization", async () => {
+  let authCalls = 0;
+  const handler = createTenantFacebookPublishHandler({
+    authorize: async () => {
+      authCalls += 1;
+      return { ok: true, via: "tenant", businessId: BUSINESS_ID };
+    },
+  });
+
+  const wrongType = await handler(new Request(
+    ORIGIN + "/.netlify/functions/tenant-facebook-publish",
+    {
+      method: "POST",
+      headers: { "content-type": "text/plain" },
+      body: "{}",
+    },
+  ));
+  assert.equal(wrongType.status, 415);
+
+  const oversized = await handler(new Request(
+    ORIGIN + "/.netlify/functions/tenant-facebook-publish",
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "content-length": String(33 * 1024 * 1024),
+      },
+      body: "{}",
+    },
+  ));
+  assert.equal(oversized.status, 413);
+  assert.equal(authCalls, 0);
+});
+
 test("tenant Facebook publish requires explicit human review before any credential read", async () => {
   let reads = 0;
   const handler = createTenantFacebookPublishHandler({
