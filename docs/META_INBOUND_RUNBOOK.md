@@ -6,7 +6,9 @@ This connector feeds Facebook Page Messenger and Instagram professional-account 
 
 Configure these server-side values:
 
-- `META_APP_SECRET` — Meta app secret used to validate `X-Hub-Signature-256` on webhook POSTs.
+- `GROWTHWISE_FACEBOOK_APP_SECRET` — Facebook app secret used to validate Page/Messenger webhook POSTs.
+- `GROWTHWISE_INSTAGRAM_APP_SECRET` — Instagram app secret used to validate Instagram webhook POSTs.
+- `META_APP_SECRET` — optional legacy fallback for deployments that still use one shared Meta app.
 - `META_WEBHOOK_VERIFY_TOKEN` — a long random value chosen by GrowthWise and entered into the Meta webhook setup screen.
 - `GROWTHWISE_META_ACCOUNT_MAP` — JSON mapping each provider account ID to the GrowthWise business tenant.
 
