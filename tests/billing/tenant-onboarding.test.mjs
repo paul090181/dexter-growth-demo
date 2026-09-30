@@ -7,7 +7,7 @@ import {
   hashTenantAccessKey,
 } from "../../netlify/functions/_tenant-auth.mjs";
 import { createTenantStore } from "../../netlify/functions/_tenant-store.mjs";
-import { createTenantSignupHandler } from "../../netlify/functions/tenant-signup.mjs";
+import { createTenantSignupHandler, productionSignupReady } from "../../netlify/functions/tenant-signup.mjs";
 
 const URL = "https://preview.example/.netlify/functions/tenant-signup";
 
@@ -113,6 +113,42 @@ test("signup rejects malformed, oversized, and non-POST requests", async () => {
     business_name: "Books", contact_name: "Jamie", email: "jamie@example.com", padding: "x".repeat(20_000),
   }))).status, 413);
   assert.equal((await handler(signupRequest({}, { method: "GET" }))).status, 405);
+  assert.equal(store.tenants.size, 0);
+});
+
+test("Production self-service signup stays closed until live billing is fully configured", () => {
+  const getter = (values) => (name) => values[name] || "";
+
+  assert.equal(productionSignupReady(getter({ CONTEXT: "deploy-preview" })), true);
+  assert.equal(productionSignupReady(getter({ CONTEXT: "production" })), false);
+  assert.equal(productionSignupReady(getter({
+    CONTEXT: "production",
+    STRIPE_SECRET_KEY: "sk_test_example",
+    STRIPE_PRICE_ID: "price_founder",
+    STRIPE_WEBHOOK_SECRET: "whsec_example",
+    STRIPE_PORTAL_CONFIGURATION_ID: "bpc_example",
+  })), false);
+  assert.equal(productionSignupReady(getter({
+    CONTEXT: "production",
+    STRIPE_SECRET_KEY: "sk_live_example",
+    STRIPE_PRICE_ID: "price_founder",
+    STRIPE_WEBHOOK_SECRET: "whsec_example",
+    STRIPE_PORTAL_CONFIGURATION_ID: "bpc_example",
+  })), true);
+});
+
+test("disabled self-service signup fails before creating a tenant", async () => {
+  const store = memoryStore();
+  const handler = createTenantSignupHandler({ store, signupAvailable: false });
+  const response = await handler(signupRequest({
+    business_name: "North Star Books",
+    business_type: "retail",
+    contact_name: "Jamie Rivera",
+    email: "jamie@example.com",
+  }));
+
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { error: "Self-service signup is not open yet." });
   assert.equal(store.tenants.size, 0);
 });
 
