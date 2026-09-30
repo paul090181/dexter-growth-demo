@@ -118,9 +118,6 @@ export function createMetaWebhookHandler({
 
     if (request.method !== "POST") return json(405, { error: "Method not allowed." });
 
-    const appSecret = env("META_APP_SECRET") || env("GROWTHWISE_INSTAGRAM_APP_SECRET") || "";
-    if (!appSecret) return json(503, { error: "Meta webhook signature verification is not configured." });
-
     const declaredLength = Number(request.headers.get("content-length") || 0);
     if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
       return json(413, { error: "Meta webhook payload is too large." });
@@ -130,6 +127,18 @@ export function createMetaWebhookHandler({
     if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) {
       return json(413, { error: "Meta webhook payload is too large." });
     }
+    let payload;
+    try { payload = JSON.parse(rawBody); }
+    catch { return json(400, { error: "Invalid Meta webhook JSON." }); }
+
+    const legacyAppSecret = env("META_APP_SECRET") || "";
+    const appSecret = payload?.object === "page"
+      ? env("GROWTHWISE_FACEBOOK_APP_SECRET") || legacyAppSecret
+      : payload?.object === "instagram"
+        ? env("GROWTHWISE_INSTAGRAM_APP_SECRET") || legacyAppSecret
+        : legacyAppSecret;
+    if (!appSecret) return json(503, { error: "Meta webhook signature verification is not configured." });
+
     if (!verifyMetaSignature({
       rawBody,
       signature: request.headers.get("x-hub-signature-256") || "",
@@ -137,10 +146,6 @@ export function createMetaWebhookHandler({
     })) {
       return json(401, { error: "Invalid Meta webhook signature." });
     }
-
-    let payload;
-    try { payload = JSON.parse(rawBody); }
-    catch { return json(400, { error: "Invalid Meta webhook JSON." }); }
 
     let accountMap;
     try {
