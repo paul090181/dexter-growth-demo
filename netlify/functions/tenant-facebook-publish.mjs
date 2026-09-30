@@ -7,6 +7,8 @@ import {
 } from "./_facebook-publishing.mjs";
 import { authorizeTenantFacebookPublishingRequest } from "./_tenant-facebook-auth.mjs";
 
+const MAX_BODY_BYTES = 32 * 1024 * 1024;
+
 function json(status, body) {
   return new Response(JSON.stringify(body), {
     status,
@@ -89,10 +91,22 @@ export function createTenantFacebookPublishHandler(options = {}) {
 
   return async function tenantFacebookPublish(request) {
     if (request.method !== "POST") return json(405, { error: "Method not allowed." });
+    if (request.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase() !== "application/json") {
+      return json(415, { error: "JSON is required." });
+    }
+
+    const declared = request.headers.get("content-length");
+    if (declared !== null && (!/^\d+$/.test(declared) || Number(declared) > MAX_BODY_BYTES)) {
+      return json(413, { error: "Facebook publish request is too large." });
+    }
 
     let body;
     try {
-      body = await request.json();
+      const raw = await request.text();
+      if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) {
+        return json(413, { error: "Facebook publish request is too large." });
+      }
+      body = JSON.parse(raw);
     } catch {
       return json(400, { error: "Invalid request." });
     }
