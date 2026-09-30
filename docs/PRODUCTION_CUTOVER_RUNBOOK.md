@@ -85,6 +85,14 @@ Production values intentionally remain unset:
 
 Public paid self-service must not be treated as launch-ready until these are live values and live checkout/webhook acceptance is completed.
 
+The Production signup endpoint now fails closed before creating a tenant unless all of these minimum live-billing prerequisites are present:
+- a `sk_live_` Stripe secret key;
+- the Founding plan `STRIPE_PRICE_ID`;
+- the live `STRIPE_WEBHOOK_SECRET`;
+- `STRIPE_PORTAL_CONFIGURATION_ID`.
+
+Deploy Previews remain unaffected by this Production-only readiness gate.
+
 ### Provider webhooks
 Do not configure webhooks that require live Narleo functions until the Narleo platform code is deployed.
 
