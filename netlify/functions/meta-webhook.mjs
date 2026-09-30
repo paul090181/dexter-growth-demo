@@ -1,5 +1,4 @@
 import { createInstagramCrypto } from "./_instagram-crypto.mjs";
-import { INSTAGRAM_CLIENTS } from "./_instagram-clients.mjs";
 import { instagramDatabase } from "./_instagram-store.mjs";
 import { createFacebookCrypto } from "./_facebook-crypto.mjs";
 import { createFacebookStore } from "./_facebook-store.mjs";
@@ -36,10 +35,6 @@ function versions(env, name) {
 }
 
 function configuredInstagramRouter(env) {
-  const businessIds = Object.values(INSTAGRAM_CLIENTS)
-    .filter((client) => client.messagesEnabled === true)
-    .map((client) => client.business_id);
-  if (!businessIds.length) return async () => null;
   const required = [
     env("GROWTHWISE_INSTAGRAM_OAUTH_STATE_SECRET"),
     env("GROWTHWISE_INSTAGRAM_ACCOUNT_BINDING_SECRET"),
@@ -54,7 +49,7 @@ function configuredInstagramRouter(env) {
     credentialKeys: versions(env, "GROWTHWISE_INSTAGRAM_CREDENTIAL_ENCRYPTION_KEY"),
   });
   const store = instagramDatabase({ crypto });
-  return (accountId) => store.resolveBusinessByAccountId({ accountId, businessIds });
+  return (accountId) => store.resolveBusinessByAccountId({ accountId });
 }
 
 function configuredFacebookRouter(env) {
