@@ -40,6 +40,14 @@ function configuredInstagramRouter(env) {
     .filter((client) => client.messagesEnabled === true)
     .map((client) => client.business_id);
   if (!businessIds.length) return async () => null;
+  const required = [
+    env("GROWTHWISE_INSTAGRAM_OAUTH_STATE_SECRET"),
+    env("GROWTHWISE_INSTAGRAM_ACCOUNT_BINDING_SECRET"),
+    env("GROWTHWISE_INSTAGRAM_CREDENTIAL_ENCRYPTION_KEY"),
+  ];
+  if (required.some((value) => typeof value !== "string" || !value.trim())) {
+    return async () => null;
+  }
   const crypto = createInstagramCrypto({
     stateSecrets: versions(env, "GROWTHWISE_INSTAGRAM_OAUTH_STATE_SECRET"),
     bindingSecrets: versions(env, "GROWTHWISE_INSTAGRAM_ACCOUNT_BINDING_SECRET"),
