@@ -25,9 +25,27 @@ function field(value, max) {
   return clean && clean.length <= max ? clean : "";
 }
 
-export function createTenantSignupHandler({ store } = {}) {
+export function productionSignupReady(get = (name) => Netlify.env.get(name) || "") {
+  const context = String(get("CONTEXT") || "").trim();
+  if (context !== "production") return true;
+
+  const secretKey = String(get("STRIPE_SECRET_KEY") || "").trim();
+  const foundingPriceId = String(get("STRIPE_PRICE_ID") || "").trim();
+  const webhookSecret = String(get("STRIPE_WEBHOOK_SECRET") || "").trim();
+  const portalConfigurationId = String(get("STRIPE_PORTAL_CONFIGURATION_ID") || "").trim();
+
+  return secretKey.startsWith("sk_live_")
+    && /^price_[A-Za-z0-9]+$/.test(foundingPriceId)
+    && webhookSecret.startsWith("whsec_")
+    && portalConfigurationId.length > 0;
+}
+
+export function createTenantSignupHandler({ store, signupAvailable = true } = {}) {
   return async function tenantSignupHandler(request) {
     if (request.method !== "POST") return json(405, { error: "Method not allowed" });
+    if (!signupAvailable) {
+      return json(503, { error: "Self-service signup is not open yet." });
+    }
 
     let body;
     try {
@@ -69,5 +87,8 @@ export function createTenantSignupHandler({ store } = {}) {
 }
 
 export default function handler(request) {
-  return createTenantSignupHandler({ store: createTenantStore() })(request);
+  return createTenantSignupHandler({
+    store: createTenantStore(),
+    signupAvailable: productionSignupReady(),
+  })(request);
 }
