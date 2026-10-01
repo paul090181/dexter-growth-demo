@@ -21,7 +21,7 @@ test("legacy internal and demo pages are redirected away from the Narleo Product
     "/show-growthwise.html",
   ];
   for (const route of routes) {
-    const escaped = route.replace(/[.*+?^$()|[\]{}\\]/g, "\\$&");
+    const escaped = route.replaceAll("/", "\\/").replaceAll(".", "\\.");
     assert.match(
       redirects,
       new RegExp("^" + escaped + "\\s+/app\\.html\\s+302!\\s*$", "m"),
@@ -31,7 +31,7 @@ test("legacy internal and demo pages are redirected away from the Narleo Product
 
 test("root and signup surfaces receive no-store, no-referrer, and frame protection", () => {
   for (const route of ["/", "/signup.html"]) {
-    const escaped = route.replace(/[.*+?^$()|[\]{}\\]/g, "\\$&");
+    const escaped = route.replaceAll("/", "\\/").replaceAll(".", "\\.");
     const block = new RegExp(
       "^" + escaped + "\\n(?:  .+\\n)+",
       "m",
