@@ -1905,7 +1905,11 @@ export function createTenantWorkspaceController({
   };
 }
 
-export function mountTenantWorkspace({ documentImpl = globalThis.document } = {}) {
+export function mountTenantWorkspace({ documentImpl = globalThis.document, locationImpl = globalThis.location } = {}) {
+  const previewSupport = documentImpl.getElementById("workspace-preview-support");
+  const previewHost = String(locationImpl?.hostname || "");
+  if (previewSupport) previewSupport.hidden = !/^deploy-preview-\\d+--euphonious-beijinho-db4b4d\\.netlify\\.app$/.test(previewHost);
+
   const form = documentImpl.getElementById("workspace-signin-form");
   const emailSigninForm = documentImpl.getElementById("workspace-email-signin-form");
   const emailSigninButton = documentImpl.getElementById("workspace-email-signin-submit");
