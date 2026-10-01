@@ -1778,6 +1778,9 @@ test("tenant workspace is generic and does not expose Dexter/admin credentials",
   assert.match(js, /publishInstagram/);
   assert.match(js, /refreshInstagramStatus/);
   assert.match(js, /tenant-login-request/);
+  assert.match(html, /id="workspace-preview-support"[^>]*hidden/);
+  assert.match(js, /deploy-preview-\\d\+--euphonious-beijinho-db4b4d\\\.netlify\\\.app/);
+  assert.match(js, /previewSupport\.hidden\s*=\s*!/);
   assert.match(js, /tenant-session-logout/);
   assert.match(js, /You're signed in securely/);
   assert.match(js, /feature_access/);
