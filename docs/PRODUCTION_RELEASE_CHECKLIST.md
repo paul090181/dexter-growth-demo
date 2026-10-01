@@ -95,17 +95,22 @@ Planned sender:
 
 ### Stripe live billing
 
+Current public signup scope is the Founding Plan only.
+
+Required for Founding-only public launch:
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PRICE_ID` — Founding plan, if retained
+- `STRIPE_PRICE_ID` — Founding Plan
+- `STRIPE_PORTAL_CONFIGURATION_ID`
+
+Optional until Starter/Growth/Pro plan selection or self-service plan changes are intentionally enabled:
 - `STRIPE_STARTER_PRICE_ID`
 - `STRIPE_GROWTH_PRICE_ID`
 - `STRIPE_PRO_PRICE_ID`
-- `STRIPE_PORTAL_CONFIGURATION_ID`
 
-All must belong to the live Stripe environment. Never use sandbox Price IDs, webhook secrets, or secret keys in Production.
+Any configured Stripe value must belong to the live Stripe environment. Never use sandbox Price IDs, webhook secrets, or secret keys in Production.
 
-Production self-service signup is fail-closed until the minimum live billing set is present: live Stripe secret key, Founding plan Price ID, live webhook signing secret, and Customer Portal configuration. The endpoint must reject signup before a tenant row is created when that readiness gate is not satisfied.
+Production self-service signup is fail-closed until the minimum live billing set is present: live Stripe secret key, Founding Plan Price ID, live webhook signing secret, and Customer Portal configuration. The endpoint rejects signup before a tenant row is created when that readiness gate is not satisfied.
 
 ### Facebook self-service
 
@@ -167,7 +172,7 @@ Before paid public launch:
 Before enabling paid self-service:
 
 1. Connect/authorize the live Stripe account for Narleo.
-2. Create or verify live products and recurring Prices for each launch plan.
+2. Create or verify the live Founding Plan recurring Price. Create Starter/Growth/Pro live Prices now only if those tiers are intentionally included in the initial launch scope.
 3. Configure the live Customer Portal.
 4. Create the Production webhook destination:
    `https://app.narleobit.com/.netlify/functions/stripe-webhook`
