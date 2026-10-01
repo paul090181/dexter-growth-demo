@@ -152,6 +152,16 @@ Verify these remain intentionally configured and correctly scoped:
 
 Do not expose values in GitHub, issue comments, chat, screenshots, or documentation.
 
+## 4A. Customer-facing legal / policy readiness
+
+Before paid public launch:
+
+- Update the public privacy policy from the internal GrowthWise identity to the final customer-facing Narleo/operator wording once the legal/business identity is sufficiently resolved.
+- Replace the temporary personal privacy-contact address with the intended Narleo business/support contact when available.
+- Confirm the policy accurately describes the connectors and AI-assisted processing that are actually in launch scope.
+- Publish customer-facing subscription/cancellation/refund terms appropriate for recurring Stripe billing before accepting live public payments.
+- Do not invent or publish a legal entity name before the Narleo business/name process is resolved.
+
 ## 5. Stripe live setup
 
 Before enabling paid self-service:
