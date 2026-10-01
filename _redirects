@@ -1,0 +1,3 @@
+# Narleo customer application entrypoint.
+# Force the root path to serve the customer workspace even though legacy index.html remains in the repository.
+/  /app.html  200!
