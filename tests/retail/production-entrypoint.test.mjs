@@ -24,5 +24,6 @@ test("root and signup surfaces receive no-store, no-referrer, and frame protecti
     assert.match(block, /Referrer-Policy: no-referrer/);
     assert.match(block, /X-Content-Type-Options: nosniff/);
     assert.match(block, /frame-ancestors 'none'/);
+    if (route === "/signup.html") assert.match(block, /script-src 'self'/);
   }
 });
