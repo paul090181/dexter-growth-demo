@@ -146,7 +146,7 @@ Static release guards verify:
 Before the separate `platform-v1 -> main` release PR is merged:
 
 1. Reconfirm current Production commit and that no unexpected Production deploy occurred.
-2. Reconfirm PR #18 / `platform-v1` CI is green.
+2. Reconfirm Draft PR #19 / `platform-v1` exact-head CI and Netlify Deploy Preview are green.
 3. Confirm the Netlify Database dashboard/backup controls are available to the account role that will own Production after first publish.
 4. Confirm the Netlify sensitive-variable policy for this public repository protects untrusted deploys and is not set to deploy with secrets without restriction.
 5. Do not try to create a pre-cutover database snapshot: no Production database exists yet.
