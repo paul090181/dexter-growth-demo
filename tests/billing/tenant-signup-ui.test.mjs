@@ -115,7 +115,9 @@ test("signup gives prospective customers direct access to the privacy policy", (
 
 
 test("signup hides technical preview details and gives pilots a payment-free handoff", () => {
-  assert.match(source, /<details[^>]*>[\s\S]*Preview support details/);
+  assert.match(page, /<details id="previewSupportDetails"[^>]*hidden[^>]*>[\s\S]*Preview support details/);
+  assert.match(signupScript, /deploy-preview-\\d\+--euphonious-beijinho-db4b4d\\\.netlify\\\.app/);
+  assert.match(signupScript, /previewSupportDetails\.hidden\s*=\s*!/);
   assert.match(source, /Preview access key/);
   assert.match(source, /Your pilot access is active/);
   assert.match(source, /No payment is required during this pilot/);
