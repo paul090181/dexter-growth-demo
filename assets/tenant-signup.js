@@ -1,4 +1,10 @@
-const form = document.getElementById('signupForm');
+const previewSupportDetails = document.getElementById('previewSupportDetails');
+    const previewHost = String(globalThis.location?.hostname || '');
+    if(previewSupportDetails){
+      previewSupportDetails.hidden = !/^deploy-preview-\d+--euphonious-beijinho-db4b4d\.netlify\.app$/.test(previewHost);
+    }
+
+    const form = document.getElementById('signupForm');
     const signupCard = document.getElementById('signupCard');
     const signupButton = document.getElementById('signupButton');
     const signupStatus = document.getElementById('signupStatus');
