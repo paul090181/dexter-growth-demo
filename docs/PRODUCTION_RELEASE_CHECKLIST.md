@@ -230,6 +230,7 @@ Before PR #19 is taken out of Draft or merged into `main`:
 - PR #19 Netlify Deploy Preview is green on the exact head.
 - `app.narleobit.com` remains configured and TLS-ready.
 - Production environment matrix is rechecked without exposing secret values.
+- Netlify sensitive runtime credentials remain flagged as secret, and the public-repository sensitive-variable policy is verified to protect untrusted deploys (not “deploy without restrictions”).
 - Required Production OAuth redirect allowlists remain correct.
 - Provider webhooks that require live Narleo endpoints remain deferred until those endpoints exist, then are configured/verified in the approved cutover sequence.
 - Stripe Live is fully configured if paid public signup is in launch scope; otherwise the Production signup fail-closed gate remains in force.
