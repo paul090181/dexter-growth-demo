@@ -14,24 +14,24 @@ test("Production root is forced to the Narleo customer workspace instead of the 
 });
 
 test("legacy internal and demo pages are redirected away from the Narleo Production surface", () => {
-  for (const route of [
+  const routes = [
     "/index.html",
     "/automotive-pilot.html",
     "/instagram-dev.html",
     "/show-growthwise.html",
-  ]) {
-    const escaped = route.replace(/[.*+?^${}()|[\]\\]/g, "\\test("Production root is forced to the Narleo customer workspace instead of the legacy Dexter index", () => {
-  assert.match(index, /Dexter Growth Assistant/i);
-  assert.match(app, /Narleo Business Workspace/i);
-  assert.match(redirects, /^\/\s+\/app\.html\s+200!\s*$/m);
-});");
-    assert.match(redirects, new RegExp("^" + escaped + "\\s+/app\\.html\\s+302!\\s*$", "m"));
+  ];
+  for (const route of routes) {
+    const escaped = route.replace(/[.*+?^$()|[\]{}\\]/g, "\\$&");
+    assert.match(
+      redirects,
+      new RegExp("^" + escaped + "\\s+/app\\.html\\s+302!\\s*$", "m"),
+    );
   }
 });
 
 test("root and signup surfaces receive no-store, no-referrer, and frame protection", () => {
   for (const route of ["/", "/signup.html"]) {
-    const escaped = route.replace(/[.*+?^$\{\}()|[\]\\]/g, "\\$&");
+    const escaped = route.replace(/[.*+?^$()|[\]{}\\]/g, "\\$&");
     const block = new RegExp(
       "^" + escaped + "\\n(?:  .+\\n)+",
       "m",
