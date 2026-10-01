@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+import { configuredFacebookOAuth } from "../../netlify/functions/_facebook-oauth.mjs";
 import { createFacebookOAuthStartHandler } from "../../netlify/functions/facebook-oauth-start.mjs";
 import { createFacebookOAuthCallbackHandler } from "../../netlify/functions/facebook-oauth-callback.mjs";
 import { createFacebookConnectionHandler } from "../../netlify/functions/facebook-connection.mjs";
@@ -28,6 +29,28 @@ function sessionBoundFacebookAllowed(){
     return {ok:true,businessId:BUSINESS_ID,connectors:["facebook"]};
   };
 }
+
+test("Facebook OAuth configuration requires Facebook-specific credentials and never falls back to Instagram",()=>{
+  const instagramOnly={
+    GROWTHWISE_PUBLIC_ORIGIN:ORIGIN,
+    GROWTHWISE_INSTAGRAM_APP_ID:"instagram-app-id",
+    GROWTHWISE_INSTAGRAM_APP_SECRET:"instagram-app-secret",
+  };
+  assert.throws(
+    ()=>configuredFacebookOAuth({getEnv:(name)=>instagramOnly[name]??""}),
+    /FACEBOOK_OAUTH_NOT_CONFIGURED/,
+  );
+
+  const both={
+    ...instagramOnly,
+    GROWTHWISE_FACEBOOK_APP_ID:"facebook-app-id",
+    GROWTHWISE_FACEBOOK_APP_SECRET:"facebook-app-secret",
+  };
+  const settings=configuredFacebookOAuth({getEnv:(name)=>both[name]??""});
+  assert.equal(settings.appId,"facebook-app-id");
+  assert.equal(settings.appSecret,"facebook-app-secret");
+  assert.equal(settings.callbackUri,ORIGIN+"/.netlify/functions/facebook-oauth-callback");
+});
 
 test("Facebook OAuth start is tenant-bound and returns only a validated Meta authorization URL",async()=>{
   let stored=null;
