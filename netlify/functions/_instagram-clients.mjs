@@ -22,6 +22,7 @@ export const INSTAGRAM_CLIENTS = Object.freeze(Object.fromEntries(CLIENT_CONFIGS
 export const INSTAGRAM_RETURN_DESTINATIONS = Object.freeze({
   "growthwise-dev-integration": "/instagram-dev.html",
   "dexter-integration": "/",
+  "dexter-pilot-integration": "/dexter-pilot.html",
   "connector-customer-integration": "/connect-accounts.html",
 });
 

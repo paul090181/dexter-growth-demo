@@ -4,13 +4,18 @@ import test from "node:test";
 
 const page = await readFile(new URL("../../signup.html", import.meta.url), "utf8");
 
-test("signup page collects only the minimum business and contact fields", () => {
+test("signup page collects only basic business, type, and contact fields", () => {
   assert.match(page, /name="business_name"/);
+  assert.match(page, /name="business_type"/);
+  assert.match(page, /value="retail"/);
+  assert.match(page, /value="bakery_food"/);
+  assert.match(page, /value="auto_dealer"/);
+  assert.match(page, /value="service"/);
   assert.match(page, /name="contact_name"/);
   assert.match(page, /name="email"/);
   assert.doesNotMatch(page, /name="(?:password|phone|address|company|plan|price)"/);
   assert.match(page, /fetch\(['"]\/\.netlify\/functions\/tenant-signup['"]/);
-  assert.match(page, /JSON\.stringify\(\{\s*business_name:\s*form\.business_name\.value,\s*contact_name:\s*form\.contact_name\.value,\s*email:\s*form\.email\.value\s*\}\)/);
+  assert.match(page, /JSON\.stringify\(\{\s*business_name:\s*form\.business_name\.value,\s*business_type:\s*form\.business_type\.value,\s*contact_name:\s*form\.contact_name\.value,\s*email:\s*form\.email\.value\s*\}\)/);
 });
 
 test("raw tenant key is kept in session storage and shown only in the one-time key panel", () => {
@@ -32,11 +37,14 @@ test("status and checkout send the tenant key only with its stored business ID",
 test("the page grants access only from server-confirmed subscription status", () => {
   assert.match(page, /data\.access_granted\s*===\s*true/);
   assert.match(page, /data\.access_source\s*===\s*['"]stripe['"]/);
+  assert.match(page, /data\.access_source\s*===\s*['"]pilot['"]/);
+  assert.match(page, /Pilot access active/);
   assert.match(page, /billingResult\s*===\s*['"]success['"]/);
   assert.match(page, /billingResult\s*===\s*['"]success['"][\s\S]{0,300}refreshStatus\(\)/);
   assert.doesNotMatch(page, /billingResult\s*===\s*['"]success['"][\s\S]{0,300}accessGranted\s*=\s*true/);
   assert.match(page, /const stripeLinked = data\.access_source === ['"]stripe['"]/);
-  assert.match(page, /checkoutButton\.disabled\s*=\s*stripeLinked/);
+  assert.match(page, /const pilotAccess = data\.access_source === ['"]pilot['"]/);
+  assert.match(page, /checkoutButton\.disabled\s*=\s*stripeLinked\s*\|\|\s*pilotAccess/);
 });
 
 test("the standalone tenant page does not load Dexter integrations or data", () => {
@@ -68,4 +76,49 @@ test("founding pricing states the continuous-membership rule", () => {
 test("signup tells customers promotion codes are entered and validated in Stripe Checkout", () => {
   assert.match(page, /Have a promo code\?/);
   assert.match(page, /Stripe validates the code/);
+});
+
+test("signup keeps the current browser signed in and hands active customers into guided setup", () => {
+  assert.match(page, /You're signed in on this device/i);
+  assert.match(page, />Continue<\/button>/);
+  assert.match(page, /href="\.\/app\.html\?onboarding=1"/);
+  assert.match(page, /Continue setup/);
+  assert.match(page, /target\.scrollIntoView/);
+  assert.match(page, /accessCard\.scrollIntoView/);
+});
+
+test("signup records only milestone names through the tenant-authenticated onboarding endpoint", () => {
+  assert.match(page, /fetch\(['"]\/\.netlify\/functions\/onboarding-event['"]/);
+  assert.match(page, /workspace_created/);
+  assert.match(page, /checkout_started/);
+  assert.match(page, /checkout_completed/);
+  assert.match(page, /['"]X-GrowthWise-Tenant-Key['"]:\s*tenantKey/);
+  assert.match(page, /growthwise_onboarding_event/);
+  assert.doesNotMatch(page, /onboarding-event\?[^'"]*tenant/);
+});
+
+test("returning businesses can find passwordless sign in directly from signup", () => {
+  assert.match(page, /Already have a workspace\? Sign in/);
+  assert.match(page, /Sign in by email/);
+  assert.match(page, /href="\.\/app\.html"/);
+  assert.doesNotMatch(page, /Password recovery is not part of this preview yet/i);
+  assert.match(page, /use your business email to sign in securely/i);
+});
+
+
+test("signup gives prospective customers direct access to the privacy policy", () => {
+  assert.match(page, /href="\.\/privacy-policy\.html"/);
+  assert.match(page, /Privacy Policy/);
+});
+
+
+test("signup hides technical preview details and gives pilots a payment-free handoff", () => {
+  assert.match(page, /<details[^>]*>[\s\S]*Preview support details/);
+  assert.match(page, /Preview access key/);
+  assert.match(page, /Your pilot access is active/);
+  assert.match(page, /No payment is required during this pilot/);
+  assert.match(page, /planCard\.classList\.toggle\(['"]hidden['"],\s*pilotAccess\)/);
+  assert.doesNotMatch(page, /Server-controlled plan/);
+  assert.doesNotMatch(page, /signed subscription webhook/);
+  assert.doesNotMatch(page, /Open secure sandbox checkout/);
 });

@@ -74,7 +74,7 @@ const FIND_ACTIVE_BUSINESS_BY_BINDING = `
     FROM instagram_credentials
    WHERE account_binding_key = ANY($1::text[])
      AND status = 'active'
-     AND business_id = ANY($2::text[])
+     AND ($2::text[] IS NULL OR business_id = ANY($2::text[]))
    ORDER BY business_id
    LIMIT 2
 `;
@@ -205,16 +205,22 @@ export function createInstagramStore({ getPool = netlifyPool, crypto } = {}) {
     readCredential,
     readDecryptedCredential,
 
-    async resolveBusinessByAccountId({ accountId, businessIds } = {}) {
+    async resolveBusinessByAccountId({ accountId, businessIds = null } = {}) {
       if (!crypto?.accountBindingKeys) throw safeStoreError("CREDENTIAL_CONFIGURATION_FAILED");
-      if (typeof accountId !== "string" || !accountId
-        || !Array.isArray(businessIds) || businessIds.length === 0
-        || businessIds.some((value) => typeof value !== "string" || !value)) {
+      if (typeof accountId !== "string" || !accountId) {
         throw safeStoreError("INVALID_ACCOUNT_CONTEXT");
+      }
+      let allowedBusinessIds = null;
+      if (businessIds !== null && businessIds !== undefined) {
+        if (!Array.isArray(businessIds) || businessIds.length === 0
+          || businessIds.some((value) => typeof value !== "string" || !value)) {
+          throw safeStoreError("INVALID_ACCOUNT_CONTEXT");
+        }
+        allowedBusinessIds = [...new Set(businessIds)];
       }
       try {
         const bindingKeys = crypto.accountBindingKeys(accountId);
-        const result = await query(FIND_ACTIVE_BUSINESS_BY_BINDING, [bindingKeys, [...new Set(businessIds)]]);
+        const result = await query(FIND_ACTIVE_BUSINESS_BY_BINDING, [bindingKeys, allowedBusinessIds]);
         return result.rows.length === 1 ? result.rows[0].business_id : null;
       } catch (error) {
         if (["CREDENTIAL_CONFIGURATION_FAILED", "INVALID_ACCOUNT_CONTEXT"].includes(error?.message)) throw error;

@@ -3,8 +3,14 @@ import {
 } from "./_connector-auth.mjs";
 import { canonicalOrigin, connectorJson, exactKeys, readConnectorJson } from "./_connector-http.mjs";
 import { createConnectorStore } from "./_connector-store.mjs";
+import { resolveGrowthWisePublicOrigin } from "./_public-origin.mjs";
 
-function configuredOrigin() { return globalThis.Netlify?.env?.get("GROWTHWISE_PUBLIC_ORIGIN"); }
+function configuredOrigin(requestUrl) {
+  return resolveGrowthWisePublicOrigin(
+    (name) => globalThis.Netlify?.env?.get(name) || "",
+    requestUrl,
+  );
+}
 
 const CLEAR_CONNECTOR_SESSION_COOKIE =
   `${CONNECTOR_SESSION_COOKIE}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax`;
@@ -22,7 +28,7 @@ export function createConnectorInvitationExchangeHandler(options = {}) {
   return async function connectorInvitationExchange(request) {
     if (request.method !== "POST") return connectorJson(405, { error: "Method not allowed." }, { allow: "POST" });
     let origin;
-    try { origin = canonicalOrigin(publicOrigin()); } catch { return connectorJson(503, { error: "Invitation service unavailable." }); }
+    try { origin = canonicalOrigin(publicOrigin(request.url)); } catch { return connectorJson(503, { error: "Invitation service unavailable." }); }
     let requestUrl;
     try { requestUrl = new URL(request.url); } catch { return connectorJson(403, { error: "Request rejected." }); }
     if (requestUrl.origin !== origin || request.headers.get("origin") !== origin || requestUrl.search || requestUrl.hash) {

@@ -1,6 +1,7 @@
 import { createInstagramCrypto } from "./_instagram-crypto.mjs";
-import { INSTAGRAM_CLIENTS } from "./_instagram-clients.mjs";
 import { instagramDatabase } from "./_instagram-store.mjs";
+import { createFacebookCrypto } from "./_facebook-crypto.mjs";
+import { createFacebookStore } from "./_facebook-store.mjs";
 import { ingestRetailLead } from "./_retail-lead-ingest.mjs";
 import {
   normalizeMetaWebhookPayload,
@@ -34,17 +35,39 @@ function versions(env, name) {
 }
 
 function configuredInstagramRouter(env) {
-  const businessIds = Object.values(INSTAGRAM_CLIENTS)
-    .filter((client) => client.messagesEnabled === true)
-    .map((client) => client.business_id);
-  if (!businessIds.length) return async () => null;
+  const required = [
+    env("GROWTHWISE_INSTAGRAM_OAUTH_STATE_SECRET"),
+    env("GROWTHWISE_INSTAGRAM_ACCOUNT_BINDING_SECRET"),
+    env("GROWTHWISE_INSTAGRAM_CREDENTIAL_ENCRYPTION_KEY"),
+  ];
+  if (required.some((value) => typeof value !== "string" || !value.trim())) {
+    return async () => null;
+  }
   const crypto = createInstagramCrypto({
     stateSecrets: versions(env, "GROWTHWISE_INSTAGRAM_OAUTH_STATE_SECRET"),
     bindingSecrets: versions(env, "GROWTHWISE_INSTAGRAM_ACCOUNT_BINDING_SECRET"),
     credentialKeys: versions(env, "GROWTHWISE_INSTAGRAM_CREDENTIAL_ENCRYPTION_KEY"),
   });
   const store = instagramDatabase({ crypto });
-  return (accountId) => store.resolveBusinessByAccountId({ accountId, businessIds });
+  return (accountId) => store.resolveBusinessByAccountId({ accountId });
+}
+
+function configuredFacebookRouter(env) {
+  const required = [
+    env("GROWTHWISE_FACEBOOK_OAUTH_STATE_SECRET"),
+    env("GROWTHWISE_FACEBOOK_ACCOUNT_BINDING_SECRET"),
+    env("GROWTHWISE_FACEBOOK_CREDENTIAL_ENCRYPTION_KEY"),
+  ];
+  if (required.some((value) => typeof value !== "string" || !value.trim())) {
+    return async () => null;
+  }
+  const crypto = createFacebookCrypto({
+    stateSecrets: versions(env, "GROWTHWISE_FACEBOOK_OAUTH_STATE_SECRET"),
+    bindingSecrets: versions(env, "GROWTHWISE_FACEBOOK_ACCOUNT_BINDING_SECRET"),
+    credentialKeys: versions(env, "GROWTHWISE_FACEBOOK_CREDENTIAL_ENCRYPTION_KEY"),
+  });
+  const store = createFacebookStore({ crypto });
+  return (pageId) => store.resolveBusinessByPageId({ pageId });
 }
 
 async function enrichInstagramAccountMap(payload, accountMap, routeInstagramBusiness) {
@@ -61,10 +84,25 @@ async function enrichInstagramAccountMap(payload, accountMap, routeInstagramBusi
   return { ...accountMap, instagram };
 }
 
+async function enrichFacebookAccountMap(payload, accountMap, routeFacebookBusiness) {
+  if (payload?.object !== "page" || typeof routeFacebookBusiness !== "function") return accountMap;
+  const facebook = { ...(accountMap.facebook || {}) };
+  const pageIds = [...new Set((Array.isArray(payload.entry) ? payload.entry : [])
+    .map((entry) => String(entry?.id ?? "").trim())
+    .filter(Boolean))];
+  for (const pageId of pageIds) {
+    if (facebook[pageId]) continue;
+    const businessId = await routeFacebookBusiness(pageId);
+    if (businessId) facebook[pageId] = businessId;
+  }
+  return { ...accountMap, facebook };
+}
+
 export function createMetaWebhookHandler({
   env = configuredEnv,
   ingest = (input) => ingestRetailLead(input, { ingestionTag: "meta_webhook" }),
   routeInstagramBusiness,
+  routeFacebookBusiness,
   logger = console,
 } = {}) {
   return async function metaWebhookHandler(request) {
@@ -83,9 +121,6 @@ export function createMetaWebhookHandler({
 
     if (request.method !== "POST") return json(405, { error: "Method not allowed." });
 
-    const appSecret = env("META_APP_SECRET") || env("GROWTHWISE_INSTAGRAM_APP_SECRET") || "";
-    if (!appSecret) return json(503, { error: "Meta webhook signature verification is not configured." });
-
     const declaredLength = Number(request.headers.get("content-length") || 0);
     if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {
       return json(413, { error: "Meta webhook payload is too large." });
@@ -95,6 +130,18 @@ export function createMetaWebhookHandler({
     if (new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) {
       return json(413, { error: "Meta webhook payload is too large." });
     }
+    let payload;
+    try { payload = JSON.parse(rawBody); }
+    catch { return json(400, { error: "Invalid Meta webhook JSON." }); }
+
+    const legacyAppSecret = env("META_APP_SECRET") || "";
+    const appSecret = payload?.object === "page"
+      ? env("GROWTHWISE_FACEBOOK_APP_SECRET") || legacyAppSecret
+      : payload?.object === "instagram"
+        ? env("GROWTHWISE_INSTAGRAM_APP_SECRET") || legacyAppSecret
+        : legacyAppSecret;
+    if (!appSecret) return json(503, { error: "Meta webhook signature verification is not configured." });
+
     if (!verifyMetaSignature({
       rawBody,
       signature: request.headers.get("x-hub-signature-256") || "",
@@ -103,16 +150,15 @@ export function createMetaWebhookHandler({
       return json(401, { error: "Invalid Meta webhook signature." });
     }
 
-    let payload;
-    try { payload = JSON.parse(rawBody); }
-    catch { return json(400, { error: "Invalid Meta webhook JSON." }); }
-
     let accountMap;
     try {
       accountMap = parseMetaAccountMap(env("GROWTHWISE_META_ACCOUNT_MAP") || "");
       if (payload?.object === "instagram") {
         const instagramRouter = routeInstagramBusiness ?? configuredInstagramRouter(env);
         accountMap = await enrichInstagramAccountMap(payload, accountMap, instagramRouter);
+      } else if (payload?.object === "page") {
+        const facebookRouter = routeFacebookBusiness ?? configuredFacebookRouter(env);
+        accountMap = await enrichFacebookAccountMap(payload, accountMap, facebookRouter);
       }
     } catch {
       return json(503, { error: "Meta account routing is not configured correctly." });

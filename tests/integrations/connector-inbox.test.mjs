@@ -150,12 +150,13 @@ test("connector inbox UI calls the session-bound endpoint without a business id"
   assert.equal(states.at(-1).leads[0].source_type, "email");
 });
 
-test("secure connector page includes a read-only tenant-bound inbox surface", async () => {
+test("secure connector page includes a read-only business-bound inbox surface", async () => {
   const html = await readFile(new URL("../../connect-accounts.html", import.meta.url), "utf8");
   const js = await readFile(new URL("../../assets/connector-invitation.mjs", import.meta.url), "utf8");
 
   assert.match(html, /Recent inbound messages/);
-  assert.match(html, /browser cannot choose or override the tenant/);
+  assert.match(html, /private to the current business/i);
+  assert.match(html, /cannot be switched to another business/i);
   assert.match(html, /id="connector-inbox-list"/);
   assert.match(js, /\/connector-inbox/);
   assert.match(js, /mountConnectorInbox/);

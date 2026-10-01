@@ -451,6 +451,34 @@
           <div class="create-status hidden" id="emailAcceptanceOperatorStatus"></div>
         </div>
 
+        <div class="operator-card hidden" id="facebookAcceptanceOperator">
+          <div class="tag">ADMIN · CONNECTOR ACCEPTANCE</div>
+          <h3>Facebook Page Test</h3>
+          <p>Create one secure, 24-hour invitation for the built-in GrowthWise development tenant. This control is fixed to Facebook only and cannot target Dexter’s Hats.</p>
+          <span class="operator-target">growthwise-dev · facebook only</span>
+          <button type="button" class="primary" id="createFacebookAcceptanceInvitationBtn">Create &amp; open Facebook invitation</button>
+          <div class="create-status hidden" id="facebookAcceptanceOperatorStatus"></div>
+        </div>
+
+        <div class="operator-card hidden" id="dexterPilotOperator">
+          <div class="tag">ADMIN · DEXTER PILOT</div>
+          <h3>Create Dexter's self-serve pilot link</h3>
+          <p>This creates a secure, one-time Dexter pilot invitation. Dexter never receives the GrowthWise admin key.</p>
+          <span class="operator-target">dexters-hats · 72-hour invite · 30-day signed-in session</span>
+          <button type="button" class="primary" id="createDexterPilotInvitationBtn">Create Dexter pilot link</button>
+          <div class="create-status hidden" id="dexterPilotOperatorStatus"></div>
+          <input id="dexterPilotInvitationUrl" class="hidden" type="text" readonly style="width:100%;margin-top:9px;border:1px solid #d7dfe4;border-radius:11px;padding:11px" aria-label="Dexter pilot invitation URL" />
+          <button type="button" class="ghost hidden" id="copyDexterPilotInvitationBtn" style="width:100%;margin-top:8px">Copy Dexter link</button>
+          <button type="button" class="ghost" id="loadDexterPilotActivityBtn" style="width:100%;margin-top:8px">Check Dexter pilot activity</button>
+          <div class="create-status hidden" id="dexterPilotActivityStatus"></div>
+          <div id="dexterPilotActivityDetails" class="hidden" style="margin-top:10px;border:1px solid #dce4ea;border-radius:13px;padding:12px;background:#fff">
+            <strong id="dexterPilotActivityStage" style="display:block;color:#17222e"></strong>
+            <div id="dexterPilotActivityTimeline" style="margin-top:6px;font-size:12px;line-height:1.55;color:#5f6d79"></div>
+            <div id="dexterPilotActivityFeedback" style="margin-top:7px;font-size:12px;font-weight:800;color:#425363"></div>
+            <div id="dexterPilotActivityFollowUp" style="margin-top:9px;padding-top:9px;border-top:1px solid #e5eaee;font-size:12px;line-height:1.5;color:#425363"></div>
+          </div>
+        </div>
+
         <div class="founding-plan-card" id="foundingPlanCard">
           <div class="founding-plan-head">
             <div>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <meta name="Referrer-Policy" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+  <title>Contact this business</title>
+  <style>
+    :root{font-family:Inter,system-ui,sans-serif;background:#f4f7fb;color:#172235}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;padding:24px;display:grid;place-items:center}
+    main{width:min(640px,100%)}.card{background:#fff;border:1px solid #dbe3ef;border-radius:20px;padding:24px;box-shadow:0 10px 30px rgba(29,48,78,.08)}
+    .eyebrow{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;font-weight:850;color:#3456a4}h1{margin:7px 0 8px;font-size:clamp(2rem,7vw,3rem)}
+    p{color:#526175;line-height:1.5}.field{display:block;margin:14px 0;font-size:12px;font-weight:850;color:#53606c}
+    .field input,.field textarea{display:block;width:100%;margin-top:6px;border:1px solid #d5dce2;border-radius:12px;padding:13px;font:inherit;background:#fff;color:#14202c}
+    .field textarea{min-height:140px;resize:vertical}.button{width:100%;border:0;border-radius:13px;padding:14px 16px;background:#173f8f;color:#fff;font:inherit;font-weight:850;cursor:pointer}
+    .button:disabled{opacity:.55}.status{margin-top:13px;border-radius:12px;padding:12px;background:#eef5ff;color:#294f7a;font-size:13px;font-weight:750}
+    .error{background:#fff0ee;color:#87372e}.hp{position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;overflow:hidden!important}
+    .powered{margin-top:14px;text-align:center;font-size:12px;color:#7b8794}
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <div class="eyebrow">Contact form</div>
+      <h1 id="business-name">Send us a message</h1>
+      <p id="intro">Your message will go directly to this business.</p>
+      <div id="form-error" class="status error" hidden></div>
+      <form id="contact-form" hidden>
+        <label class="field">Your name<input name="name" maxlength="180" autocomplete="name"></label>
+        <label class="field">Email<input name="email" type="email" maxlength="254" autocomplete="email"></label>
+        <label class="field">Phone<input name="phone" maxlength="80" autocomplete="tel"></label>
+        <label class="field">How can we help?<textarea name="message" maxlength="4000" required></textarea></label>
+        <label class="hp" aria-hidden="true">Company website<input name="company_website" tabindex="-1" autocomplete="off"></label>
+        <button class="button" id="submit-button" type="submit">Send message</button>
+      </form>
+      <div id="submit-status" class="status" hidden></div>
+      <div class="powered">Powered by Narleo</div>
+    </section>
+  </main>
+  <script type="module" src="./assets/website-contact.mjs"></script>
+</body>
+</html>

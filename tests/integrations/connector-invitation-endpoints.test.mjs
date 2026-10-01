@@ -53,7 +53,7 @@ function memoryStore() {
   };
 }
 
-function createFixture() {
+function createFixture({ facebookAvailable = () => false } = {}) {
   const store = memoryStore();
   const resolveTenant = createConnectorTenantResolver({
     pilotTenants: { "dexters-hats": { business_id: "dexters-hats", display_name: "Dexter's Hats" } },
@@ -69,7 +69,9 @@ function createFixture() {
   const exchange = createConnectorInvitationExchangeHandler({
     store, publicOrigin: () => ORIGIN, now: () => NOW,
   });
-  const session = createConnectorSessionHandler({ store, now: () => NOW, resolveTenant });
+  const session = createConnectorSessionHandler({
+    store, now: () => NOW, resolveTenant, facebookAvailable,
+  });
   return { store, create, exchange, session };
 }
 
@@ -79,12 +81,12 @@ test("invitation creation is admin-only and accepts pilot tenants without billin
   assert.equal(unauthorized.status, 401);
   assert.equal(fixture.store.invitations.size, 0);
 
-  const response = await fixture.create(createRequest({ business_id: "dexters-hats", connectors: ["instagram", "facebook", "email"] }));
+  const response = await fixture.create(createRequest({ business_id: "dexters-hats", connectors: ["instagram", "facebook", "email", "website"] }));
   assert.equal(response.status, 201);
   const body = await response.json();
   assert.equal(body.expires_at, "2026-09-24T12:00:00.000Z");
   assert.equal(body.business_id, "dexters-hats");
-  assert.equal(body.connectors.join(","), "email,facebook,instagram");
+  assert.equal(body.connectors.join(","), "email,facebook,instagram,website");
 });
 
 test("database-backed tenants use the same invitation path without Stripe status", async () => {
@@ -120,6 +122,50 @@ test("returned invitation is fragment-only and contains no admin or tenant crede
   assert.equal(body.invitation_url.includes("gw_tenant_"), false);
   assert.equal(JSON.stringify([...fixture.store.invitations.values()]).includes(raw), false);
   assert.ok(fixture.store.invitations.has(hashOpaqueToken(raw)));
+});
+
+test("default invitation handlers use the exact Netlify deploy origin instead of stale preview config", async (t) => {
+  const deployOrigin = "https://deploy-preview-18--euphonious-beijinho-db4b4d.netlify.app";
+  const staleOrigin = "https://deploy-preview-14--euphonious-beijinho-db4b4d.netlify.app";
+  const previousNetlify = globalThis.Netlify;
+  globalThis.Netlify = { env: { get(name) {
+    return ({
+      DEPLOY_PRIME_URL: deployOrigin,
+      GROWTHWISE_PUBLIC_ORIGIN: staleOrigin,
+    })[name] || "";
+  } } };
+  t.after(() => { globalThis.Netlify = previousNetlify; });
+
+  const store = memoryStore();
+  const create = createConnectorInvitationCreateHandler({
+    authorized: () => ({ ok: true }),
+    store,
+    resolveTenant: async (businessId) => ({ business_id: businessId }),
+    now: () => NOW,
+  });
+  const exchange = createConnectorInvitationExchangeHandler({ store, now: () => NOW });
+  const createResponse = await create(new Request(
+    `${deployOrigin}/.netlify/functions/connector-invitation-create`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: deployOrigin },
+      body: JSON.stringify({ business_id: "growthwise-dev", connectors: ["facebook"] }),
+    },
+  ));
+  assert.equal(createResponse.status, 201);
+  const created = await createResponse.json();
+  const invitationUrl = new URL(created.invitation_url);
+  assert.equal(invitationUrl.origin, deployOrigin);
+
+  const exchangeResponse = await exchange(new Request(
+    `${deployOrigin}/.netlify/functions/connector-invitation-exchange`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: deployOrigin },
+      body: JSON.stringify({ invitation_token: invitationUrl.hash.slice("#invite=".length) }),
+    },
+  ));
+  assert.equal(exchangeResponse.status, 200);
 });
 
 test("exchange sets only a secure fixed-lifetime HttpOnly session cookie", async () => {
@@ -179,7 +225,58 @@ test("session metadata comes only from the cookie-bound tenant and keeps Faceboo
       facebook: { allowed: true, available: false, state: "Setup unavailable" },
       instagram: { allowed: true, available: true },
       email: { allowed: true, available: false, state: "Setup unavailable" },
+      website: { allowed: false, available: false, state: "Setup unavailable" },
     },
+  });
+});
+
+test("session metadata exposes hosted website forms without an external provider", async () => {
+  const fixture = createFixture();
+  const created = await (await fixture.create(createRequest({
+    business_id: "dexters-hats",
+    connectors: ["website"],
+  }))).json();
+  const token = new URL(created.invitation_url).hash.slice("#invite=".length);
+  const exchange = await fixture.exchange(createRequest(
+    { invitation_token: token },
+    { key: "", path: "connector-invitation-exchange" },
+  ));
+  const cookie = exchange.headers.get("set-cookie").split(";", 1)[0];
+  const response = await fixture.session(new Request(
+    `${ORIGIN}/.netlify/functions/connector-session`,
+    { headers: { cookie } },
+  ));
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.deepEqual(body.connectors.website, {
+    allowed: true,
+    available: true,
+    state: "Not Connected",
+  });
+});
+
+test("session metadata exposes Facebook only when server configuration is available", async () => {
+  const fixture = createFixture({ facebookAvailable: () => true });
+  const created = await (await fixture.create(createRequest({
+    business_id: "dexters-hats",
+    connectors: ["facebook"],
+  }))).json();
+  const token = new URL(created.invitation_url).hash.slice("#invite=".length);
+  const exchange = await fixture.exchange(createRequest(
+    { invitation_token: token },
+    { key: "", path: "connector-invitation-exchange" },
+  ));
+  const cookie = exchange.headers.get("set-cookie").split(";", 1)[0];
+  const response = await fixture.session(new Request(
+    `${ORIGIN}/.netlify/functions/connector-session`,
+    { headers: { cookie } },
+  ));
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.deepEqual(body.connectors.facebook, {
+    allowed: true,
+    available: true,
+    state: "Not Connected",
   });
 });
 

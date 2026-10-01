@@ -3,12 +3,18 @@ import { canonicalOrigin, connectorJson, exactKeys, readConnectorJson } from "./
 import { createConnectorStore } from "./_connector-store.mjs";
 import { createConnectorTenantResolver } from "./_connector-tenants.mjs";
 import { authorized as defaultAuthorized } from "./_lead-store.mjs";
+import { resolveGrowthWisePublicOrigin } from "./_public-origin.mjs";
 import { createTenantStore } from "./_tenant-store.mjs";
 
 const INVITATION_TTL_MS = 24 * 60 * 60 * 1000;
-const ALLOWED = new Set(["email", "facebook", "instagram"]);
+const ALLOWED = new Set(["email", "facebook", "instagram", "website"]);
 
-function configuredOrigin() { return globalThis.Netlify?.env?.get("GROWTHWISE_PUBLIC_ORIGIN"); }
+function configuredOrigin(requestUrl) {
+  return resolveGrowthWisePublicOrigin(
+    (name) => globalThis.Netlify?.env?.get(name) || "",
+    requestUrl,
+  );
+}
 
 export function createConnectorInvitationCreateHandler(options = {}) {
   const authorized = options.authorized ?? defaultAuthorized;
@@ -29,7 +35,7 @@ export function createConnectorInvitationCreateHandler(options = {}) {
     const tenant = await resolveTenant(businessId);
     if (!tenant || tenant.business_id !== businessId) return connectorJson(400, { error: "Invalid request." });
     let origin;
-    try { origin = canonicalOrigin(publicOrigin()); } catch { return connectorJson(503, { error: "Invitation service unavailable." }); }
+    try { origin = canonicalOrigin(publicOrigin(request.url)); } catch { return connectorJson(503, { error: "Invitation service unavailable." }); }
     const invitationToken = generateOpaqueToken("invitation");
     const createdAt = now();
     const expiresAt = new Date(createdAt.getTime() + INVITATION_TTL_MS);

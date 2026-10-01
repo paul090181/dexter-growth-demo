@@ -206,3 +206,24 @@ test("revocation is durable and the migration constrains hashes connectors and i
   assert.match(migration, /facebook.*instagram|instagram.*facebook/s);
   assert.match(migration, /FOR EACH ROW EXECUTE FUNCTION prevent_connector_identity_change\(\)/);
 });
+
+test("direct tenant session creation stores only the session hash and returns safe metadata", async () => {
+  const fixture = fakePool();
+  const store = createConnectorStore({ getPool: async () => fixture.pool });
+  const sessionHash = "d".repeat(64);
+  const result = await store.createSession({
+    sessionHash,
+    businessId: "dexters-hats",
+    connectors: ["instagram", "email"],
+    expiresAt: SESSION_EXPIRY,
+  });
+
+  assert.deepEqual(result, {
+    business_id: "dexters-hats",
+    connectors: ["email", "instagram"],
+    expires_at: SESSION_EXPIRY,
+  });
+  assert.equal(Object.hasOwn(result, "session_hash"), false);
+  assert.equal(fixture.state.session.session_hash, sessionHash);
+  assert.deepEqual(fixture.state.session.connectors, ["email", "instagram"]);
+});

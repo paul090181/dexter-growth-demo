@@ -36,6 +36,7 @@ export function createTenantProfileHandler({ store = createTenantStore() } = {})
       return json(200, {
         business_id: row.business_id,
         business_name: row.business_name,
+        business_type: row.business_type ?? "other",
         contact_name: row.contact_name ?? null,
         contact_email: row.contact_email ?? null,
         created_at: row.created_at ? new Date(row.created_at).toISOString() : null,

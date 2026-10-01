@@ -4,6 +4,21 @@ import { createConnectorStore } from "./_connector-store.mjs";
 import { createConnectorTenantResolver } from "./_connector-tenants.mjs";
 import { createTenantStore } from "./_tenant-store.mjs";
 
+function configuredFacebookAvailable() {
+  const appId = globalThis.Netlify?.env?.get("GROWTHWISE_FACEBOOK_APP_ID")
+    || globalThis.Netlify?.env?.get("GROWTHWISE_INSTAGRAM_APP_ID");
+  const appSecret = globalThis.Netlify?.env?.get("GROWTHWISE_FACEBOOK_APP_SECRET")
+    || globalThis.Netlify?.env?.get("GROWTHWISE_INSTAGRAM_APP_SECRET");
+  const required = [
+    appId,
+    appSecret,
+    globalThis.Netlify?.env?.get("GROWTHWISE_FACEBOOK_OAUTH_STATE_SECRET"),
+    globalThis.Netlify?.env?.get("GROWTHWISE_FACEBOOK_ACCOUNT_BINDING_SECRET"),
+    globalThis.Netlify?.env?.get("GROWTHWISE_FACEBOOK_CREDENTIAL_ENCRYPTION_KEY"),
+  ];
+  return required.every((value) => typeof value === "string" && value.trim().length > 0);
+}
+
 function configuredMicrosoftMailAvailable() {
   const required = [
     "GROWTHWISE_MICROSOFT_CLIENT_ID",
@@ -23,6 +38,7 @@ export function createConnectorSessionHandler({
   now = () => new Date(),
   resolveTenant,
   microsoftMailAvailable = configuredMicrosoftMailAvailable,
+  facebookAvailable = configuredFacebookAvailable,
 } = {}) {
   return async function connectorSession(request) {
     if (request.method !== "GET") return connectorJson(405, { error: "Method not allowed." }, { allow: "GET" });
@@ -38,7 +54,14 @@ export function createConnectorSessionHandler({
       expires_at: new Date(auth.expiresAt).toISOString(),
       connectors: {
         facebook: auth.connectors.includes("facebook")
-          ? { allowed: true, available: false, state: "Setup unavailable" }
+          ? (() => {
+              const available = facebookAvailable() === true;
+              return {
+                allowed: true,
+                available,
+                state: available ? "Not Connected" : "Setup unavailable",
+              };
+            })()
           : { allowed: false, available: false, state: "Setup unavailable" },
         instagram: { allowed: auth.connectors.includes("instagram"), available: auth.connectors.includes("instagram") },
         email: auth.connectors.includes("email")
@@ -50,6 +73,9 @@ export function createConnectorSessionHandler({
                 state: available ? "Not Connected" : "Setup unavailable",
               };
             })()
+          : { allowed: false, available: false, state: "Setup unavailable" },
+        website: auth.connectors.includes("website")
+          ? { allowed: true, available: true, state: "Not Connected" }
           : { allowed: false, available: false, state: "Setup unavailable" },
       },
     });

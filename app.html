@@ -4,30 +4,40 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0e1b2b" />
-  <title>GrowthWise Business Workspace</title>
+  <title>Narleo Business Workspace</title>
   <style>
-    *{box-sizing:border-box}body{margin:0;background:#eef1f4;color:#14202c;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.shell{width:min(720px,100%);min-height:100vh;margin:0 auto;background:#fff;padding:30px 20px 60px}.brand{font-weight:950;font-size:19px}.hero{margin:24px 0 16px;border-radius:24px;padding:26px;background:#0e1b2b;color:#fff}.hero h1{margin:6px 0 8px;font-size:clamp(30px,7vw,44px);line-height:1.04}.hero p{margin:0;color:#d5dde5;line-height:1.5}.eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:900;color:#9b742e}.card{border:1px solid #e1e6ea;border-radius:20px;padding:20px;margin-top:16px;box-shadow:0 10px 28px rgba(14,27,43,.045)}.card h2{margin:4px 0 8px}.card p{color:#5d6974;line-height:1.5}.field{display:block;margin:13px 0;font-size:12px;font-weight:850;color:#53606c}.field input,.field textarea,.field select{display:block;width:100%;margin-top:6px;border:1px solid #d5dce2;border-radius:12px;padding:13px;font:inherit;background:#fff;color:#14202c}.field textarea{min-height:120px;resize:vertical}.button{width:100%;border:0;border-radius:13px;padding:14px 16px;background:#0e1b2b;color:#fff;font-size:15px;font-weight:850;cursor:pointer}.button.secondary{background:#edf1f4;color:#17222e}.button:disabled{opacity:.55}.status{margin-top:12px;border-radius:12px;padding:12px;background:#fff0ee;color:#87372e;font-size:13px;font-weight:750}.summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}.metric{border-radius:14px;background:#f4f6f8;padding:14px}.metric span{display:block;font-size:11px;color:#68737e;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.metric strong{display:block;margin-top:6px;font-size:18px}.id{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere}.note{background:#fff8e8;border-color:#e8d8b4}.reply-box{margin-top:14px;border-radius:14px;background:#f4f7f9;padding:14px;white-space:pre-wrap;line-height:1.5}.reply-meta{margin-top:9px;font-size:12px;color:#66727c;font-weight:750}.plan-banner{margin:12px 0;border-radius:13px;padding:12px;background:#eef5ff;color:#294f7a;font-size:13px;font-weight:800;line-height:1.45}.feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.feature-item{display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid #e1e6ea;border-radius:13px;padding:12px}.feature-item strong{font-size:13px}.feature-item span{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em}.feature-item.included{background:#eef8f1;border-color:#cfe3d4}.feature-item.included span{color:#2d6a3d}.feature-item.locked{background:#f6f7f8;color:#6d7883}.feature-item.locked span{color:#7a6d55}.plan-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.plan-actions button{border:1px solid #dce2e7;border-radius:12px;padding:11px;background:#fff;color:#17222e;font-weight:850;cursor:pointer}.plan-actions button:hover{background:#f4f6f8}.followup{margin-top:10px;padding-top:10px;border-top:1px solid #dfe5e9;font-size:13px;color:#4e5b67}.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}@media(max-width:520px){.actions,.summary{grid-template-columns:1fr}.shell{padding:22px 15px 48px}}
+    *{box-sizing:border-box}body{margin:0;background:#eef1f4;color:#14202c;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.shell{width:min(720px,100%);min-height:100vh;margin:0 auto;background:#fff;padding:30px 20px 60px}.brand{font-weight:950;font-size:19px}.hero{margin:24px 0 16px;border-radius:24px;padding:26px;background:#0e1b2b;color:#fff}.hero h1{margin:6px 0 8px;font-size:clamp(30px,7vw,44px);line-height:1.04}.hero p{margin:0;color:#d5dde5;line-height:1.5}.eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:900;color:#9b742e}.card{border:1px solid #e1e6ea;border-radius:20px;padding:20px;margin-top:16px;box-shadow:0 10px 28px rgba(14,27,43,.045)}.card h2{margin:4px 0 8px}.card p{color:#5d6974;line-height:1.5}.field{display:block;margin:13px 0;font-size:12px;font-weight:850;color:#53606c}.field input,.field textarea,.field select{display:block;width:100%;margin-top:6px;border:1px solid #d5dce2;border-radius:12px;padding:13px;font:inherit;background:#fff;color:#14202c}.field textarea{min-height:120px;resize:vertical}.button{width:100%;border:0;border-radius:13px;padding:14px 16px;background:#0e1b2b;color:#fff;font-size:15px;font-weight:850;cursor:pointer}.button.secondary{background:#edf1f4;color:#17222e}.button:disabled{opacity:.55}.status{margin-top:12px;border-radius:12px;padding:12px;background:#fff0ee;color:#87372e;font-size:13px;font-weight:750}.summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}.metric{border-radius:14px;background:#f4f6f8;padding:14px}.metric span{display:block;font-size:11px;color:#68737e;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.metric strong{display:block;margin-top:6px;font-size:18px}.id{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere}.note{background:#fff8e8;border-color:#e8d8b4}.reply-box{margin-top:14px;border-radius:14px;background:#f4f7f9;padding:14px;white-space:pre-wrap;line-height:1.5}.reply-meta{margin-top:9px;font-size:12px;color:#66727c;font-weight:750}.plan-banner{margin:12px 0;border-radius:13px;padding:12px;background:#eef5ff;color:#294f7a;font-size:13px;font-weight:800;line-height:1.45}.feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.feature-item{display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid #e1e6ea;border-radius:13px;padding:12px}.feature-item strong{font-size:13px}.feature-item span{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em}.feature-item.included{background:#eef8f1;border-color:#cfe3d4}.feature-item.included span{color:#2d6a3d}.feature-item.locked{background:#f6f7f8;color:#6d7883}.feature-item.locked span{color:#7a6d55}.plan-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.plan-actions button{border:1px solid #dce2e7;border-radius:12px;padding:11px;background:#fff;color:#17222e;font-weight:850;cursor:pointer}.plan-actions button:hover{background:#f4f6f8}.followup{margin-top:10px;padding-top:10px;border-top:1px solid #dfe5e9;font-size:13px;color:#4e5b67}.progress-list{display:grid;gap:9px;margin-top:14px}.progress-item{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #e1e6ea;border-radius:13px;padding:12px}.progress-item strong{font-size:13px}.progress-item span{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em}.progress-item.done{background:#eef8f1;border-color:#cfe3d4}.progress-item.done span{color:#2d6a3d}.progress-item.next{background:#fff8e8;border-color:#ead7ae}.progress-item.next span{color:#8b6426}.pulse-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0}.pulse-metric{border-radius:14px;background:#f4f6f8;padding:14px}.pulse-metric span{display:block;font-size:11px;color:#68737e;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.pulse-metric strong{display:block;margin-top:6px;font-size:20px}.insight-note{border-radius:14px;background:#eef5ff;color:#294f7a;padding:14px;line-height:1.5;margin-top:10px}.insight-list{margin:10px 0 0;padding-left:20px;color:#4f5c68;line-height:1.55}.journey-banner{margin:14px 0;border-radius:14px;padding:14px;background:#eef8f1;color:#285d34;font-size:13px;font-weight:800;line-height:1.5}.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}@media(max-width:520px){.actions,.summary{grid-template-columns:1fr}.shell{padding:22px 15px 48px}}
   </style>
 </head>
 <body>
 <main class="shell">
-  <div class="brand">GrowthWise</div>
+  <div class="brand">Narleo</div>
   <section class="hero">
     <div class="eyebrow">Business workspace</div>
-    <h1>Your account, one business at a time.</h1>
-    <p>Use your Workspace ID and private tenant access key. Your access key stays in this browser session and is never placed in the URL.</p>
+    <h1>Your business, ready when you are.</h1>
+    <p>Sign in securely by email and pick up where you left off.</p>
   </section>
 
   <section id="workspace-signed-out" class="card">
-    <div class="eyebrow">Sign in</div>
-    <h2>Open your workspace</h2>
-    <p>This preview uses the Workspace ID and one-time access key created during signup.</p>
-    <form id="workspace-signin-form">
-      <label class="field">Workspace ID<input name="business_id" autocomplete="off" required /></label>
-      <label class="field">Tenant access key<input name="tenant_key" type="password" autocomplete="off" required /></label>
-      <button class="button" type="submit">Open workspace</button>
+    <div class="eyebrow">Secure sign in</div>
+    <h2>Open your workspace by email</h2>
+    <p>Enter the email used when this business was created. If it matches a workspace, Narleo will send a one-time sign-in link.</p>
+    <form id="workspace-email-signin-form">
+      <label class="field">Business email<input name="email" type="email" autocomplete="email" required /></label>
+      <button class="button" id="workspace-email-signin-submit" type="submit">Email me a sign-in link</button>
     </form>
+    <div id="workspace-email-signin-status" class="plan-banner" hidden></div>
     <div id="workspace-error" class="status" hidden></div>
+
+    <details style="margin-top:18px">
+      <summary style="cursor:pointer;font-weight:850;color:#53606c">Preview support sign-in</summary>
+      <p style="margin-top:10px">Use these temporary preview details only if email sign-in is unavailable during testing.</p>
+      <form id="workspace-signin-form">
+        <label class="field">Workspace ID<input name="business_id" autocomplete="off" required /></label>
+        <label class="field">Preview access key<input name="tenant_key" type="password" autocomplete="off" required /></label>
+        <button class="button secondary" type="submit">Open preview workspace</button>
+      </form>
+    </details>
     <p style="margin-top:14px">New business? <a href="./signup.html">Create a workspace</a>.</p>
   </section>
 
@@ -38,11 +48,14 @@
       <p id="workspace-contact"></p>
       <div class="summary">
         <div class="metric"><span>Subscription</span><strong id="workspace-status">Checking…</strong></div>
-        <div class="metric"><span>Product access</span><strong id="workspace-access">Checking…</strong></div>
+        <div class="metric"><span>Access</span><strong id="workspace-access">Checking…</strong></div>
       </div>
       <p><strong>Plan</strong><br><span id="workspace-plan">Checking…</span></p>
       <div class="plan-banner" id="workspace-pro-trial" hidden></div>
-      <p><strong>Workspace ID</strong><br><span class="id" id="workspace-id"></span></p>
+      <details style="margin:12px 0">
+        <summary style="cursor:pointer;font-weight:850;color:#53606c">Support details</summary>
+        <p><strong>Workspace ID</strong><br><span class="id" id="workspace-id"></span></p>
+      </details>
       <div class="actions">
         <button class="button" id="workspace-manage-billing" type="button" hidden>Manage billing</button>
         <button class="button secondary" id="workspace-signout" type="button">Sign out</button>
@@ -51,6 +64,91 @@
 
 
 
+
+    <section class="card" id="workspace-onboarding-card">
+      <div class="eyebrow">Getting started</div>
+      <h2>Get to useful in minutes.</h2>
+      <p id="workspace-onboarding-summary">Checking your setup…</p>
+      <div id="workspace-journey-banner" class="journey-banner" hidden></div>
+      <div class="progress-list" id="workspace-onboarding-list"></div>
+      <button class="button" id="workspace-next-step" type="button" style="margin-top:12px" hidden>Continue setup</button>
+    </section>
+
+    <section class="card">
+      <div class="eyebrow">Quick starts</div>
+      <h2>What would help right now?</h2>
+      <p>These shortcuts adapt to your type of business and take you straight to a useful Narleo workflow.</p>
+      <div id="workspace-starter-kit" style="display:grid;gap:8px"></div>
+    </section>
+
+    <section class="card" id="workspace-first-win-card" hidden>
+      <div class="eyebrow">Try Narleo now</div>
+      <h2>Get a useful result before connecting anything.</h2>
+      <p>Start with one real task. No Square, Facebook, Instagram, or email connection is required.</p>
+      <form id="workspace-first-win-form">
+        <label class="field">What do you want help with?
+          <select name="task" id="workspace-first-win-task">
+            <option value="social_post">Create a social post</option>
+            <option value="customer_reply">Answer a customer</option>
+          </select>
+        </label>
+        <label class="field"><span id="workspace-first-win-prompt-label">What are you promoting?</span>
+          <textarea name="prompt" id="workspace-first-win-prompt" maxlength="4000" placeholder="Example: Fall royal icing cookies are available for seasonal orders." required></textarea>
+        </label>
+        <label class="field" id="workspace-first-win-image-field">Photo (optional)
+          <input id="workspace-first-win-image" type="file" accept="image/jpeg,image/png" />
+        </label>
+        <img id="workspace-first-win-preview" alt="Selected first-task preview" hidden style="display:block;width:100%;max-height:360px;object-fit:contain;border-radius:14px;background:#f4f6f8;margin:10px 0" />
+        <button class="button" id="workspace-first-win-submit" type="submit">Create my first result</button>
+      </form>
+      <div id="workspace-first-win-status" class="status" hidden></div>
+      <div id="workspace-first-win-result" class="reply-box" hidden>
+        <strong id="workspace-first-win-title"></strong>
+        <div id="workspace-first-win-primary" style="margin-top:8px;white-space:pre-wrap"></div>
+        <div id="workspace-first-win-secondary-wrap" class="followup" hidden>
+          <strong>Instagram version</strong>
+          <div id="workspace-first-win-secondary" style="margin-top:5px;white-space:pre-wrap"></div>
+        </div>
+        <div class="actions" style="margin-top:12px">
+          <button class="button secondary" id="workspace-first-win-copy" type="button">Copy result</button>
+          <button class="button secondary" id="workspace-first-win-copy-secondary" type="button" hidden>Copy Instagram draft</button>
+        </div>
+        <div class="actions" style="margin-top:9px">
+          <button class="button" id="workspace-first-win-use-facebook" type="button" hidden>Prepare Facebook post</button>
+          <button class="button" id="workspace-first-win-use-instagram" type="button" hidden>Prepare Instagram post</button>
+        </div>
+        <div class="followup">
+          <strong>Why / what to do next</strong>
+          <div id="workspace-first-win-note" style="margin-top:5px"></div>
+          <div id="workspace-first-win-next" style="margin-top:5px"></div>
+        </div>
+        <div id="workspace-first-win-feedback" class="followup">
+          <strong>Was this useful?</strong>
+          <div class="actions" style="margin-top:8px">
+            <button class="button secondary" id="workspace-first-win-helpful" type="button">Yes, this helped</button>
+            <button class="button secondary" id="workspace-first-win-needs-improvement" type="button">Needs improvement</button>
+          </div>
+          <div id="workspace-first-win-feedback-status" style="margin-top:7px;font-size:13px;color:#53606c"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="workspace-assistant-card" hidden>
+      <div class="eyebrow">Ask Narleo</div>
+      <h2>Your business assistant, right inside the workspace.</h2>
+      <p>Ask about marketing, promotions, customer follow-up, operations, or what to work on next. Narleo will tell you when it needs more business data instead of guessing.</p>
+      <div id="workspace-assistant-thread" style="display:grid;gap:10px;margin:14px 0"></div>
+      <form id="workspace-assistant-form">
+        <label class="field">What do you want help with?
+          <textarea id="workspace-assistant-question" name="question" maxlength="4000" placeholder="Example: What should I promote this week?" required></textarea>
+        </label>
+        <button class="button" id="workspace-assistant-submit" type="submit">Ask Narleo</button>
+      </form>
+      <div id="workspace-assistant-status" class="status" hidden></div>
+      <div id="workspace-assistant-action" class="insight-note" hidden></div>
+      <div id="workspace-assistant-data" class="followup" hidden></div>
+      <div id="workspace-assistant-followups" class="followup" hidden></div>
+    </section>
 
     <section class="card" id="workspace-plan-controls" hidden>
       <div class="eyebrow">Plan options</div>
@@ -66,54 +164,201 @@
     <section class="card">
       <div class="eyebrow">Your features</div>
       <h2>What your plan includes</h2>
-      <p>Narleo/GrowthWise unlocks features from your server-verified plan. Locked features remain visible so you can see what a higher tier adds.</p>
+      <p>Narleo unlocks features from your verified plan. Locked features remain visible so you can see what a higher tier adds.</p>
       <div class="feature-grid" id="workspace-feature-grid"></div>
     </section>
 
     <section class="card" id="workspace-square-card" hidden>
       <div class="eyebrow">Connected app</div>
       <h2>Square</h2>
-      <p>Connect this business's own Square account. GrowthWise keeps the connection tenant-bound and never substitutes another business's credentials.</p>
+      <p>Connect this business's own Square account. Narleo keeps the connection tied to this business and never substitutes another business's credentials.</p>
       <div class="plan-banner">
         <strong id="workspace-square-state">Checking…</strong>
         <div id="workspace-square-detail" style="margin-top:5px"></div>
       </div>
       <div id="workspace-square-error" class="status" hidden></div>
-      <button class="button" id="workspace-square-connect" type="button">Connect Square</button>
+      <div class="actions">
+        <button class="button" id="workspace-square-connect" type="button">Connect Square</button>
+        <button class="button secondary" id="workspace-square-skip" type="button">Do this later</button>
+      </div>
+    </section>
+
+    <section class="card" id="workspace-channels-card" hidden>
+      <div class="eyebrow">Customer channels</div>
+      <h2>Connect your business accounts yourself.</h2>
+      <p>Open secure setup for supported customer channels. You sign in directly with each provider and approve the permissions; Narleo never asks for those provider passwords.</p>
+      <div id="workspace-channels-error" class="status" hidden></div>
+      <button class="button" id="workspace-channels-open" type="button">Manage customer channels</button>
+    </section>
+
+    <section class="card" id="workspace-facebook-card" hidden>
+      <div class="eyebrow">Facebook publishing</div>
+      <h2>Review it here. Post only when you're ready.</h2>
+      <p>Narleo uses only the Facebook Page connected to this workspace. Nothing publishes automatically.</p>
+      <div class="plan-banner">
+        <strong id="workspace-facebook-state">Checking…</strong>
+        <div id="workspace-facebook-detail" style="margin-top:5px"></div>
+      </div>
+      <div id="workspace-facebook-error" class="status" hidden></div>
+      <div class="actions" style="margin-top:10px">
+        <button class="button" id="workspace-facebook-connect" type="button">Connect Facebook</button>
+        <button class="button secondary" id="workspace-facebook-refresh" type="button">Refresh connection</button>
+      </div>
+      <form id="workspace-facebook-form" hidden style="margin-top:14px">
+        <label class="field">Post copy
+          <textarea id="workspace-facebook-message" name="message" maxlength="5000" placeholder="Write or paste the Facebook post you want to publish." required></textarea>
+        </label>
+        <label class="field">Photo (optional)
+          <input id="workspace-facebook-image" type="file" accept="image/jpeg,image/png" />
+        </label>
+        <img id="workspace-facebook-preview" alt="Selected Facebook post preview" hidden style="display:block;width:100%;max-height:360px;object-fit:contain;border-radius:14px;background:#f4f6f8;margin:10px 0" />
+        <label style="display:flex;gap:9px;align-items:flex-start;margin:13px 0;font-size:13px;font-weight:750;color:#45515d">
+          <input id="workspace-facebook-reviewed" type="checkbox" style="margin-top:3px" />
+          <span>I reviewed this copy and photo and want to publish them to the Facebook Page shown above.</span>
+        </label>
+        <button class="button" id="workspace-facebook-publish" type="submit">Publish reviewed post</button>
+      </form>
+      <div id="workspace-facebook-publish-status" class="status" hidden></div>
+      <div id="workspace-facebook-result" class="journey-banner" hidden></div>
+    </section>
+
+    <section class="card" id="workspace-instagram-card" hidden>
+      <div class="eyebrow">Instagram publishing</div>
+      <h2>Review the photo and caption before anything goes live.</h2>
+      <p>Narleo uses only the Instagram professional account connected to this workspace. Nothing publishes automatically.</p>
+      <div class="plan-banner">
+        <strong id="workspace-instagram-state">Checking…</strong>
+        <div id="workspace-instagram-detail" style="margin-top:5px"></div>
+      </div>
+      <div id="workspace-instagram-error" class="status" hidden></div>
+      <div class="actions" style="margin-top:10px">
+        <button class="button" id="workspace-instagram-connect" type="button">Connect Instagram</button>
+        <button class="button secondary" id="workspace-instagram-refresh" type="button">Refresh connection</button>
+      </div>
+      <form id="workspace-instagram-form" hidden style="margin-top:14px">
+        <label class="field">Caption
+          <textarea id="workspace-instagram-caption" name="caption" maxlength="2200" placeholder="Write or paste the Instagram caption you want to publish." required></textarea>
+        </label>
+        <label class="field">JPG photo
+          <input id="workspace-instagram-image" type="file" accept="image/jpeg" required />
+        </label>
+        <img id="workspace-instagram-preview" alt="Selected Instagram post preview" hidden style="display:block;width:100%;max-height:360px;object-fit:contain;border-radius:14px;background:#f4f6f8;margin:10px 0" />
+        <label style="display:flex;gap:9px;align-items:flex-start;margin:13px 0;font-size:13px;font-weight:750;color:#45515d">
+          <input id="workspace-instagram-reviewed" type="checkbox" style="margin-top:3px" />
+          <span>I reviewed this caption and photo and want to publish them to the Instagram account shown above.</span>
+        </label>
+        <button class="button" id="workspace-instagram-publish" type="submit">Publish reviewed post</button>
+      </form>
+      <div id="workspace-instagram-publish-status" class="status" hidden></div>
+      <div id="workspace-instagram-result" class="journey-banner" hidden></div>
+    </section>
+
+    <section class="card" id="workspace-pulse-card" hidden>
+      <div class="eyebrow">Business pulse</div>
+      <h2>What Square is telling you right now.</h2>
+      <p>Narleo summarizes your connected business data so you can act without digging through reports.</p>
+      <div id="workspace-pulse-error" class="status" hidden></div>
+      <div id="workspace-pulse-loading" class="plan-banner" hidden>Reading your latest Square inventory and sales…</div>
+      <div id="workspace-pulse-content" hidden>
+        <div class="pulse-grid">
+          <div class="pulse-metric"><span>30-day sales</span><strong id="workspace-pulse-sales">$0.00</strong></div>
+          <div class="pulse-metric"><span>Completed orders</span><strong id="workspace-pulse-orders">0</strong></div>
+          <div class="pulse-metric"><span>Inventory value</span><strong id="workspace-pulse-inventory-value">$0.00</strong></div>
+          <div class="pulse-metric"><span>Units in stock</span><strong id="workspace-pulse-units">0</strong></div>
+        </div>
+        <div class="insight-note">
+          <strong id="workspace-pulse-headline">Your next opportunity</strong>
+          <div id="workspace-pulse-primary" style="margin-top:6px"></div>
+        </div>
+        <ul class="insight-list" id="workspace-pulse-recommendations"></ul>
+        <div class="actions" style="margin-top:12px">
+          <button class="button" id="workspace-pulse-promote" type="button" hidden>Create a post from this insight</button>
+          <button class="button secondary" id="workspace-pulse-ask" type="button" hidden>Ask Narleo about this</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="workspace-inbox-card" hidden>
+      <div class="eyebrow">Unified inbox</div>
+      <h2>Recent customer messages, in one place.</h2>
+      <p>Messages from connected channels stay tied to this business. Use Narleo to turn an inbound message into a draft reply.</p>
+      <div class="actions">
+        <button class="button secondary" id="workspace-inbox-refresh" type="button">Refresh messages</button>
+        <select id="workspace-inbox-filter" aria-label="Filter inbox messages" style="border:1px solid #d5dce2;border-radius:12px;padding:12px;font:inherit;background:#fff;color:#14202c">
+          <option value="all">All messages</option>
+          <option value="open">Open</option>
+          <option value="follow_up">Needs follow-up</option>
+          <option value="won">Won</option>
+          <option value="unread">Unread</option>
+          <option value="instagram">Instagram</option>
+          <option value="facebook">Facebook</option>
+          <option value="email">Email</option>
+          <option value="website">Website</option>
+          <option value="sms_phone">SMS / Phone</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div id="workspace-inbox-summary" style="margin-top:8px;font-size:13px;font-weight:800;color:#53606c"></div>
+      <div id="workspace-inbox-pulse" hidden>
+        <div class="pulse-grid" style="margin-bottom:8px">
+          <div class="pulse-metric"><span>Open</span><strong id="workspace-inbox-open-count">0</strong></div>
+          <div class="pulse-metric"><span>Needs follow-up</span><strong id="workspace-inbox-follow-count">0</strong></div>
+          <div class="pulse-metric"><span>Unread</span><strong id="workspace-inbox-unread-count">0</strong></div>
+          <div class="pulse-metric"><span>Replied</span><strong id="workspace-inbox-replied-count">0</strong></div>
+          <div class="pulse-metric"><span>Won</span><strong id="workspace-inbox-won-count">0</strong></div>
+        </div>
+        <div id="workspace-inbox-source-summary" class="insight-note"></div>
+        <button class="button secondary" id="workspace-inbox-ask" type="button" style="margin-top:9px" hidden>Ask Narleo about lead flow</button>
+      </div>
+      <div id="workspace-inbox-attention" class="journey-banner" hidden style="margin-top:10px">
+        <strong id="workspace-inbox-attention-title"></strong>
+        <div id="workspace-inbox-attention-detail" style="margin-top:5px"></div>
+        <button class="button" id="workspace-inbox-next" type="button" style="margin-top:9px">Work next lead</button>
+      </div>
+      <div id="workspace-inbox-error" class="status" hidden></div>
+      <div id="workspace-inbox-empty" class="plan-banner" hidden>No inbound messages yet. Connect customer channels when you're ready.</div>
+      <div id="workspace-inbox-list" style="display:grid;gap:10px;margin-top:12px"></div>
     </section>
 
     <section class="card" id="workspace-lead-card" hidden>
       <div class="eyebrow">AI Lead Reply</div>
       <h2>Turn a customer message into a safe draft.</h2>
-      <p>This first tenant-ready feature works without sharing Dexter's data. Product-specific price or inventory answers stay conservative until your own inventory connection is added.</p>
+      <p>Narleo drafts from this workspace's own business context. Product-specific price or inventory answers stay conservative until this business has connected inventory data.</p>
       <form id="workspace-lead-form">
         <label class="field">Source
-          <select name="source">
+          <select id="workspace-lead-source" name="source">
             <option>Email</option>
             <option>Instagram</option>
             <option>Facebook</option>
             <option>Website</option>
             <option>SMS</option>
+            <option>Phone</option>
             <option>Other</option>
           </select>
         </label>
-        <label class="field">Customer name (optional)<input name="customer_name" maxlength="120" autocomplete="off" /></label>
-        <label class="field">Customer message<textarea name="message" maxlength="4000" required></textarea></label>
+        <label class="field">Customer name (optional)<input id="workspace-lead-customer" name="customer_name" maxlength="120" autocomplete="off" /></label>
+        <label class="field">Customer message<textarea id="workspace-lead-message" name="message" maxlength="4000" required></textarea></label>
         <button class="button" id="workspace-lead-submit" type="submit">Draft safe reply</button>
       </form>
       <div id="workspace-lead-status" class="status" hidden></div>
       <div id="workspace-lead-result" class="reply-box" hidden>
         <strong>Suggested reply</strong>
-        <div id="workspace-lead-reply" style="margin-top:8px"></div>
+        <div id="workspace-lead-reply" style="margin-top:8px;white-space:pre-wrap"></div>
+        <div class="actions" style="margin-top:10px">
+          <button class="button secondary" id="workspace-lead-copy" type="button">Copy suggested reply</button>
+          <button class="button secondary" id="workspace-lead-open-reply" type="button" hidden>Open reply</button>
+          <button class="button secondary" id="workspace-lead-mark-replied" type="button" hidden>Mark as replied</button>
+        </div>
+        <div id="workspace-lead-copy-status" style="margin-top:7px;font-size:13px;color:#53606c"></div>
         <div id="workspace-lead-meta" class="reply-meta"></div>
         <div class="followup"><strong>Human follow-up</strong><div id="workspace-lead-followup" style="margin-top:5px"></div></div>
       </div>
     </section>
 
     <section class="card note">
-      <div class="eyebrow">Next productization step</div>
-      <h2>Your business data will stay tenant-bound.</h2>
-      <p>Inventory, product publishing, leads, orders, and connected apps are being moved from the Dexter pilot onto this authenticated workspace. A new business will not be pointed at Dexter's Square or other pilot credentials.</p>
+      <div class="eyebrow">Built for your business</div>
+      <h2>Your business stays separate.</h2>
+      <p>Narleo uses only the accounts connected to this workspace. Another business cannot see or use your connected Square account, inventory, sales, or private workspace access.</p>
     </section>
   </section>
 </main>

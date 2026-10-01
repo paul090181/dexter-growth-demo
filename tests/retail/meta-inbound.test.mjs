@@ -83,6 +83,60 @@ test("Meta webhook signature verification uses the raw request body", () => {
   assert.equal(verifyMetaSignature({ rawBody, signature: "sha256=bad", appSecret: SECRET }), false);
 });
 
+test("Meta webhook selects separate Facebook and Instagram app secrets", async () => {
+  const facebookSecret = "synthetic-facebook-app-secret";
+  const instagramSecret = "synthetic-instagram-app-secret";
+  const env = (name) => ({
+    GROWTHWISE_FACEBOOK_APP_SECRET: facebookSecret,
+    GROWTHWISE_INSTAGRAM_APP_SECRET: instagramSecret,
+    GROWTHWISE_META_ACCOUNT_MAP: ACCOUNT_MAP,
+  })[name] || "";
+
+  const facebookRaw = JSON.stringify(facebookPayload());
+  const facebookResponse = await createMetaWebhookHandler({
+    env,
+    ingest: async () => ({ duplicate: false }),
+    logger: { info() {}, warn() {} },
+  })(new Request("https://growthwise.example/.netlify/functions/meta-webhook", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-hub-signature-256": `sha256=${createHmac("sha256", facebookSecret).update(facebookRaw).digest("hex")}`,
+    },
+    body: facebookRaw,
+  }));
+  assert.equal(facebookResponse.status, 200);
+
+  const instagramRaw = JSON.stringify(instagramPayload());
+  const instagramResponse = await createMetaWebhookHandler({
+    env,
+    ingest: async () => ({ duplicate: false }),
+    logger: { info() {}, warn() {} },
+  })(new Request("https://growthwise.example/.netlify/functions/meta-webhook", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-hub-signature-256": `sha256=${createHmac("sha256", instagramSecret).update(instagramRaw).digest("hex")}`,
+    },
+    body: instagramRaw,
+  }));
+  assert.equal(instagramResponse.status, 200);
+
+  const wrongSignatureResponse = await createMetaWebhookHandler({
+    env,
+    ingest: async () => ({ duplicate: false }),
+    logger: { info() {}, warn() {} },
+  })(new Request("https://growthwise.example/.netlify/functions/meta-webhook", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-hub-signature-256": `sha256=${createHmac("sha256", instagramSecret).update(facebookRaw).digest("hex")}`,
+    },
+    body: facebookRaw,
+  }));
+  assert.equal(wrongSignatureResponse.status, 401);
+});
+
 test("Facebook Messenger events normalize into the GrowthWise inbox contract", () => {
   const result = normalizeMetaWebhookPayload(facebookPayload(), { accountMap: parseMetaAccountMap(ACCOUNT_MAP) });
   assert.equal(result.events.length, 1);
@@ -176,6 +230,30 @@ test("invalid webhook signature is rejected before ingest", async () => {
   assert.equal(called, false);
 });
 
+
+test("Facebook webhook can resolve its tenant from the stored secure Page binding", async () => {
+  const raw = JSON.stringify(facebookPayload());
+  const signature = `sha256=${createHmac("sha256", SECRET).update(raw).digest("hex")}`;
+  const env = (name) => ({
+    META_APP_SECRET: SECRET,
+    GROWTHWISE_META_ACCOUNT_MAP: JSON.stringify({ facebook: {}, instagram: {} }),
+  })[name] || "";
+  const ingested = [];
+  const response = await createMetaWebhookHandler({
+    env,
+    routeFacebookBusiness: async (pageId) => pageId === "page-123" ? "dexters-hats" : null,
+    ingest: async (event) => { ingested.push(event); return { duplicate: false, lead: { id: "lead-fb-1" } }; },
+    logger: { info() {}, warn() {} },
+  })(new Request("https://growthwise.example/.netlify/functions/meta-webhook", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-hub-signature-256": signature },
+    body: raw,
+  }));
+  assert.equal(response.status, 200);
+  assert.equal(ingested.length, 1);
+  assert.equal(ingested[0].business_id, "dexters-hats");
+  assert.equal(ingested[0].source_type, "facebook");
+});
 
 test("Instagram webhook can resolve its tenant from the existing secure Instagram binding", async () => {
   const raw = JSON.stringify(instagramPayload());
