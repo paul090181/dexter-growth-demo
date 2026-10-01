@@ -17,13 +17,13 @@ No Production change should occur without Paul's explicit approval.
 
 Current Netlify Production deploys from `main`.
 
-PR #18 targets `platform-v1`, so merging PR #18 does **not** itself publish Production.
+PR #18 has been merged into `platform-v1`.
 
-Production cutover is a separate release PR:
+Production cutover is staged in Draft PR #19:
 
 `platform-v1 -> main`
 
-The release PR must pass CI and Netlify validation before merge.
+PR #19 is intentionally a review surface while launch prerequisites are completed. Opening and updating the Draft PR does **not** authorize Production. It must remain Draft and unmerged until all merge gates below are satisfied, CI and Netlify validation are green on its exact head, and Paul gives a new explicit Production approval.
 
 ## 2. Canonical production origin
 
@@ -221,20 +221,22 @@ Before the Production release PR is merged:
 
 ## 8. Production release gate
 
-Before opening the release PR `platform-v1 -> main`:
+Draft PR #19 may remain open as the controlled review/staging surface before all launch dependencies are complete.
 
-- PR #18 merged into `platform-v1` and verified.
-- `platform-v1` green.
-- `app.narleobit.com` configured and TLS-ready.
-- Production environment matrix completed.
-- Production provider redirects/webhooks configured.
-- Stripe live configuration completed if billing launches immediately.
-- Production database restore point confirmed.
-- Facebook/Meta launch scope decided.
-- Microsoft launch scope decided.
-- Square launch scope decided.
-- No unresolved P0/P1 security or tenant-isolation issue.
-- Paul explicitly approves opening/merging the Production release.
+Before PR #19 is taken out of Draft or merged into `main`:
+
+- PR #18 is merged into `platform-v1` and verified.
+- `platform-v1` and PR #19 exact-head CI are green.
+- PR #19 Netlify Deploy Preview is green on the exact head.
+- `app.narleobit.com` remains configured and TLS-ready.
+- Production environment matrix is rechecked without exposing secret values.
+- Required Production OAuth redirect allowlists remain correct.
+- Provider webhooks that require live Narleo endpoints remain deferred until those endpoints exist, then are configured/verified in the approved cutover sequence.
+- Stripe Live is fully configured if paid public signup is in launch scope; otherwise the Production signup fail-closed gate remains in force.
+- First-Production-database provisioning, backup visibility, and rollback posture are reconfirmed.
+- Facebook/Meta, Microsoft, and Square launch scope is explicitly decided.
+- No unresolved P0/P1 security or tenant-isolation issue remains.
+- Paul gives a **new explicit approval** to merge/deploy Production.
 
 ## 9. Production smoke test
 
