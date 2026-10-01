@@ -25,12 +25,12 @@ Because this is the first Production database cutover, there is no pre-existing 
 ## Git topology
 
 Feature work:
-`feat/facebook-self-service-onboarding -> platform-v1` via PR #18.
+`feat/facebook-self-service-onboarding -> platform-v1` via PR #18 — **merged**.
 
 Production release:
-`platform-v1 -> main` via a separate release PR.
+`platform-v1 -> main` via Draft PR #19 — **PRODUCTION HOLD / DO NOT MERGE**.
 
-Merging PR #18 must not be treated as permission to merge the later Production release PR.
+PR #19 exists only as a controlled review and validation surface. Its existence, successful Preview, or successful CI does not authorize a Production merge or deploy.
 
 ## Completed Production preflight
 
@@ -159,19 +159,25 @@ Before the separate `platform-v1 -> main` release PR is merged:
 
 ## Release sequence
 
-Only after all gates pass:
+Completed pre-release staging:
+1. PR #18 merged into `platform-v1`.
+2. `platform-v1` exact-head CI verified.
+3. Draft PR #19 opened from `platform-v1 -> main` under **PRODUCTION HOLD / DO NOT MERGE**.
+4. Targeted Production release/security review started against PR #19.
+5. Production root routing was hardened so `/` serves the Narleo workspace instead of the retained legacy Dexter `index.html`.
+6. Signup security headers were hardened and signup behavior externalized to permit same-origin-only script CSP.
 
-1. Merge PR #18 into `platform-v1`.
-2. Verify `platform-v1` exact-head CI and Netlify validation.
-3. Open a separate `platform-v1 -> main` Production release PR.
-4. Review the release diff against the current Production commit.
-5. Recheck Production environment presence without exposing secret values.
-6. Confirm database rollback/restore posture.
-7. Obtain explicit approval to merge the Production release PR.
-8. Merge once.
-9. Monitor Netlify build and all 29 migrations.
-10. Do not retry a failed migration by editing Production manually.
-11. After Ready, execute the smoke test below.
+Only after all remaining gates pass:
+1. Re-verify PR #19 exact head, CI, and Netlify Deploy Preview.
+2. Recheck Production environment presence without exposing secret values.
+3. Confirm database provisioning/backup/restore posture immediately before cutover.
+4. Confirm Stripe launch scope and live configuration if public paid signup will launch.
+5. Confirm provider-webhook activation sequence after live endpoints exist.
+6. Obtain a **new explicit approval** to merge/deploy Production.
+7. Merge PR #19 once.
+8. Monitor Netlify build and all 29 migrations.
+9. Do not retry a failed migration by editing Production manually.
+10. After Ready, execute the smoke test below.
 
 ## Immediate Production smoke test
 
