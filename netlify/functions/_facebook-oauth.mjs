@@ -16,11 +16,11 @@ function safeOrigin(value){
   return url.origin;
 }
 
-export function configuredFacebookOAuth({publicOrigin}={}){
-  const appId=env("GROWTHWISE_FACEBOOK_APP_ID")||env("GROWTHWISE_INSTAGRAM_APP_ID");
-  const appSecret=env("GROWTHWISE_FACEBOOK_APP_SECRET")||env("GROWTHWISE_INSTAGRAM_APP_SECRET");
-  const graphVersion=safeGraphVersion(env("FACEBOOK_GRAPH_VERSION"));
-  const origin=safeOrigin(publicOrigin||env("GROWTHWISE_PUBLIC_ORIGIN"));
+export function configuredFacebookOAuth({publicOrigin,getEnv=env}={}){
+  const appId=getEnv("GROWTHWISE_FACEBOOK_APP_ID");
+  const appSecret=getEnv("GROWTHWISE_FACEBOOK_APP_SECRET");
+  const graphVersion=safeGraphVersion(getEnv("FACEBOOK_GRAPH_VERSION"));
+  const origin=safeOrigin(publicOrigin||getEnv("GROWTHWISE_PUBLIC_ORIGIN"));
   if(!appId||!appSecret)throw new Error("FACEBOOK_OAUTH_NOT_CONFIGURED");
   return {
     appId,appSecret,graphVersion,publicOrigin:origin,
