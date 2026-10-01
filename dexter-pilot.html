@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <meta name="Referrer-Policy" content="no-referrer">
+  <title>Dexter's Hats | Narleo Pilot</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#eef2f5;color:#17222e;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    main{width:min(680px,100%);min-height:100vh;margin:0 auto;background:#fff;padding:24px 18px 56px}.brand{font-weight:950;font-size:18px}.tag{font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#8a6b2a}
+    .hero{margin:20px 0;border-radius:22px;background:#0e1b2b;color:#fff;padding:24px}.hero h1{margin:5px 0 8px;font-size:clamp(28px,7vw,42px);line-height:1.05}.hero p{margin:0;color:#d4dce3;line-height:1.5}
+    .card{border:1px solid #dde4e9;border-radius:18px;padding:18px;margin-top:14px;box-shadow:0 8px 26px rgba(14,27,43,.05)}.card h2,.card h3{margin:5px 0 8px}.card p{color:#5c6974;line-height:1.5}
+    .status{border-radius:12px;padding:11px 12px;background:#eef3f6;color:#3e5366;font-weight:750;font-size:13px}.status.ok{background:#eaf6ed;color:#285d34}.status.error{background:#fff0ee;color:#87372e}.hidden{display:none!important}
+    .button{display:block;width:100%;border:0;border-radius:13px;padding:14px 16px;background:#0e1b2b;color:#fff;font:inherit;font-weight:850;cursor:pointer;text-align:center}.button.secondary{background:#edf1f4;color:#17222e}.button:disabled{opacity:.5;cursor:not-allowed}
+    input[type=file]{display:block;width:100%;padding:12px;border:1px dashed #aebbc5;border-radius:14px;background:#f8fafb}.preview{width:100%;max-height:380px;object-fit:contain;border-radius:14px;background:#f3f5f6;margin-top:12px}
+    textarea{width:100%;min-height:190px;border:1px solid #cfd8df;border-radius:13px;padding:12px;font:inherit;line-height:1.45;resize:vertical}.review{display:flex;gap:9px;align-items:flex-start;margin:12px 0;color:#394957}.review input{margin-top:4px}
+    .feedback{display:grid;grid-template-columns:1fr 1fr;gap:9px}.feedback button{border:1px solid #ccd6dd;border-radius:11px;background:#f1f4f6;padding:11px;font-weight:850}.feedback button.active{background:#0e1b2b;color:#fff}
+    small{color:#6a7680}.connection{display:flex;gap:8px;align-items:center;margin-top:10px}.dot{width:9px;height:9px;border-radius:50%;background:#a9b2b9}.dot.ok{background:#3d8a50}
+  </style>
+</head>
+<body>
+<main>
+  <div class="brand">Narleo</div>
+  <section class="hero">
+    <div class="tag" style="color:#d8bd79">DEXTER PILOT</div>
+    <h1>Welcome, Dexter.</h1>
+    <p>Try one real task: take a photo of a hat, let Narleo write the Instagram post, review it, and post when you're happy with it.</p>
+  </section>
+
+  <div id="sessionStatus" class="status">Checking your secure pilot session…</div>
+
+  <section id="pilotApp" class="hidden">
+    <div class="card">
+      <div class="tag">INSTAGRAM</div>
+      <h2>Post a hat in a few taps</h2>
+      <div class="connection"><span id="igDot" class="dot"></span><small id="igStatus">Checking Instagram…</small></div>
+      <button id="igConnectButton" class="button secondary hidden" type="button" style="margin-top:10px">Connect Instagram</button>
+      <p>Nothing posts until you review the photo and caption and tap the final button.</p>
+      <input id="photoInput" type="file" accept="image/jpeg,image/png" capture="environment">
+      <img id="photoPreview" class="preview hidden" alt="Selected hat photo">
+      <button id="draftButton" class="button hidden" type="button" style="margin-top:12px">Write my Instagram post</button>
+      <div id="draftStatus" class="status hidden" style="margin-top:10px"></div>
+    </div>
+
+    <div id="draftCard" class="card hidden">
+      <div class="tag">REVIEW</div>
+      <h2 id="productLabel">Your draft</h2>
+      <p>Edit anything you want before posting.</p>
+      <textarea id="caption"></textarea>
+      <p id="uncertainty" class="hidden"></p>
+      <label class="review"><input id="reviewed" type="checkbox"> <span>I reviewed this photo and caption and want to post it to Dexter's Hats on Instagram.</span></label>
+      <button id="publishButton" class="button" type="button" disabled>Post to Instagram</button>
+      <div id="publishStatus" class="status hidden" style="margin-top:10px"></div>
+    </div>
+
+    <div id="feedbackCard" class="card hidden">
+      <div class="tag">QUICK FEEDBACK</div>
+      <h3>How did that go?</h3>
+      <p>One tap is enough. Add a note only if something was confusing.</p>
+      <div class="feedback">
+        <button type="button" data-result="worked">✓ Worked</button>
+        <button type="button" data-result="needs-improvement">△ Needs improvement</button>
+      </div>
+      <textarea id="feedbackNote" style="min-height:90px;margin-top:9px" maxlength="1200" placeholder="Optional note"></textarea>
+      <button id="feedbackButton" class="button secondary" type="button">Send feedback</button>
+      <div id="feedbackStatus" class="status hidden" style="margin-top:10px"></div>
+    </div>
+
+    <button id="anotherButton" class="button secondary hidden" type="button" style="margin-top:14px">Try another hat</button>
+  </section>
+</main>
+<script type="module" src="./assets/dexter-pilot.mjs"></script>
+</body>
+</html>

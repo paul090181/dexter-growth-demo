@@ -1,0 +1,9 @@
+# Narleo customer application entrypoint.
+# Force the root path to serve the customer workspace even though legacy files remain in the repository.
+/  /app.html  200!
+
+# Legacy internal/demo surfaces are not part of the Narleo Production customer surface.
+/index.html             /app.html  302!
+/automotive-pilot.html  /app.html  302!
+/instagram-dev.html     /app.html  302!
+/show-growthwise.html   /app.html  302!

@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>GrowthWise for Small Business</title>
+  <style>
+    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#17222e;background:#f4f6f7}
+    *{box-sizing:border-box}body{margin:0}.wrap{max-width:760px;margin:0 auto;padding:24px 18px 44px}
+    .hero{background:#0e1b2b;color:white;border-radius:26px;padding:28px 24px;box-shadow:0 16px 38px rgba(14,27,43,.18)}
+    .eyebrow{font-size:12px;font-weight:900;letter-spacing:.14em;color:#d8b765}.hero h1{font-size:34px;line-height:1.04;margin:10px 0 12px}.hero p{font-size:17px;line-height:1.5;color:#dbe3e9;margin:0}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.chip{background:#1d2d3e;color:white;border:1px solid #314458;border-radius:999px;padding:8px 10px;font-size:12px;font-weight:800}
+    .card{background:white;border:1px solid #dfe5e8;border-radius:20px;padding:20px;margin-top:16px}.card h2{margin:0 0 8px;font-size:22px}.card p{color:#5f6d78;line-height:1.5}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.feature{border:1px solid #e4e8ea;border-radius:15px;padding:14px;background:#fafbfc}.feature strong{display:block;margin-bottom:5px}.feature small{color:#66737e;line-height:1.4}
+    label{display:block;font-size:12px;font-weight:850;color:#52616e;margin-top:12px}input,textarea{width:100%;margin-top:6px;border:1px solid #d5dde2;border-radius:12px;padding:12px;font:inherit;background:white}textarea{min-height:90px;resize:vertical}
+    .actions{display:grid;grid-template-columns:1fr auto;gap:9px;margin-top:14px}.primary,.secondary{border:0;border-radius:13px;padding:13px 15px;font-weight:900;font-size:14px}.primary{background:#0e1b2b;color:white}.secondary{background:#e6ebef;color:#273744}
+    .status{margin-top:12px;border-radius:12px;padding:11px 12px;background:#eef3f6;color:#42515e;font-size:13px}.status.ok{background:#e7f5e9;color:#285e32}.status.error{background:#fbeceb;color:#8a3e35}
+    .hidden{display:none!important}.fine{font-size:11px;color:#79838b;line-height:1.4}.ref{font-size:12px;color:#6f7b84;margin-top:12px}
+    @media(max-width:560px){.grid{grid-template-columns:1fr}.hero h1{font-size:30px}.actions{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="eyebrow">GROWTHWISE</div>
+      <h1>One easier place to run more of your small business.</h1>
+      <p>GrowthWise is being built to help local businesses save time with product photos, marketing, inventory, purchasing, business insights and AI assistance—without forcing you to replace tools that already work.</p>
+      <div class="chips">
+        <span class="chip">Photo → post</span>
+        <span class="chip">Inventory</span>
+        <span class="chip">Purchasing</span>
+        <span class="chip">Business insights</span>
+        <span class="chip">AI help</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Built around what you already do</h2>
+      <p>GrowthWise is designed as a control center that can sit on top of systems such as Square, social channels, vendor ordering and accounting tools. You choose which parts to use.</p>
+      <div class="grid">
+        <div class="feature"><strong>Create marketing faster</strong><small>Take a product photo, get suggested copy, review it, and publish.</small></div>
+        <div class="feature"><strong>Add products with less typing</strong><small>Read tags, barcodes and order forms from photos and turn them into structured product details.</small></div>
+        <div class="feature"><strong>Track inventory &amp; orders</strong><small>See stock, prepare purchase orders, track shipments and receive goods.</small></div>
+        <div class="feature"><strong>Understand the business</strong><small>Bring sales, inventory value, vendor costs and AI suggestions into one view.</small></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Interested in your own GrowthWise workspace?</h2>
+      <p>We’re onboarding a small number of local businesses while the platform is still being refined. Tell us about your business and we’ll follow up about a pilot.</p>
+      <form id="interestForm">
+        <input type="text" id="website" name="website" class="hidden" tabindex="-1" autocomplete="off" />
+        <label>Your name
+          <input id="name" required maxlength="120" autocomplete="name" />
+        </label>
+        <label>Business name
+          <input id="businessName" required maxlength="180" autocomplete="organization" />
+        </label>
+        <label>Best way to reach you
+          <input id="contact" required maxlength="220" placeholder="Phone or email" />
+        </label>
+        <label>Type of business
+          <input id="industry" maxlength="120" placeholder="Retail, food, services, etc." />
+        </label>
+        <label>What would you most like help with?
+          <textarea id="message" maxlength="1200" placeholder="Marketing, inventory, ordering, social media, saving time…"></textarea>
+        </label>
+        <div class="actions">
+          <button class="primary" id="submitBtn" type="submit">Request GrowthWise access</button>
+          <button class="secondary" id="shareBtn" type="button">Share this page</button>
+        </div>
+        <div class="status hidden" id="status"></div>
+        <p class="fine">Submitting this form shares the information above with GrowthWise so we can contact you about the pilot. It does not connect to your business systems.</p>
+      </form>
+      <div class="ref hidden" id="referralNote"></div>
+    </section>
+  </main>
+
+  <script>
+    const params=new URLSearchParams(location.search);
+    const referralCode=(params.get('ref')||'').slice(0,120);
+    const referralNote=document.getElementById('referralNote');
+    if(referralCode){
+      referralNote.textContent='Referred through a GrowthWise pilot.';
+      referralNote.classList.remove('hidden');
+    }
+
+    document.getElementById('shareBtn').addEventListener('click',async()=>{
+      const shareData={
+        title:'GrowthWise for Small Business',
+        text:'Take a look at GrowthWise — an AI-assisted small-business operating platform.',
+        url:location.href
+      };
+      try{
+        if(navigator.share) await navigator.share(shareData);
+        else{
+          await navigator.clipboard.writeText(location.href);
+          const s=document.getElementById('status');
+          s.className='status ok';
+          s.textContent='Link copied.';
+        }
+      }catch(err){
+        if(err?.name!=='AbortError'){
+          const s=document.getElementById('status');
+          s.className='status error';
+          s.textContent='Could not share the link from this browser.';
+        }
+      }
+    });
+
+    document.getElementById('interestForm').addEventListener('submit',async(event)=>{
+      event.preventDefault();
+      const btn=document.getElementById('submitBtn');
+      const status=document.getElementById('status');
+      btn.disabled=true; btn.textContent='Sending…';
+      status.className='status'; status.textContent='Sending your request…';
+      try{
+        const response=await fetch('/.netlify/functions/growthwise-interest',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            website:document.getElementById('website').value,
+            name:document.getElementById('name').value.trim(),
+            business_name:document.getElementById('businessName').value.trim(),
+            contact:document.getElementById('contact').value.trim(),
+            industry:document.getElementById('industry').value.trim(),
+            message:document.getElementById('message').value.trim(),
+            referral_code:referralCode||null,
+            referrer_business:referralCode==='dexter-broadway'?'Dexter’s Hats & Caps':null,
+            source_path:location.pathname+location.search
+          })
+        });
+        const data=await response.json().catch(()=>({}));
+        if(!response.ok) throw new Error(data.error||'Could not send your request.');
+        status.className='status ok';
+        status.textContent='✓ Thanks — your request was received. We’ll follow up about GrowthWise.';
+        event.target.reset();
+      }catch(err){
+        status.className='status error';
+        status.textContent=err.message||'Could not send your request.';
+      }finally{
+        btn.disabled=false; btn.textContent='Request GrowthWise access';
+      }
+    });
+  </script>
+</body>
+</html>

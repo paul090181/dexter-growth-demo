@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "business_id": "dexters-hats",
+  "display_name": "Dexter's Hats",
+  "industry": "retail",
+  "modules": {
+    "core": true,
+    "inventory": true,
+    "publishing": true,
+    "analytics": true,
+    "automotive": false,
+    "automotive_leads": false,
+    "automotive_service": false,
+    "marketplace_bridge": true,
+    "retail": true,
+    "square": true,
+    "retail_promotions": true
+  },
+  "integrations": {
+    "facebook": "optional",
+    "instagram": {
+      "token_env": "DEXTERS_HATS_INSTAGRAM_ACCESS_TOKEN",
+      "account_id_env": "DEXTERS_HATS_INSTAGRAM_ACCOUNT_ID",
+      "review_publish_enabled": true,
+      "messages_enabled": true
+    },
+    "marketplace": "assisted",
+    "square": "optional"
+  },
+  "publishing": {
+    "shadow_mode": true,
+    "live_actions_enabled": false,
+    "automation": {
+      "default": "review",
+      "channels": {
+        "facebook-marketplace": "manual"
+      },
+      "actions": {}
+    }
+  }
+}
