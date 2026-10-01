@@ -5,9 +5,10 @@ import { readFile } from "node:fs/promises";
 const read = (path) => readFile(new URL("../../" + path, import.meta.url), "utf8");
 
 test("customer-facing workspace uses Narleo while internal GrowthWise identifiers remain implementation details", async () => {
-  const [app, signup, signin, connectors, dexter, workspaceJs, dexterJs, transactionalEmail, loginRequest, facebookConnection, facebookPageSelect, facebookPublishing, dexterDraft] = await Promise.all([
+  const [app, signup, signupJs, signin, connectors, dexter, workspaceJs, dexterJs, transactionalEmail, loginRequest, facebookConnection, facebookPageSelect, facebookPublishing, dexterDraft] = await Promise.all([
     read("app.html"),
     read("signup.html"),
+    read("assets/tenant-signup.js"),
     read("signin.html"),
     read("connect-accounts.html"),
     read("dexter-pilot.html"),
@@ -27,11 +28,13 @@ test("customer-facing workspace uses Narleo while internal GrowthWise identifier
   assert.match(app, /Narleo unlocks features from your verified plan/);
   assert.doesNotMatch(app, /Narleo\/GrowthWise/);
 
+  const signupSource = `${signup}\n${signupJs}`;
+
   assert.match(signup, /<div class="brand">Narleo<\/div>/);
   assert.match(signup, /connect email to Narleo/);
-  assert.match(signup, /Narleo is confirming your access/);
-  assert.match(signup, /growthwise_business_id/);
-  assert.match(signup, /X-GrowthWise-Tenant-Key/);
+  assert.match(signupSource, /Narleo is confirming your access/);
+  assert.match(signupSource, /growthwise_business_id/);
+  assert.match(signupSource, /X-GrowthWise-Tenant-Key/);
 
   assert.match(signin, /<title>Secure sign in \| Narleo<\/title>/);
   assert.match(signin, /<div class="brand">Narleo<\/div>/);
