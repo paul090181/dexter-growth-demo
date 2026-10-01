@@ -148,14 +148,15 @@ Before the separate `platform-v1 -> main` release PR is merged:
 1. Reconfirm current Production commit and that no unexpected Production deploy occurred.
 2. Reconfirm PR #18 / `platform-v1` CI is green.
 3. Confirm the Netlify Database dashboard/backup controls are available to the account role that will own Production after first publish.
-4. Do not try to create a pre-cutover database snapshot: no Production database exists yet.
-5. Do not manually initialize or manually apply the 29 migrations just to test Production.
-6. Let the Production deploy provision the main database and own migration ordering.
-7. If any migration fails, stop. Netlify should block publication; do not bypass, mark-applied, or manually alter the schema to force publication.
-8. Confirm Stripe launch mode:
+4. Confirm the Netlify sensitive-variable policy for this public repository protects untrusted deploys and is not set to deploy with secrets without restriction.
+5. Do not try to create a pre-cutover database snapshot: no Production database exists yet.
+6. Do not manually initialize or manually apply the 29 migrations just to test Production.
+7. Let the Production deploy provision the main database and own migration ordering.
+8. If any migration fails, stop. Netlify should block publication; do not bypass, mark-applied, or manually alter the schema to force publication.
+9. Confirm Stripe launch mode:
    - either Live Stripe is fully configured and accepted; or
    - public paid self-service remains explicitly out of launch scope.
-9. Obtain explicit approval before merging the release PR.
+10. Obtain explicit approval before merging the release PR.
 
 ## Release sequence
 
