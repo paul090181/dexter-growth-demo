@@ -60,7 +60,7 @@ The following Production values are present without exposing their values:
 - [x] Square OAuth state, binding, and credential-encryption secrets.
 - [x] Meta webhook verification token.
 - [x] Resend transactional email API key.
-- [x] Existing OpenAI/admin/lead-ingest/Facebook Graph runtime settings still present.
+- [x] Existing OpenAI/admin/lead-ingest runtime settings are present. `FACEBOOK_GRAPH_VERSION` has no Production-specific override; the Facebook OAuth/runtime helper safely defaults to `v26.0`, so an override is optional unless we intentionally pin a different supported version.
 
 ### Meta webhook hardening
 - [x] Facebook Page/Messenger webhook signatures use the Facebook app secret.
